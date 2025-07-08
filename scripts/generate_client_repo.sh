@@ -317,6 +317,49 @@ echo "✅ Environnement démarré"
 echo "🌐 Odoo accessible sur: http://localhost:8069"
 EOF
 
+    # Script merge_pr.sh pour gérer les PRs des submodules
+    cat > "$CLIENT_DIR/scripts/merge_pr.sh" << 'EOF'
+#!/bin/bash
+
+SUBMODULE_PATH=$1
+PR_NUMBER=$2
+BASE_BRANCH=${3:-16.0}
+
+if [ -z "$SUBMODULE_PATH" ] || [ -z "$PR_NUMBER" ]; then
+  echo "❌ Usage : bash merge_pr.sh <submodule_path> <pr_number> [base_branch]"
+  echo "Exemple : bash merge_pr.sh addons/oca_partner_contact 1234 16.0"
+  exit 1
+fi
+
+# Résoudre le chemin absolu du submodule
+REPO_PATH=$(realpath "$SUBMODULE_PATH")
+
+# Aller dans le dossier
+cd "$REPO_PATH" || { echo "❌ Répertoire $REPO_PATH introuvable."; exit 1; }
+
+# Récupérer l'URL du dépôt d'origine
+REPO_URL=$(git config --get remote.origin.url)
+REPO_NAME=$(basename -s .git "$REPO_URL")
+
+echo "📦 Dépôt : $REPO_NAME"
+echo "🌱 Branche de base : $BASE_BRANCH"
+echo "🔢 PR à merger : #$PR_NUMBER"
+
+echo "🔄 Récupération de la PR depuis GitHub..."
+git fetch origin pull/$PR_NUMBER/head:pr-$PR_NUMBER
+
+echo "🧪 Merge de la PR dans $BASE_BRANCH..."
+git checkout "$BASE_BRANCH"
+git pull origin "$BASE_BRANCH"
+git merge --no-ff pr-$PR_NUMBER -m "Merge PR #$PR_NUMBER from $REPO_NAME"
+
+if [ $? -eq 0 ]; then
+  echo "✅ PR #$PR_NUMBER mergée avec succès dans $BASE_BRANCH."
+else
+  echo "⚠️ Conflits détectés. Veuillez les résoudre manuellement dans $REPO_PATH."
+fi
+EOF
+
     # Rendre les scripts exécutables
     chmod +x "$CLIENT_DIR/scripts"/*.sh
 }
@@ -385,6 +428,11 @@ Pour activer un module, créez un lien symbolique :
 - URL: http://localhost:8069
 - Base de données: ${CLIENT_NAME}_prod (ou autre nom commençant par ${CLIENT_NAME}_)
 
+### Merger une Pull Request d'un submodule
+\`\`\`bash
+./scripts/merge_pr.sh addons/partner-contact 1234 16.0
+\`\`\`
+
 ### Mise à jour des submodules
 \`\`\`bash
 ./scripts/update_submodules.sh
@@ -395,6 +443,7 @@ Pour activer un module, créez un lien symbolique :
 - \`scripts/update_submodules.sh\` - Met à jour tous les submodules
 - \`scripts/link_modules.sh\` - Crée des liens symboliques vers les modules
 - \`scripts/start.sh\` - Démarre l'environnement Docker
+- \`scripts/merge_pr.sh\` - Merge une Pull Request dans un submodule
 
 ## Modules OCA installés
 
