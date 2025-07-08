@@ -273,6 +273,178 @@ git submodule update --init --recursive
 git submodule foreach git pull origin HEAD
 
 echo "✅ Mise à jour terminée"
+
+# Mettre à jour automatiquement les requirements.txt
+if [ -x "./scripts/update_requirements.sh" ]; then
+    echo "🔄 Mise à jour des requirements.txt..."
+    ./scripts/update_requirements.sh --clean
+fi
+EOF
+
+    # Script de mise à jour des requirements Python
+    cat > "$CLIENT_DIR/scripts/update_requirements.sh" << 'EOF'
+#!/bin/bash
+
+# Script pour mettre à jour requirements.txt avec les dépendances des submodules OCA
+# Généré automatiquement - ne pas modifier manuellement
+# Usage: update_requirements.sh [--clean]
+
+set -e
+
+# Parser les arguments
+CLEAN_BACKUPS=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --clean)
+            CLEAN_BACKUPS=true
+            shift
+            ;;
+        *)
+            echo "Argument inconnu: $1"
+            echo "Usage: $0 [--clean]"
+            exit 1
+            ;;
+    esac
+done
+
+# Couleurs pour la sortie
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
+echo_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+echo_error() { echo -e "${RED}❌ $1${NC}"; }
+
+echo_info "🔄 Mise à jour des requirements.txt avec les dépendances des submodules..."
+
+# Fichier de requirements final
+REQUIREMENTS_FILE="requirements.txt"
+TEMP_REQUIREMENTS="/tmp/client_requirements_$(basename $(pwd)).txt"
+
+# En-tête du fichier requirements
+cat > "$TEMP_REQUIREMENTS" << EOFR
+# Requirements pour le client $(basename $(pwd))
+# Généré automatiquement le $(date '+%Y-%m-%d %H:%M:%S')
+
+# Base Odoo requirements
+wheel
+setuptools
+psycopg2-binary
+
+# Dépendances des modules OCA
+EOFR
+
+# Variables pour les statistiques
+total_submodules=0
+submodules_with_requirements=0
+total_dependencies=0
+
+# Créer un fichier temporaire pour collecter toutes les dépendances
+ALL_DEPS_FILE="/tmp/all_deps_$(basename $(pwd)).txt"
+> "$ALL_DEPS_FILE"
+
+echo_info "🔍 Recherche des requirements.txt dans les submodules..."
+
+# Parcourir tous les submodules (dossiers dans addons/)
+if [ -d "addons" ]; then
+    for submodule_dir in addons/*/; do
+        if [ -d "$submodule_dir" ]; then
+            submodule_name=$(basename "$submodule_dir")
+            total_submodules=$((total_submodules + 1))
+            
+            # Chercher le fichier requirements.txt dans le submodule
+            req_file="$submodule_dir/requirements.txt"
+            
+            if [ -f "$req_file" ]; then
+                echo_info "📦 Traitement de $submodule_name..."
+                submodules_with_requirements=$((submodules_with_requirements + 1))
+                
+                # Ajouter un commentaire dans le fichier final
+                echo "" >> "$TEMP_REQUIREMENTS"
+                echo "# Dépendances du module $submodule_name" >> "$TEMP_REQUIREMENTS"
+                
+                # Lire le fichier requirements et filtrer les lignes valides
+                while IFS= read -r line; do
+                    # Ignorer les lignes vides et les commentaires
+                    if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+                        # Nettoyer la ligne (supprimer espaces de début/fin)
+                        clean_line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                        
+                        if [[ -n "$clean_line" ]]; then
+                            echo "$clean_line" >> "$TEMP_REQUIREMENTS"
+                            echo "$clean_line" >> "$ALL_DEPS_FILE"
+                            total_dependencies=$((total_dependencies + 1))
+                        fi
+                    fi
+                done < "$req_file"
+            else
+                echo_info "   - $submodule_name : pas de requirements.txt"
+            fi
+        fi
+    done
+else
+    echo_warning "Dossier 'addons' non trouvé"
+fi
+
+# Compter les dépendances uniques
+unique_dependencies=0
+if [ -f "$ALL_DEPS_FILE" ]; then
+    unique_dependencies=$(sort "$ALL_DEPS_FILE" | uniq | wc -l)
+fi
+
+# Ajouter une section avec les dépendances dédupliquées
+if [ -f "$ALL_DEPS_FILE" ] && [ -s "$ALL_DEPS_FILE" ]; then
+    echo "" >> "$TEMP_REQUIREMENTS"
+    echo "# === DÉPENDANCES UNIQUES CONSOLIDÉES ===" >> "$TEMP_REQUIREMENTS"
+    echo "# (dédoublonnées automatiquement)" >> "$TEMP_REQUIREMENTS"
+    echo "" >> "$TEMP_REQUIREMENTS"
+    
+    # Trier et dédupliquer les dépendances
+    sort "$ALL_DEPS_FILE" | uniq >> "$TEMP_REQUIREMENTS"
+fi
+
+# Sauvegarder l'ancien fichier s'il existe
+if [ -f "$REQUIREMENTS_FILE" ]; then
+    backup_file="${REQUIREMENTS_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$REQUIREMENTS_FILE" "$backup_file"
+    echo_info "💾 Sauvegarde créée : $backup_file"
+fi
+
+# Remplacer le fichier requirements
+mv "$TEMP_REQUIREMENTS" "$REQUIREMENTS_FILE"
+
+# Nettoyer les fichiers temporaires
+rm -f "$ALL_DEPS_FILE"
+
+# Afficher les statistiques
+echo_success "🎯 Requirements.txt mis à jour avec succès !"
+echo_info "📊 Statistiques :"
+echo_info "   - Submodules analysés : $total_submodules"
+echo_info "   - Submodules avec requirements : $submodules_with_requirements"
+echo_info "   - Total dépendances : $total_dependencies"
+echo_info "   - Dépendances uniques : $unique_dependencies"
+
+# Nettoyage des fichiers de sauvegarde si demandé
+if [ "$CLEAN_BACKUPS" = true ]; then
+    echo_info "🧹 Nettoyage des fichiers de sauvegarde..."
+    backup_count=$(ls -1 requirements.txt.backup.* 2>/dev/null | wc -l || echo "0")
+    
+    if [ "$backup_count" -gt 0 ]; then
+        rm -f requirements.txt.backup.*
+        echo_success "✅ $backup_count fichier(s) de sauvegarde supprimé(s)"
+    else
+        echo_info "   - Aucun fichier de sauvegarde à supprimer"
+    fi
+fi
+
+echo_info "💡 Pour installer les dépendances :"
+echo_info "   pip install -r requirements.txt"
+echo_info "🐳 Ou pour Docker :"
+echo_info "   docker-compose exec odoo pip install -r requirements.txt"
 EOF
 
     # Script pour créer des liens symboliques
@@ -438,9 +610,15 @@ Pour activer un module, créez un lien symbolique :
 ./scripts/update_submodules.sh
 \`\`\`
 
+### Mise à jour des requirements Python
+\`\`\`bash
+./scripts/update_requirements.sh
+\`\`\`
+
 ## Scripts disponibles
 
 - \`scripts/update_submodules.sh\` - Met à jour tous les submodules
+- \`scripts/update_requirements.sh\` - Met à jour requirements.txt avec les dépendances OCA
 - \`scripts/link_modules.sh\` - Crée des liens symboliques vers les modules
 - \`scripts/start.sh\` - Démarre l'environnement Docker
 - \`scripts/merge_pr.sh\` - Merge une Pull Request dans un submodule

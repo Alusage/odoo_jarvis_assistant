@@ -1,6 +1,6 @@
 # Makefile pour la gestion des clients Odoo
 
-.PHONY: help create-client list-clients update-client add-module list-modules merge-pr clean diagnostics cache-status
+.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status
 
 # Variables
 CLIENTS_DIR = clients
@@ -28,6 +28,25 @@ update-client: ## Mettre à jour les submodules d'un client (usage: make update-
 		exit 1; \
 	fi
 	@$(SCRIPTS_DIR)/update_client_submodules.sh $(CLIENT)
+
+update-requirements: ## Mettre à jour le requirements.txt d'un client avec les dépendances des submodules OCA (usage: make update-requirements CLIENT=nom_client [CLEAN=true])
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make update-requirements CLIENT=nom_client [CLEAN=true]"; \
+		echo "Options:"; \
+		echo "  CLEAN=true  Supprimer les fichiers de sauvegarde après la mise à jour"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@if [ "$(CLEAN)" = "true" ]; then \
+		$(SCRIPTS_DIR)/update_client_requirements.sh $(CLIENT) --clean; \
+	else \
+		$(SCRIPTS_DIR)/update_client_requirements.sh $(CLIENT); \
+	fi
 
 add-module: ## Ajouter un module OCA à un client (usage: make add-module CLIENT=nom_client MODULE=module_key)
 	@if [ -z "$(CLIENT)" ] || [ -z "$(MODULE)" ]; then \
