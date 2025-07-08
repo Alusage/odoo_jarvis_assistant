@@ -215,6 +215,7 @@ version: '3.8'
 services:
   odoo:
     image: odoo-alusage:$ODOO_VERSION
+    user: "100:101"  # Utiliser l'UID/GID de l'utilisateur odoo du conteneur
     depends_on:
       - db
     ports:

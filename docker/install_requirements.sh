@@ -25,8 +25,8 @@ fi
 
 echo_info "📦 Installation des dépendances Python depuis requirements.txt..."
 
-# Installer les dépendances avec pip
-if pip3 install --user -r "$REQUIREMENTS_FILE"; then
+# Installer les dépendances avec pip (contournement PEP 668 pour conteneur)
+if pip3 install --break-system-packages --user -r "$REQUIREMENTS_FILE"; then
     echo_success "✅ Dépendances installées avec succès"
 else
     echo_error "❌ Erreur lors de l'installation des dépendances"
