@@ -199,9 +199,9 @@ build: ## Construire l'image Docker Odoo personnalisée (usage: make build [VERS
 
 # Versioning and changelog
 release:
-	@echo "Créer une release GitHub avec un changelog propre"
-	@read -p "Nouvelle version (ex: 0.1.0): " VERSION; \
+	@bash -e -c 'echo "Créer une release GitHub avec un changelog propre"; \
+	read -p "Nouvelle version (ex: 0.1.0): " VERSION; \
 	git tag -a v$$VERSION -m "Release v$$VERSION"; \
 	git push origin v$$VERSION; \
-	@sed -i "s/## \[Unreleased\]/## \[Unreleased\]\n\n## [$$VERSION] - $(shell date +'%Y-%m-%d')/" CHANGELOG.md; \
-	@echo "Release v$$VERSION créée avec succès"
+	sed -i "s/## \[Unreleased\]/## [Unreleased]\n\n## [$$VERSION] - $(shell date +%Y-%m-%d)/" CHANGELOG.md; \
+	echo "Release v$$VERSION créée avec succès"'
