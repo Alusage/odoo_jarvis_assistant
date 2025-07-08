@@ -74,8 +74,6 @@ cat > "$TEMP_REQUIREMENTS" << EOF
 wheel
 setuptools
 psycopg2-binary
-
-# Dépendances des modules OCA
 EOF
 
 # Variables pour les statistiques
@@ -104,10 +102,6 @@ if [ -d "addons" ]; then
                 echo_info "📦 Traitement de $submodule_name..."
                 submodules_with_requirements=$((submodules_with_requirements + 1))
                 
-                # Ajouter un commentaire dans le fichier final
-                echo "" >> "$TEMP_REQUIREMENTS"
-                echo "# Dépendances du module $submodule_name" >> "$TEMP_REQUIREMENTS"
-                
                 # Lire le fichier requirements et filtrer les lignes valides
                 while IFS= read -r line; do
                     # Ignorer les lignes vides et les commentaires
@@ -116,7 +110,6 @@ if [ -d "addons" ]; then
                         clean_line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                         
                         if [[ -n "$clean_line" ]]; then
-                            echo "$clean_line" >> "$TEMP_REQUIREMENTS"
                             echo "$clean_line" >> "$ALL_DEPS_FILE"
                             total_dependencies=$((total_dependencies + 1))
                         fi
@@ -136,12 +129,10 @@ if [ -f "$ALL_DEPS_FILE" ]; then
     unique_dependencies=$(sort "$ALL_DEPS_FILE" | uniq | wc -l)
 fi
 
-# Ajouter une section avec les dépendances dédupliquées
+# Ajouter les dépendances dédupliquées directement
 if [ -f "$ALL_DEPS_FILE" ] && [ -s "$ALL_DEPS_FILE" ]; then
     echo "" >> "$TEMP_REQUIREMENTS"
-    echo "# === DÉPENDANCES UNIQUES CONSOLIDÉES ===" >> "$TEMP_REQUIREMENTS"
-    echo "# (dédoublonnées automatiquement)" >> "$TEMP_REQUIREMENTS"
-    echo "" >> "$TEMP_REQUIREMENTS"
+    echo "# Dépendances des modules OCA (dédoublonnées)" >> "$TEMP_REQUIREMENTS"
     
     # Trier et dédupliquer les dépendances
     sort "$ALL_DEPS_FILE" | uniq >> "$TEMP_REQUIREMENTS"
