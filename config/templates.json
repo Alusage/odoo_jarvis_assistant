@@ -1,0 +1,87 @@
+{
+  "odoo_versions": {
+    "16.0": {
+      "branch": "16.0",
+      "python_version": "3.9",
+      "requirements": ["wheel", "setuptools"]
+    },
+    "17.0": {
+      "branch": "17.0", 
+      "python_version": "3.10",
+      "requirements": ["wheel", "setuptools"]
+    },
+    "18.0": {
+      "branch": "18.0",
+      "python_version": "3.11", 
+      "requirements": ["wheel", "setuptools"]
+    }
+  },
+  "oca_repositories": {
+    "accounting": {
+      "url": "https://github.com/OCA/account-financial-tools.git",
+      "description": "Outils financiers et comptables"
+    },
+    "partner": {
+      "url": "https://github.com/OCA/partner-contact.git", 
+      "description": "Gestion des partenaires et contacts"
+    },
+    "sale": {
+      "url": "https://github.com/OCA/sale-workflow.git",
+      "description": "Workflow de vente"
+    },
+    "purchase": {
+      "url": "https://github.com/OCA/purchase-workflow.git",
+      "description": "Workflow d'achat"
+    },
+    "stock": {
+      "url": "https://github.com/OCA/stock-logistics-workflow.git",
+      "description": "Logistique et stock"
+    },
+    "manufacturing": {
+      "url": "https://github.com/OCA/manufacture.git",
+      "description": "Manufacturing/MRP"
+    },
+    "project": {
+      "url": "https://github.com/OCA/project.git",
+      "description": "Gestion de projet"
+    },
+    "hr": {
+      "url": "https://github.com/OCA/hr.git",
+      "description": "Ressources humaines"
+    },
+    "website": {
+      "url": "https://github.com/OCA/website.git",
+      "description": "Site web et e-commerce"
+    },
+    "reporting": {
+      "url": "https://github.com/OCA/reporting-engine.git",
+      "description": "Moteur de rapports"
+    },
+    "server-tools": {
+      "url": "https://github.com/OCA/server-tools.git",
+      "description": "Outils serveur"
+    },
+    "web": {
+      "url": "https://github.com/OCA/web.git",
+      "description": "Interface web"
+    }
+  },
+  "client_templates": {
+    "basic": {
+      "description": "Configuration de base",
+      "default_modules": ["partner", "accounting", "server-tools"]
+    },
+    "ecommerce": {
+      "description": "E-commerce complet",
+      "default_modules": ["partner", "website", "sale", "stock", "accounting"]
+    },
+    "manufacturing": {
+      "description": "Entreprise manufacturière", 
+      "default_modules": ["partner", "sale", "purchase", "stock", "manufacturing", "accounting"]
+    },
+    "services": {
+      "description": "Entreprise de services",
+      "default_modules": ["partner", "project", "hr", "accounting"]
+    }
+  }
+}

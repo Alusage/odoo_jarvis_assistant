@@ -1,0 +1,28 @@
+# Clients générés (dépôts indépendants)
+clients/
+
+# Fichiers temporaires
+tmp_pr_merge/
+*.tmp
+*.log
+
+# Sauvegardes
+backup_*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Configuration locale (si ajoutée)
+config/local.json
