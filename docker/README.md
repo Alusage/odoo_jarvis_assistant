@@ -118,3 +118,33 @@ Cette image supporte toutes les versions d'Odoo disponibles dans l'image officie
 ```bash
 docker build --build-arg ODOO_VERSION=17.0 -t odoo-alusage:17.0 .
 ```
+
+## Dépôts de modules Odoo externes (non-OCA)
+
+En plus des submodules OCA, vous pouvez ajouter des dépôts de modules Odoo externes (par exemple depuis GitHub ou d'autres forges) via leur URL (https ou ssh). Ces dépôts seront gérés exactement comme les submodules OCA, dans le dossier `addons/`.
+
+### Ajouter un dépôt externe
+
+Utilisez le script adapté (ex : `add_external_module.sh` ou via l'option correspondante dans `add_oca_module.sh`) pour ajouter un dépôt externe :
+
+```bash
+./scripts/add_external_module.sh https://github.com/monorg/mon_module_odoo.git
+# ou
+./scripts/add_external_module.sh git@github.com:monorg/mon_module_odoo.git
+```
+
+Le dépôt sera cloné comme un submodule dans `addons/mon_module_odoo/`.
+
+### Lister les dépôts externes
+
+Pour lister tous les dépôts de modules (OCA et externes) présents dans `addons/` :
+
+```bash
+./scripts/list_external_modules.sh
+```
+
+### Gestion automatique
+
+- Les dépôts externes sont mis à jour et intégrés dans la génération des requirements et la gestion des submodules.
+- Vous pouvez utiliser des URLs https ou ssh.
+- La logique de gestion (update, requirements, etc.) est identique à celle des submodules OCA.

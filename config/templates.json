@@ -1404,5 +1404,17 @@
       "stars": 178,
       "last_updated": "2025-07-07T01:57:49Z"
     }
+  },
+  "external_repositories": {
+    "odoo-alusage-addons": {
+      "url": "git@github.com:Alusage/odoo-alusage-addons.git",
+      "description": "Modules Odoo Alusage",
+      "type": "custom"
+    },
+    "test-repo": {
+      "url": "https://github.com/exemple/test-repo.git",
+      "description": "Dépôt de test",
+      "type": "custom"
+    }
   }
 }
