@@ -48,10 +48,13 @@ Script de test pour valider le système sur un sous-ensemble de dépôts.
 
 ```bash
 # Pour le français
-./scripts/manage_oca_descriptions.sh auto-complete fr
+./scripts/manage_oca_descriptions.sh complete-missing fr
 
-# Pour l'anglais
-./scripts/manage_oca_descriptions.sh auto-complete en
+# Pour l'anglais avec limitation
+./scripts/manage_oca_descriptions.sh complete-missing en --limit 10
+
+# Avec délai personnalisé pour éviter le rate limit
+./scripts/manage_oca_descriptions.sh complete-missing fr --limit 5 --delay 3
 ```
 
 ### 3. Voir les statistiques et descriptions manquantes
@@ -91,7 +94,27 @@ sudo apt-get install jq python3-requests
 pip3 install requests
 ```
 
-## Avantages du Nouveau Système
+### 🆕 Gestion du Rate Limit
+
+**Nouveau dans `update_oca_repositories.sh`** :
+
+```bash
+# Mise à jour des dépôts avec traductions (attention au rate limit)
+./scripts/update_oca_repositories.sh --update-translations --lang fr
+
+# Mise à jour sans traductions (recommandé)
+./scripts/update_oca_repositories.sh --lang fr
+```
+
+**Options pour éviter le rate limit** :
+
+```bash
+# Traduction limitée et avec délais
+./scripts/manage_oca_descriptions.sh complete-missing fr --limit 5 --delay 3
+
+# Vérifier le rate limit GitHub
+curl -s https://api.github.com/rate_limit | jq '.rate'
+```
 
 ### ✅ Avantages
 

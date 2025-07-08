@@ -32,6 +32,7 @@ COMMANDES:
   missing [fr|en]         Lister les descriptions manquantes pour une langue
   edit [REPO] [LANG]      Éditer une description spécifique
   auto-complete [LANG]    Compléter automatiquement les descriptions manquantes via traduction dynamique
+  complete-missing [LANG] [--limit N] [--delay S]  Alias pour auto-complete avec options avancées
   test-translate [REPO] [LANG]  Tester la traduction d'un dépôt spécifique
   validate               Valider le format du fichier de descriptions
   stats                  Afficher les statistiques des descriptions
@@ -44,6 +45,8 @@ EXEMPLES:
   $0 missing fr                        # Lister les descriptions françaises manquantes
   $0 edit account-analytic fr          # Éditer la description française de account-analytic
   $0 auto-complete en                  # Compléter automatiquement les descriptions anglaises
+  $0 complete-missing fr --limit 10   # Compléter max 10 descriptions françaises
+  $0 complete-missing en --delay 3     # Compléter avec 3s de délai entre requêtes
   $0 test-translate server-tools fr    # Tester la traduction de server-tools en français
   $0 validate                          # Valider le fichier de descriptions
 
@@ -252,6 +255,8 @@ test_translate() {
 # Complétion automatique des descriptions via traduction dynamique
 auto_complete() {
     local lang="${1:-fr}"
+    local limit="${2:-}"
+    local delay="${3:-0.5}"
     
     if [[ ! "$lang" =~ ^(fr|en)$ ]]; then
         echo_error "Langue non supportée: $lang (fr/en uniquement)"
@@ -260,6 +265,11 @@ auto_complete() {
     
     echo_info "🤖 Complétion automatique des descriptions via traduction dynamique pour la langue '$lang'..."
     echo_info "🌐 Récupération des descriptions GitHub et traduction en temps réel..."
+    
+    if [ -n "$limit" ]; then
+        echo_info "⚙️  Limite fixée à $limit descriptions"
+    fi
+    echo_info "⏱️  Délai entre requêtes: ${delay}s"
     echo
     
     # Créer une sauvegarde
@@ -275,6 +285,13 @@ auto_complete() {
     # Parcourir tous les dépôts avec des descriptions manquantes
     local missing_repos=$(echo "$descriptions" | jq -r --arg lang "$lang" 'to_entries[] | select(.value[$lang] == "" or (.value[$lang] | not)) | .key')
     local total_missing=$(echo "$missing_repos" | wc -l)
+    
+    # Appliquer la limite si spécifiée
+    if [ -n "$limit" ] && [ "$limit" -lt "$total_missing" ]; then
+        missing_repos=$(echo "$missing_repos" | head -n "$limit")
+        total_missing="$limit"
+        echo_info "🔢 Traitement limité à $limit descriptions sur $(echo "$descriptions" | jq -r --arg lang "$lang" 'to_entries[] | select(.value[$lang] == "" or (.value[$lang] | not)) | .key' | wc -l) manquantes"
+    fi
     
     echo_info "🔍 $total_missing dépôts à traiter..."
     echo
@@ -340,8 +357,10 @@ auto_complete() {
                 fi
             fi
             
-            # Pause courte pour éviter de surcharger les APIs
-            sleep 0.5
+            # Délai configurable pour éviter le rate limiting
+            if [ "$current" -lt "$total_missing" ]; then
+                sleep "$delay"
+            fi
         fi
     done <<< "$missing_repos"
     
@@ -447,10 +466,35 @@ main() {
             check_descriptions_file
             edit_description "$2" "$3"
             ;;
-        "auto-complete")
+        "auto-complete"|"complete-missing")
             check_dependencies
             check_descriptions_file
-            auto_complete "$2"
+            
+            # Parser les options pour complete-missing
+            local lang="$2"
+            local limit=""
+            local delay=""
+            
+            # Parser les arguments restants
+            shift 2
+            while [[ $# -gt 0 ]]; do
+                case $1 in
+                    --limit)
+                        limit="$2"
+                        shift 2
+                        ;;
+                    --delay)
+                        delay="$2"
+                        shift 2
+                        ;;
+                    *)
+                        echo_error "Option inconnue: $1"
+                        exit 1
+                        ;;
+                esac
+            done
+            
+            auto_complete "$lang" "$limit" "$delay"
             ;;
         "test-translate")
             check_dependencies

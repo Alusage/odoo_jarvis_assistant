@@ -18,6 +18,7 @@ CLEAN_BACKUPS=false
 LANGUAGE="fr"
 VERIFY_ADDONS=true
 FILTER_EXISTING=false
+UPDATE_TRANSLATIONS=false
 
 # Parser les arguments
 while [[ $# -gt 0 ]]; do
@@ -42,14 +43,19 @@ while [[ $# -gt 0 ]]; do
             FILTER_EXISTING=true
             shift
             ;;
+        --update-translations)
+            UPDATE_TRANSLATIONS=true
+            shift
+            ;;
         -h|--help)
-            echo "Usage: $0 [--clean] [--lang fr|en] [--no-verify] [--filter-existing]"
+            echo "Usage: $0 [--clean] [--lang fr|en] [--no-verify] [--filter-existing] [--update-translations]"
             echo "Options:"
-            echo "  --clean            Supprimer les fichiers de sauvegarde après succès"
-            echo "  --lang fr|en       Langue pour les descriptions (défaut: fr)"
-            echo "  --no-verify        Désactiver la vérification des addons Odoo (plus rapide)"
-            echo "  --filter-existing  Filtrer le fichier existant sans appels API"
-            echo "  -h, --help         Afficher cette aide"
+            echo "  --clean               Supprimer les fichiers de sauvegarde après succès"
+            echo "  --lang fr|en          Langue pour les descriptions (défaut: fr)"
+            echo "  --no-verify           Désactiver la vérification des addons Odoo (plus rapide)"
+            echo "  --filter-existing     Filtrer le fichier existant sans appels API"
+            echo "  --update-translations Mettre à jour les traductions via l'API GitHub (attention aux rate limits)"
+            echo "  -h, --help            Afficher cette aide"
             exit 0
             ;;
         *)
@@ -63,13 +69,13 @@ done
 # Couleurs
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
+YIGHLIGHT='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
 echo_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
-echo_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+echo_warning() { echo -e "${YIGHLIGHT}⚠️  $1${NC}"; }
 echo_error() { echo -e "${RED}❌ $1${NC}"; }
 
 # Vérifier les dépendances
@@ -327,7 +333,15 @@ manage_descriptions() {
     
     if [ $missing_count -gt 0 ]; then
         echo_warning "$missing_count descriptions manquantes pour la langue '$LANGUAGE'"
-        echo_info "💡 Utilisez 'make edit-descriptions' pour compléter les descriptions manquantes"
+        
+        # Mise à jour des traductions si demandée
+        if [ "$UPDATE_TRANSLATIONS" = true ]; then
+            echo_info "🌐 Mise à jour des traductions demandée..."
+            update_translations_with_rate_limit
+        else
+            echo_info "💡 Utilisez --update-translations pour les compléter automatiquement"
+            echo_info "   Ou manuellement : ./scripts/manage_oca_descriptions.sh complete-missing $LANGUAGE"
+        fi
         
         # Afficher les 5 premières descriptions manquantes
         local sample_missing=$(echo "$descriptions" | jq -r --arg lang "$LANGUAGE" '[to_entries[] | select(.value[$lang] == "") | .key] | .[0:5] | .[]')
@@ -554,3 +568,65 @@ trap cleanup EXIT
 
 # Exécuter le script principal
 main "$@"
+
+# Fonction pour mettre à jour les traductions avec gestion du rate limit
+update_translations_with_rate_limit() {
+    echo_info "🕒 Mise à jour des traductions avec gestion du rate limit..."
+    
+    # Vérifier si le script de traduction existe
+    local translate_script="$SCRIPT_DIR/manage_oca_descriptions.sh"
+    if [ ! -x "$translate_script" ]; then
+        echo_error "Script de traduction non trouvé ou non exécutable : $translate_script"
+        return 1
+    fi
+    
+    # Vérifier le rate limit GitHub avant de commencer
+    check_github_rate_limit
+    
+    # Traiter les descriptions par petits lots avec des délais
+    local batch_size=5
+    local delay_between_batches=30  # 30 secondes entre les lots
+    local delay_between_requests=2  # 2 secondes entre chaque requête
+    
+    echo_info "⚙️  Configuration du rate limiting:"
+    echo_info "   - Taille des lots: $batch_size descriptions"
+    echo_info "   - Délai entre lots: ${delay_between_batches}s"
+    echo_info "   - Délai entre requêtes: ${delay_between_requests}s"
+    
+    # Appeler le script de traduction avec des limites strictes
+    if ! "$translate_script" complete-missing "$LANGUAGE" --limit "$batch_size" --delay "$delay_between_requests"; then
+        echo_warning "⚠️  Mise à jour des traductions interrompue (probablement rate limit)"
+        echo_info "💡 Attendez quelques minutes et relancez avec --update-translations"
+        echo_info "   Ou consultez les quotas: curl -s https://api.github.com/rate_limit"
+        return 1
+    fi
+    
+    echo_success "✅ Traductions mises à jour avec succès"
+}
+
+# Fonction pour vérifier le rate limit GitHub
+check_github_rate_limit() {
+    echo_info "🔍 Vérification du rate limit GitHub..."
+    
+    local rate_limit_info
+    if rate_limit_info=$(curl -s https://api.github.com/rate_limit 2>/dev/null); then
+        local remaining=$(echo "$rate_limit_info" | jq -r '.rate.remaining // 0')
+        local limit=$(echo "$rate_limit_info" | jq -r '.rate.limit // 0')
+        local reset_time=$(echo "$rate_limit_info" | jq -r '.rate.reset // 0')
+        
+        if [ "$remaining" -lt 10 ]; then
+            local reset_date=$(date -d "@$reset_time" 2>/dev/null || date -r "$reset_time" 2>/dev/null || echo "inconnu")
+            echo_warning "⚠️  Rate limit GitHub très bas: $remaining/$limit restant"
+            echo_warning "   Reset prévu: $reset_date"
+            echo_info "💡 Attendez la remise à zéro ou utilisez un token GitHub"
+            return 1
+        else
+            echo_success "✅ Rate limit OK: $remaining/$limit requêtes restantes"
+        fi
+    else
+        echo_warning "⚠️  Impossible de vérifier le rate limit GitHub"
+        echo_info "💡 Continuons avec prudence..."
+    fi
+    
+    return 0
+}
