@@ -133,6 +133,24 @@ docker-compose up -d
 
 Accès : http://localhost:8069
 
+**Restart policy**
+
+Pour garantir que les services redémarrent après un plantage ou un reboot, ajoutez la directive suivante dans votre `docker-compose.yml` sous chaque service :
+
+```yaml
+restart: unless-stopped
+```
+
+## 🔌 Hooks Git versionnés
+
+Pour partager et versionner vos hooks Git (notamment `post-commit` pour la mise à jour automatique du changelog), configurez votre dépôt local de la manière suivante :
+
+```bash
+git config core.hooksPath hooks
+```
+
+Le dossier `hooks/` à la racine du projet sera alors utilisé pour exécuter automatiquement vos hooks.
+
 ## 🔧 Scripts disponibles
 
 ### Scripts globaux (racine)
