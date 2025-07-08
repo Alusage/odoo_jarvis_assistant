@@ -14,21 +14,21 @@ check_repository_exists() {
     local version="$2"
     local repo_url="https://github.com/OCA/$repo_name.git"
     
-    echo "🔍 Vérification de l'existence du dépôt $repo_name pour la version $version..."
+    echo "🔍 Vérification de l'existence du dépôt $repo_name pour la version $version..." >&2
     
     # Check if the repository exists at all
     if ! git ls-remote --heads "$repo_url" >/dev/null 2>&1; then
-        echo "❌ Le dépôt $repo_name n'existe pas sur GitHub OCA"
+        echo "❌ Le dépôt $repo_name n'existe pas sur GitHub OCA" >&2
         return 1
     fi
     
     # Check if the version branch exists
     if ! git ls-remote --heads "$repo_url" "$version" >/dev/null 2>&1; then
-        echo "⚠️  La branche $version n'existe pas pour le dépôt $repo_name"
+        echo "⚠️  La branche $version n'existe pas pour le dépôt $repo_name" >&2
         return 1
     fi
     
-    echo "✅ Le dépôt $repo_name existe pour la version $version"
+    echo "✅ Le dépôt $repo_name existe pour la version $version" >&2
     return 0
 }
 
@@ -97,7 +97,7 @@ validate_oca_modules() {
     shift 2
     local modules=("$@")
     
-    echo "🔍 Validation des modules OCA pour la version $version..."
+    echo "🔍 Validation des modules OCA pour la version $version..." >&2
     
     local valid_modules=()
     local invalid_modules=()
@@ -108,10 +108,10 @@ validate_oca_modules() {
         if [[ $? -eq 0 ]]; then
             if [[ "$cached_status" == "exists" ]]; then
                 valid_modules+=("$module")
-                echo "✅ $module (depuis le cache)"
+                echo "✅ $module (depuis le cache)" >&2
             else
                 invalid_modules+=("$module")
-                echo "❌ $module (depuis le cache)"
+                echo "❌ $module (depuis le cache)" >&2
             fi
         else
             # Check repository existence
@@ -126,16 +126,16 @@ validate_oca_modules() {
     done
     
     if [[ ${#invalid_modules[@]} -gt 0 ]]; then
-        echo ""
-        echo "⚠️  Les modules suivants ne sont pas disponibles pour la version $version :"
+        echo "" >&2
+        echo "⚠️  Les modules suivants ne sont pas disponibles pour la version $version :" >&2
         for module in "${invalid_modules[@]}"; do
-            echo "   - $module"
+            echo "   - $module" >&2
         done
-        echo ""
-        echo "🤔 Voulez-vous continuer avec seulement les modules valides ? (y/N)"
+        echo "" >&2
+        echo "🤔 Voulez-vous continuer avec seulement les modules valides ? (y/N)" >&2
         read -r response
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            echo "❌ Annulation de la création du dépôt client"
+            echo "❌ Annulation de la création du dépôt client" >&2
             return 1
         fi
     fi

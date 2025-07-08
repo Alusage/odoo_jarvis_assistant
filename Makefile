@@ -45,6 +45,9 @@ list-modules: ## Lister les modules disponibles pour un client (usage: make list
 	fi
 	@$(SCRIPTS_DIR)/list_available_modules.sh $(CLIENT)
 
+list-oca-modules: ## Lister tous les modules OCA disponibles (usage: make list-oca-modules [PATTERN=pattern])
+	@$(SCRIPTS_DIR)/list_oca_modules.sh $(PATTERN)
+
 clean: ## Nettoyer les fichiers temporaires
 	@echo "🧹 Nettoyage des fichiers temporaires..."
 	@rm -rf tmp_pr_merge/
@@ -52,6 +55,9 @@ clean: ## Nettoyer les fichiers temporaires
 
 manage-templates: ## Gérer les templates et modules OCA
 	@./manage_templates.sh
+
+update-oca-repos: ## Mettre à jour automatiquement la liste des dépôts OCA depuis GitHub
+	@$(SCRIPTS_DIR)/update_oca_repositories.sh --clean
 
 test: ## Exécuter les tests du générateur
 	@./test.sh

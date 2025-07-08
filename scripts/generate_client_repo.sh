@@ -49,10 +49,10 @@ validate_parameters() {
     fi
     
     # Vérifier que la version Odoo est supportée
-    if ! jq -e ".odoo_versions[] | select(.version == \"$ODOO_VERSION\")" "$CONFIG_DIR/templates.json" >/dev/null 2>&1; then
+    if ! jq -e ".odoo_versions.\"$ODOO_VERSION\"" "$CONFIG_DIR/templates.json" >/dev/null 2>&1; then
         echo_error "Version Odoo '$ODOO_VERSION' non supportée"
         echo_info "Versions disponibles :"
-        jq -r '.odoo_versions[].version' "$CONFIG_DIR/templates.json"
+        jq -r '.odoo_versions | keys[]' "$CONFIG_DIR/templates.json"
         exit 1
     fi
 }
@@ -131,27 +131,28 @@ add_submodules() {
         return 1
     fi
     
-    readarray -t validated_modules <<< "$valid_modules"
+    # Convertir la chaîne en tableau
+    read -ra validated_modules <<< "$valid_modules"
     
     cd "$CLIENT_DIR"
     
     for module in "${validated_modules[@]}"; do
         if [[ -n "$module" ]]; then
-            local url=$(jq -r ".oca_repositories.\"$module\".url" "$CONFIG_DIR/templates.json")
+            local url=$(jq -r ".oca_repositories[\"$module\"].url" "$CONFIG_DIR/templates.json")
             if [ "$url" != "null" ]; then
                 echo_info "Ajout du submodule: $module"
                 
                 # Essayer d'abord le clonage optimisé
-                if clone_repository_optimized "$module" "$ODOO_VERSION" "addons/oca_$module"; then
+                if clone_repository_optimized "$module" "$ODOO_VERSION" "addons/$module"; then
                     # Convertir en submodule git
-                    git submodule add -b "$ODOO_VERSION" "$url" "addons/oca_$module" 2>/dev/null || {
+                    git submodule add -b "$ODOO_VERSION" "$url" "addons/$module" 2>/dev/null || {
                         echo_warning "Ajout direct du dépôt cloné comme submodule"
-                        git add "addons/oca_$module"
+                        git add "addons/$module"
                     }
                 else
                     # Fallback vers la méthode standard
                     echo_warning "Fallback vers le submodule standard pour $module"
-                    git submodule add -b "$ODOO_VERSION" "$url" "addons/oca_$module" || {
+                    git submodule add -b "$ODOO_VERSION" "$url" "addons/$module" || {
                         echo_error "Échec de l'ajout du submodule $module"
                         continue
                     }
@@ -286,7 +287,7 @@ MODULE_NAME="$2"
 
 if [ -z "$SUBMODULE_PATH" ] || [ -z "$MODULE_NAME" ]; then
     echo "Usage: $0 <submodule_path> <module_name>"
-    echo "Exemple: $0 addons/oca_partner partner_firstname"
+    echo "Exemple: $0 addons/partner-contact partner_firstname"
     exit 1
 fi
 
@@ -377,7 +378,7 @@ $([ "$HAS_ENTERPRISE" = "true" ] && echo "3. **Ajouter Odoo Enterprise** :
 ### Activer des modules
 Pour activer un module, créez un lien symbolique :
 \`\`\`bash
-./scripts/link_modules.sh addons/oca_partner partner_firstname
+./scripts/link_modules.sh addons/partner-contact partner_firstname
 \`\`\`
 
 ### Accéder à Odoo
@@ -402,7 +403,7 @@ EOF
     # Ajouter la liste des modules installés
     if [ "$TEMPLATE" != "custom" ]; then
         jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/templates.json" | while read module; do
-            local desc=$(jq -r ".oca_repositories.\"$module\".description" "$CONFIG_DIR/templates.json")
+            local desc=$(jq -r ".oca_repositories[\"$module\"].description" "$CONFIG_DIR/templates.json")
             echo "- **$module**: $desc" >> "$CLIENT_DIR/README.md"
         done
     fi

@@ -84,6 +84,15 @@ make add-module CLIENT=client_abc MODULE=website
 # Lister les modules disponibles pour un client
 make list-modules CLIENT=client_abc
 
+# Lister tous les modules OCA disponibles
+make list-oca-modules
+
+# Filtrer les modules OCA par nom
+make list-oca-modules PATTERN=account
+
+# Mettre à jour la liste des modules OCA depuis GitHub
+make update-oca-repos
+
 # Voir le statut de tous les clients
 make status
 ```
@@ -95,8 +104,8 @@ Chaque client généré contient :
 ```
 client_abc/
 ├── addons/                    # Submodules OCA et autres dépôts
-│   ├── oca_partner/          # Modules partenaires
-│   ├── oca_accounting/       # Modules comptables
+│   ├── partner-contact/      # Modules partenaires (nom exact du dépôt OCA)
+│   ├── account-financial-tools/ # Modules comptables (nom exact du dépôt OCA)
 │   └── enterprise/           # Odoo Enterprise (si activé)
 ├── extra-addons/             # Liens symboliques vers modules activés
 ├── config/
@@ -139,104 +148,44 @@ Accès : http://localhost:8069
 - `./scripts/link_modules.sh` - Créer des liens symboliques
 - `./scripts/start.sh` - Démarrer l'environnement Docker
 
-## ⚙️ Configuration
+## 🆕 Nouvelles fonctionnalités - Gestion automatique des modules OCA
 
-### Ajouter de nouveaux modules OCA
+### Mise à jour automatique des dépôts OCA
 
-Éditez `config/templates.json` pour ajouter de nouveaux dépôts OCA :
-
-```json
-{
-  "oca_repositories": {
-    "nouveau_module": {
-      "url": "https://github.com/OCA/nouveau-module.git",
-      "description": "Description du module"
-    }
-  }
-}
-```
-
-### Créer de nouveaux templates
-
-Ajoutez des templates dans `config/templates.json` :
-
-```json
-{
-  "client_templates": {
-    "mon_template": {
-      "description": "Mon template personnalisé",
-      "default_modules": ["partner", "accounting", "nouveau_module"]
-    }
-  }
-}
-```
-
-## 📋 Commandes Make
+Le système maintient automatiquement une liste complète de tous les dépôts OCA disponibles sur GitHub :
 
 ```bash
-make help                                    # Afficher l'aide
-make create-client                          # Créer un nouveau client
-make list-clients                           # Lister les clients
-make update-client CLIENT=nom               # Mettre à jour un client
-make add-module CLIENT=nom MODULE=module    # Ajouter un module
-make list-modules CLIENT=nom                # Lister les modules d'un client
-make status                                 # Statut de tous les clients
-make backup-client CLIENT=nom               # Sauvegarder un client
-make clean                                  # Nettoyer les fichiers temporaires
-make install-deps                          # Installer les dépendances
+# Mettre à jour la liste depuis GitHub (récupère ~226 dépôts)
+make update-oca-repos                    # Nettoie automatiquement les sauvegardes
+
+# Mise à jour manuelle avec options
+./scripts/update_oca_repositories.sh     # Garde les sauvegardes
+./scripts/update_oca_repositories.sh --clean  # Supprime les sauvegardes
+
+# Voir tous les modules disponibles
+make list-oca-modules
+
+# Filtrer par catégorie
+make list-oca-modules PATTERN=account    # Modules comptables
+make list-oca-modules PATTERN=stock      # Modules stock/logistique
+make list-oca-modules PATTERN=l10n       # Localisations
 ```
 
-## 🛡️ Prérequis
+### Nomenclature des dossiers
 
-- **Git** (gestion des dépôts et submodules)
-- **jq** (traitement JSON)
-- **Docker & Docker Compose** (pour l'exécution)
-- **Make** (optionnel, pour les commandes simplifiées)
+Les modules OCA utilisent maintenant les **noms exacts** des dépôts GitHub :
 
-Installation sur Ubuntu/Debian :
-
-```bash
-sudo apt-get update
-sudo apt-get install git jq make
-# + Docker selon la documentation officielle
+```
+addons/
+├── partner-contact/              # ✅ Nom exact du dépôt OCA
+├── account-financial-tools/      # ✅ Nom exact du dépôt OCA
+├── stock-logistics-workflow/     # ✅ Nom exact du dépôt OCA
+└── server-tools/                 # ✅ Nom exact du dépôt OCA
 ```
 
-## 🔄 Workflow recommandé
+### Avantages
 
-1. **Créer un client** : `./create_client.sh`
-2. **Tester l'environnement** : `cd clients/mon_client && ./scripts/start.sh`
-3. **Activer des modules** : `./scripts/link_modules.sh addons/oca_partner partner_firstname`
-4. **Développer** : Ajouter vos modules personnalisés dans `addons/`
-5. **Maintenir** : `make update-client CLIENT=mon_client`
-6. **Déployer** : Pousser le dépôt client vers votre Git distant
-
-## 💡 Conseils
-
-- Chaque client est un dépôt Git indépendant avec ses submodules
-- Les modules OCA sont en submodules, vos développements peuvent être en submodules aussi
-- Utilisez `extra-addons/` uniquement pour les liens symboliques
-- La configuration Docker filtre les bases par préfixe client
-- Gardez `config/templates.json` à jour avec vos modules préférés
-
-## 🆘 Dépannage
-
-**Problème de submodules :**
-
-```bash
-cd clients/mon_client
-git submodule update --init --recursive
-```
-
-**Conflit de versions :**
-
-```bash
-# Vérifier les branches des submodules
-git submodule foreach git branch -a
-```
-
-**Modules non trouvés :**
-
-```bash
-# Lister les modules disponibles
-make list-modules CLIENT=mon_client
-```
+- **Synchronisation automatique** : La liste des modules se met à jour automatiquement
+- **Nomenclature cohérente** : Les noms correspondent exactement aux dépôts GitHub
+- **Descriptions françaises** : Chaque module a une description claire en français
+- **Popularité visible** : Les modules sont classés par nombre d'étoiles GitHub

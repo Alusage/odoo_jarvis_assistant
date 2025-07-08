@@ -45,7 +45,7 @@ if [ -n "$CUSTOM_URL" ]; then
     MODULE_URL="$CUSTOM_URL"
     echo_info "Utilisation de l'URL personnalisée: $MODULE_URL"
 else
-    MODULE_URL=$(jq -r ".oca_repositories.$MODULE_KEY.url" "$CONFIG_DIR/templates.json")
+    MODULE_URL=$(jq -r ".oca_repositories[\"$MODULE_KEY\"].url" "$CONFIG_DIR/templates.json")
     if [ "$MODULE_URL" = "null" ]; then
         echo_error "Module '$MODULE_KEY' non trouvé dans la configuration"
         exit 1
@@ -53,11 +53,11 @@ else
 fi
 
 # Détecter la version Odoo du client
-ODOO_VERSION=$(grep -o '[0-9]\+\.[0-9]\+' config/odoo.conf | head -1 || echo "16.0")
+ODOO_VERSION=$(grep "image: odoo:" docker-compose.yml | sed 's/.*odoo:\([0-9]\+\.[0-9]\+\).*/\1/' || echo "16.0")
 echo_info "Version Odoo détectée: $ODOO_VERSION"
 
 # Ajouter le submodule
-SUBMODULE_PATH="addons/oca_$MODULE_KEY"
+SUBMODULE_PATH="addons/$MODULE_KEY"
 echo_info "Ajout du submodule: $MODULE_KEY"
 echo_info "URL: $MODULE_URL"
 echo_info "Branche: $ODOO_VERSION"

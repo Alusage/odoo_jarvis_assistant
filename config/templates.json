@@ -3,85 +3,972 @@
     "16.0": {
       "branch": "16.0",
       "python_version": "3.9",
-      "requirements": ["wheel", "setuptools"]
+      "requirements": [
+        "wheel",
+        "setuptools"
+      ]
     },
     "17.0": {
-      "branch": "17.0", 
+      "branch": "17.0",
       "python_version": "3.10",
-      "requirements": ["wheel", "setuptools"]
+      "requirements": [
+        "wheel",
+        "setuptools"
+      ]
     },
     "18.0": {
       "branch": "18.0",
-      "python_version": "3.11", 
-      "requirements": ["wheel", "setuptools"]
+      "python_version": "3.11",
+      "requirements": [
+        "wheel",
+        "setuptools"
+      ]
     }
   },
   "oca_repositories": {
-    "accounting": {
-      "url": "https://github.com/OCA/account-financial-tools.git",
-      "description": "Outils financiers et comptables"
+    "OCB": {
+      "url": "https://github.com/OCA/OCB.git",
+      "description": "Odoo Community Backports"
     },
-    "partner": {
-      "url": "https://github.com/OCA/partner-contact.git", 
-      "description": "Gestion des partenaires et contacts"
+    "OpenUpgrade": {
+      "url": "https://github.com/OCA/OpenUpgrade.git",
+      "description": "Open source upgrade path for Odoo/OpenERP"
     },
-    "sale": {
-      "url": "https://github.com/OCA/sale-workflow.git",
-      "description": "Workflow de vente"
+    "account-analytic": {
+      "url": "https://github.com/OCA/account-analytic.git",
+      "description": "Comptabilité analytique"
     },
-    "purchase": {
-      "url": "https://github.com/OCA/purchase-workflow.git",
-      "description": "Workflow d'achat"
+    "account-budgeting": {
+      "url": "https://github.com/OCA/account-budgeting.git",
+      "description": "Budgets et contrôle budgétaire"
     },
-    "stock": {
-      "url": "https://github.com/OCA/stock-logistics-workflow.git",
-      "description": "Logistique et stock"
+    "account-closing": {
+      "url": "https://github.com/OCA/account-closing.git",
+      "description": "Clôtures comptables"
     },
-    "manufacturing": {
-      "url": "https://github.com/OCA/manufacture.git",
-      "description": "Manufacturing/MRP"
+    "account-consolidation": {
+      "url": "https://github.com/OCA/account-consolidation.git",
+      "description": "Consolidation comptable"
     },
-    "project": {
-      "url": "https://github.com/OCA/project.git",
-      "description": "Gestion de projet"
+    "account-financial-reporting": {
+      "url": "https://github.com/OCA/account-financial-reporting.git",
+      "description": "Rapports financiers"
+    },
+    "account-fiscal-rule": {
+      "url": "https://github.com/OCA/account-fiscal-rule.git",
+      "description": "Odoo Taxes & Fiscal Rules Management"
+    },
+    "account-invoice-reporting": {
+      "url": "https://github.com/OCA/account-invoice-reporting.git",
+      "description": "Odoo Invoicing reports"
+    },
+    "account-invoicing": {
+      "url": "https://github.com/OCA/account-invoicing.git",
+      "description": "Facturation"
+    },
+    "account-payment": {
+      "url": "https://github.com/OCA/account-payment.git",
+      "description": "Paiements et encaissements"
+    },
+    "account-reconcile": {
+      "url": "https://github.com/OCA/account-reconcile.git",
+      "description": "Rapprochements bancaires"
+    },
+    "agreement": {
+      "url": "https://github.com/OCA/agreement.git",
+      "description": "Module OCA"
+    },
+    "ai": {
+      "url": "https://github.com/OCA/ai.git",
+      "description": "ai"
+    },
+    "ansible-odoo": {
+      "url": "https://github.com/OCA/ansible-odoo.git",
+      "description": "[NOT MAINTAINED] Ansible role for Odoo"
+    },
+    "apps-store": {
+      "url": "https://github.com/OCA/apps-store.git",
+      "description": "OCA Apps store module repository"
+    },
+    "automation": {
+      "url": "https://github.com/OCA/automation.git",
+      "description": "automation"
+    },
+    "bank-payment": {
+      "url": "https://github.com/OCA/bank-payment.git",
+      "description": "Paiements bancaires"
+    },
+    "bank-payment-alternative": {
+      "url": "https://github.com/OCA/bank-payment-alternative.git",
+      "description": "Bank Payment - Alternative approach based on Odoo native payment methods"
+    },
+    "bank-statement-import": {
+      "url": "https://github.com/OCA/bank-statement-import.git",
+      "description": "Import relevés bancaires"
+    },
+    "brand": {
+      "url": "https://github.com/OCA/brand.git",
+      "description": "Gestion de marques"
+    },
+    "business-requirement": {
+      "url": "https://github.com/OCA/business-requirement.git",
+      "description": "Business Requirements Management via Odoo"
+    },
+    "calendar": {
+      "url": "https://github.com/OCA/calendar.git",
+      "description": "Module OCA"
+    },
+    "cim": {
+      "url": "https://github.com/OCA/cim.git",
+      "description": "cim"
+    },
+    "commission": {
+      "url": "https://github.com/OCA/commission.git",
+      "description": "Commissions"
+    },
+    "community-data-files": {
+      "url": "https://github.com/OCA/community-data-files.git",
+      "description": "Module OCA"
+    },
+    "connector": {
+      "url": "https://github.com/OCA/connector.git",
+      "description": "Connecteurs génériques"
+    },
+    "connector-accountedge": {
+      "url": "https://github.com/OCA/connector-accountedge.git",
+      "description": "Odoo modules to connect with Account Edge (aka MyOB)"
+    },
+    "connector-cmis": {
+      "url": "https://github.com/OCA/connector-cmis.git",
+      "description": "CMIS Connector"
+    },
+    "connector-ecommerce": {
+      "url": "https://github.com/OCA/connector-ecommerce.git",
+      "description": "Connecteurs e-commerce"
+    },
+    "connector-infor": {
+      "url": "https://github.com/OCA/connector-infor.git",
+      "description": "Odoo modules to integrate with Infor"
+    },
+    "connector-interfaces": {
+      "url": "https://github.com/OCA/connector-interfaces.git",
+      "description": "Interfaces de connecteurs"
+    },
+    "connector-jira": {
+      "url": "https://github.com/OCA/connector-jira.git",
+      "description": "Module OCA"
+    },
+    "connector-lengow": {
+      "url": "https://github.com/OCA/connector-lengow.git",
+      "description": "Connecteur Lengow"
+    },
+    "connector-lims": {
+      "url": "https://github.com/OCA/connector-lims.git",
+      "description": "Module OCA"
+    },
+    "connector-magento": {
+      "url": "https://github.com/OCA/connector-magento.git",
+      "description": "Connecteur Magento"
+    },
+    "connector-magento-php-extension": {
+      "url": "https://github.com/OCA/connector-magento-php-extension.git",
+      "description": "Module OCA"
+    },
+    "connector-odoo2odoo": {
+      "url": "https://github.com/OCA/connector-odoo2odoo.git",
+      "description": "connector-odoo2odoo. Intercompany process, based on odoo-connector"
+    },
+    "connector-prestashop": {
+      "url": "https://github.com/OCA/connector-prestashop.git",
+      "description": "Connecteur PrestaShop"
+    },
+    "connector-redmine": {
+      "url": "https://github.com/OCA/connector-redmine.git",
+      "description": "Connector Redmine (http://redmine.org)"
+    },
+    "connector-sage": {
+      "url": "https://github.com/OCA/connector-sage.git",
+      "description": "Connector with Sage"
+    },
+    "connector-salesforce": {
+      "url": "https://github.com/OCA/connector-salesforce.git",
+      "description": "Connect Salesforce with Odoo"
+    },
+    "connector-spscommerce": {
+      "url": "https://github.com/OCA/connector-spscommerce.git",
+      "description": "Connector SPS Commerce"
+    },
+    "connector-telephony": {
+      "url": "https://github.com/OCA/connector-telephony.git",
+      "description": "Odoo modules for telephony integration"
+    },
+    "connector-woocommerce": {
+      "url": "https://github.com/OCA/connector-woocommerce.git",
+      "description": "Connecteur WooCommerce"
+    },
+    "contract": {
+      "url": "https://github.com/OCA/contract.git",
+      "description": "Module OCA"
+    },
+    "cooperative": {
+      "url": "https://github.com/OCA/cooperative.git",
+      "description": "Module OCA"
+    },
+    "credit-control": {
+      "url": "https://github.com/OCA/credit-control.git",
+      "description": "Odoo modules for the customer credit control"
+    },
+    "crm": {
+      "url": "https://github.com/OCA/crm.git",
+      "description": "Gestion de la relation client (CRM)"
+    },
+    "crowdfunding": {
+      "url": "https://github.com/OCA/crowdfunding.git",
+      "description": "crowdfunding"
+    },
+    "currency": {
+      "url": "https://github.com/OCA/currency.git",
+      "description": "Devises et changes"
+    },
+    "data-protection": {
+      "url": "https://github.com/OCA/data-protection.git",
+      "description": "Protection des données (RGPD)"
+    },
+    "ddmrp": {
+      "url": "https://github.com/OCA/ddmrp.git",
+      "description": "Demand Driven MRP"
+    },
+    "delivery-carrier": {
+      "url": "https://github.com/OCA/delivery-carrier.git",
+      "description": "Transporteurs"
+    },
+    "department": {
+      "url": "https://github.com/OCA/department.git",
+      "description": "[DEPRECATED since 9.0] Odoo Department segregation and management"
+    },
+    "dms": {
+      "url": "https://github.com/OCA/dms.git",
+      "description": "Gestion documentaire (DMS)"
+    },
+    "donation": {
+      "url": "https://github.com/OCA/donation.git",
+      "description": "Dons et fundraising"
+    },
+    "dotnet": {
+      "url": "https://github.com/OCA/dotnet.git",
+      "description": "This repository holds all addons written in dotnet"
+    },
+    "e-commerce": {
+      "url": "https://github.com/OCA/e-commerce.git",
+      "description": "Commerce électronique"
+    },
+    "e-learning": {
+      "url": "https://github.com/OCA/e-learning.git",
+      "description": "e-learning"
+    },
+    "edi": {
+      "url": "https://github.com/OCA/edi.git",
+      "description": "Échange de données informatisé (EDI)"
+    },
+    "edi-framework": {
+      "url": "https://github.com/OCA/edi-framework.git",
+      "description": "Module OCA"
+    },
+    "event": {
+      "url": "https://github.com/OCA/event.git",
+      "description": "Gestion d'événements"
+    },
+    "field-service": {
+      "url": "https://github.com/OCA/field-service.git",
+      "description": "Service après-vente"
+    },
+    "fleet": {
+      "url": "https://github.com/OCA/fleet.git",
+      "description": "Odoo fleet management modules"
+    },
+    "geospatial": {
+      "url": "https://github.com/OCA/geospatial.git",
+      "description": "Géolocalisation et GIS"
+    },
+    "helpdesk": {
+      "url": "https://github.com/OCA/helpdesk.git",
+      "description": "Service d'assistance"
     },
     "hr": {
       "url": "https://github.com/OCA/hr.git",
       "description": "Ressources humaines"
     },
-    "website": {
-      "url": "https://github.com/OCA/website.git",
-      "description": "Site web et e-commerce"
+    "hr-attendance": {
+      "url": "https://github.com/OCA/hr-attendance.git",
+      "description": "Pointage et présences"
     },
-    "reporting": {
+    "hr-expense": {
+      "url": "https://github.com/OCA/hr-expense.git",
+      "description": "Notes de frais"
+    },
+    "hr-holidays": {
+      "url": "https://github.com/OCA/hr-holidays.git",
+      "description": "Congés et absences"
+    },
+    "infrastructure": {
+      "url": "https://github.com/OCA/infrastructure.git",
+      "description": "Odoo modules related to the management of Domain Name Server services within network infrastructure"
+    },
+    "interface-github": {
+      "url": "https://github.com/OCA/interface-github.git",
+      "description": "Tools to interact with github from Odoo"
+    },
+    "intrastat-extrastat": {
+      "url": "https://github.com/OCA/intrastat-extrastat.git",
+      "description": "Module OCA"
+    },
+    "iot": {
+      "url": "https://github.com/OCA/iot.git",
+      "description": "Internet des objets (IoT)"
+    },
+    "knowledge": {
+      "url": "https://github.com/OCA/knowledge.git",
+      "description": "Gestion des connaissances"
+    },
+    "l10n-argentina": {
+      "url": "https://github.com/OCA/l10n-argentina.git",
+      "description": "Localisation Argentine"
+    },
+    "l10n-austria": {
+      "url": "https://github.com/OCA/l10n-austria.git",
+      "description": "Odoo Austria Localization"
+    },
+    "l10n-belarus": {
+      "url": "https://github.com/OCA/l10n-belarus.git",
+      "description": "Module OCA"
+    },
+    "l10n-belgium": {
+      "url": "https://github.com/OCA/l10n-belgium.git",
+      "description": "Module OCA"
+    },
+    "l10n-brazil": {
+      "url": "https://github.com/OCA/l10n-brazil.git",
+      "description": "Localisation Brésil"
+    },
+    "l10n-bulgaria": {
+      "url": "https://github.com/OCA/l10n-bulgaria.git",
+      "description": "l10n-bulgaria"
+    },
+    "l10n-cambodia": {
+      "url": "https://github.com/OCA/l10n-cambodia.git",
+      "description": "Odoo Cambodian Localization"
+    },
+    "l10n-canada": {
+      "url": "https://github.com/OCA/l10n-canada.git",
+      "description": "Odoo modules for Canada"
+    },
+    "l10n-chile": {
+      "url": "https://github.com/OCA/l10n-chile.git",
+      "description": "Localisation Chili"
+    },
+    "l10n-china": {
+      "url": "https://github.com/OCA/l10n-china.git",
+      "description": "Chinese localization of Odoo"
+    },
+    "l10n-colombia": {
+      "url": "https://github.com/OCA/l10n-colombia.git",
+      "description": "Localisation Colombie"
+    },
+    "l10n-costa-rica": {
+      "url": "https://github.com/OCA/l10n-costa-rica.git",
+      "description": "Odoo modules for Costa-Rica"
+    },
+    "l10n-croatia": {
+      "url": "https://github.com/OCA/l10n-croatia.git",
+      "description": "Odoo Croatian Localization"
+    },
+    "l10n-ecuador": {
+      "url": "https://github.com/OCA/l10n-ecuador.git",
+      "description": "Odoo Localization for Ecuador"
+    },
+    "l10n-estonia": {
+      "url": "https://github.com/OCA/l10n-estonia.git",
+      "description": "Module OCA"
+    },
+    "l10n-ethiopia": {
+      "url": "https://github.com/OCA/l10n-ethiopia.git",
+      "description": "Ethiopian Localization Project"
+    },
+    "l10n-finland": {
+      "url": "https://github.com/OCA/l10n-finland.git",
+      "description": "Module OCA"
+    },
+    "l10n-france": {
+      "url": "https://github.com/OCA/l10n-france.git",
+      "description": "Localisation France"
+    },
+    "l10n-germany": {
+      "url": "https://github.com/OCA/l10n-germany.git",
+      "description": "Localisation Allemagne"
+    },
+    "l10n-greece": {
+      "url": "https://github.com/OCA/l10n-greece.git",
+      "description": "Odoo Greek Localization"
+    },
+    "l10n-india": {
+      "url": "https://github.com/OCA/l10n-india.git",
+      "description": "Odoo Localization for India"
+    },
+    "l10n-indonesia": {
+      "url": "https://github.com/OCA/l10n-indonesia.git",
+      "description": "Indonesian Localization Project"
+    },
+    "l10n-iran": {
+      "url": "https://github.com/OCA/l10n-iran.git",
+      "description": "Odoo Localization for Iran"
+    },
+    "l10n-ireland": {
+      "url": "https://github.com/OCA/l10n-ireland.git",
+      "description": "Odoo Localization for Ireland"
+    },
+    "l10n-italy": {
+      "url": "https://github.com/OCA/l10n-italy.git",
+      "description": "Localisation Italie"
+    },
+    "l10n-japan": {
+      "url": "https://github.com/OCA/l10n-japan.git",
+      "description": "Module OCA"
+    },
+    "l10n-luxemburg": {
+      "url": "https://github.com/OCA/l10n-luxemburg.git",
+      "description": "Module OCA"
+    },
+    "l10n-macedonia": {
+      "url": "https://github.com/OCA/l10n-macedonia.git",
+      "description": "Odoo Macedonian localization"
+    },
+    "l10n-mexico": {
+      "url": "https://github.com/OCA/l10n-mexico.git",
+      "description": "Mexican Localization."
+    },
+    "l10n-morocco": {
+      "url": "https://github.com/OCA/l10n-morocco.git",
+      "description": "Moroccan Localization"
+    },
+    "l10n-netherlands": {
+      "url": "https://github.com/OCA/l10n-netherlands.git",
+      "description": "Odoo Dutch Localization"
+    },
+    "l10n-norway": {
+      "url": "https://github.com/OCA/l10n-norway.git",
+      "description": "The Norwegian localization for Odoo"
+    },
+    "l10n-peru": {
+      "url": "https://github.com/OCA/l10n-peru.git",
+      "description": "Peruvian Localization"
+    },
+    "l10n-poland": {
+      "url": "https://github.com/OCA/l10n-poland.git",
+      "description": "Odoo Polish Localization"
+    },
+    "l10n-portugal": {
+      "url": "https://github.com/OCA/l10n-portugal.git",
+      "description": "Odoo Portuguese localization"
+    },
+    "l10n-romania": {
+      "url": "https://github.com/OCA/l10n-romania.git",
+      "description": "Romanian Localization for Odoo"
+    },
+    "l10n-russia": {
+      "url": "https://github.com/OCA/l10n-russia.git",
+      "description": "Module OCA"
+    },
+    "l10n-slovenia": {
+      "url": "https://github.com/OCA/l10n-slovenia.git",
+      "description": "Slovenian Localization Project"
+    },
+    "l10n-spain": {
+      "url": "https://github.com/OCA/l10n-spain.git",
+      "description": "Localisation Espagne"
+    },
+    "l10n-switzerland": {
+      "url": "https://github.com/OCA/l10n-switzerland.git",
+      "description": "Localisation Suisse"
+    },
+    "l10n-taiwan": {
+      "url": "https://github.com/OCA/l10n-taiwan.git",
+      "description": "Taiwanese localization"
+    },
+    "l10n-thailand": {
+      "url": "https://github.com/OCA/l10n-thailand.git",
+      "description": "Thai localization"
+    },
+    "l10n-turkey": {
+      "url": "https://github.com/OCA/l10n-turkey.git",
+      "description": "Turkish Localization Project"
+    },
+    "l10n-ukraine": {
+      "url": "https://github.com/OCA/l10n-ukraine.git",
+      "description": "Ukrainian localization"
+    },
+    "l10n-united-kingdom": {
+      "url": "https://github.com/OCA/l10n-united-kingdom.git",
+      "description": "Odoo Localization for United Kingdom"
+    },
+    "l10n-uruguay": {
+      "url": "https://github.com/OCA/l10n-uruguay.git",
+      "description": "Odoo Localization for Uruguay"
+    },
+    "l10n-usa": {
+      "url": "https://github.com/OCA/l10n-usa.git",
+      "description": "US Localization of Odoo"
+    },
+    "l10n-venezuela": {
+      "url": "https://github.com/OCA/l10n-venezuela.git",
+      "description": "Odoo modules for Venezuela"
+    },
+    "l10n-vietnam": {
+      "url": "https://github.com/OCA/l10n-vietnam.git",
+      "description": "Module OCA"
+    },
+    "mail": {
+      "url": "https://github.com/OCA/mail.git",
+      "description": "mail"
+    },
+    "maintenance": {
+      "url": "https://github.com/OCA/maintenance.git",
+      "description": "Odoo modules for businesses that implies maintenance tasks"
+    },
+    "management-system": {
+      "url": "https://github.com/OCA/management-system.git",
+      "description": "Odoo for Management Systems (ISO, IEC, BS)"
+    },
+    "manufacture": {
+      "url": "https://github.com/OCA/manufacture.git",
+      "description": "Manufacturing/MRP"
+    },
+    "manufacture-reporting": {
+      "url": "https://github.com/OCA/manufacture-reporting.git",
+      "description": "Module OCA"
+    },
+    "margin-analysis": {
+      "url": "https://github.com/OCA/margin-analysis.git",
+      "description": "Analyse de marge"
+    },
+    "mass-mailing": {
+      "url": "https://github.com/OCA/mass-mailing.git",
+      "description": "mass-mailing"
+    },
+    "mirrors-flake8": {
+      "url": "https://github.com/OCA/mirrors-flake8.git",
+      "description": "Module OCA"
+    },
+    "mis-builder": {
+      "url": "https://github.com/OCA/mis-builder.git",
+      "description": "Générateur de rapports MIS"
+    },
+    "mis-builder-contrib": {
+      "url": "https://github.com/OCA/mis-builder-contrib.git",
+      "description": "Modules that provide additional features on top of MIS Builder. A kind of incubator for MIS Builder features that may land in the core in the future."
+    },
+    "multi-company": {
+      "url": "https://github.com/OCA/multi-company.git",
+      "description": "Multi-sociétés"
+    },
+    "oca-ci": {
+      "url": "https://github.com/OCA/oca-ci.git",
+      "description": "Container image to run OCA CI tests"
+    },
+    "oca-weblate-deployment": {
+      "url": "https://github.com/OCA/oca-weblate-deployment.git",
+      "description": "Module OCA"
+    },
+    "oca.recipe.odoo": {
+      "url": "https://github.com/OCA/oca.recipe.odoo.git",
+      "description": "Module OCA"
+    },
+    "operating-unit": {
+      "url": "https://github.com/OCA/operating-unit.git",
+      "description": "Unités opérationnelles"
+    },
+    "partner-contact": {
+      "url": "https://github.com/OCA/partner-contact.git",
+      "description": "Gestion des partenaires et contacts"
+    },
+    "payroll": {
+      "url": "https://github.com/OCA/payroll.git",
+      "description": "Odoo modules for payroll management"
+    },
+    "pms": {
+      "url": "https://github.com/OCA/pms.git",
+      "description": "Property Management System on Odoo"
+    },
+    "pos": {
+      "url": "https://github.com/OCA/pos.git",
+      "description": "Point de vente (POS)"
+    },
+    "product-attribute": {
+      "url": "https://github.com/OCA/product-attribute.git",
+      "description": "Attributs produits"
+    },
+    "product-configurator": {
+      "url": "https://github.com/OCA/product-configurator.git",
+      "description": "Configurateur de produits"
+    },
+    "product-kitting": {
+      "url": "https://github.com/OCA/product-kitting.git",
+      "description": "Odoo Kitting Addons"
+    },
+    "product-pack": {
+      "url": "https://github.com/OCA/product-pack.git",
+      "description": "Packs de produits"
+    },
+    "product-variant": {
+      "url": "https://github.com/OCA/product-variant.git",
+      "description": "Variantes de produits"
+    },
+    "program": {
+      "url": "https://github.com/OCA/program.git",
+      "description": "Module OCA"
+    },
+    "project": {
+      "url": "https://github.com/OCA/project.git",
+      "description": "Gestion de projet"
+    },
+    "project-agile": {
+      "url": "https://github.com/OCA/project-agile.git",
+      "description": "Gestion de projet agile"
+    },
+    "project-reporting": {
+      "url": "https://github.com/OCA/project-reporting.git",
+      "description": "Module OCA"
+    },
+    "purchase-reporting": {
+      "url": "https://github.com/OCA/purchase-reporting.git",
+      "description": "Module OCA"
+    },
+    "purchase-workflow": {
+      "url": "https://github.com/OCA/purchase-workflow.git",
+      "description": "Workflow d'achat"
+    },
+    "pwa-builder": {
+      "url": "https://github.com/OCA/pwa-builder.git",
+      "description": "Module OCA"
+    },
+    "queue": {
+      "url": "https://github.com/OCA/queue.git",
+      "description": "Files d'attente"
+    },
+    "repair": {
+      "url": "https://github.com/OCA/repair.git",
+      "description": "Module OCA"
+    },
+    "repo-maintainer": {
+      "url": "https://github.com/OCA/repo-maintainer.git",
+      "description": "Module OCA"
+    },
+    "repo-maintainer-conf": {
+      "url": "https://github.com/OCA/repo-maintainer-conf.git",
+      "description": "Module OCA"
+    },
+    "report-print-send": {
+      "url": "https://github.com/OCA/report-print-send.git",
+      "description": "Impression et envoi de rapports"
+    },
+    "reporting-engine": {
       "url": "https://github.com/OCA/reporting-engine.git",
       "description": "Moteur de rapports"
     },
-    "server-tools": {
-      "url": "https://github.com/OCA/server-tools.git",
-      "description": "Outils serveur"
+    "resource": {
+      "url": "https://github.com/OCA/resource.git",
+      "description": "resource"
+    },
+    "rest-api": {
+      "url": "https://github.com/OCA/rest-api.git",
+      "description": "Module OCA"
+    },
+    "rest-framework": {
+      "url": "https://github.com/OCA/rest-framework.git",
+      "description": "Framework REST API"
+    },
+    "rma": {
+      "url": "https://github.com/OCA/rma.git",
+      "description": "Odoo for Return Merchandise Authorization (RMA)"
+    },
+    "role-policy": {
+      "url": "https://github.com/OCA/role-policy.git",
+      "description": "Module OCA"
+    },
+    "sale-blanket": {
+      "url": "https://github.com/OCA/sale-blanket.git",
+      "description": "sale-blanket"
+    },
+    "sale-channel": {
+      "url": "https://github.com/OCA/sale-channel.git",
+      "description": "Module OCA"
+    },
+    "sale-financial": {
+      "url": "https://github.com/OCA/sale-financial.git",
+      "description": "Odoo Sale and Financial related Addons"
+    },
+    "sale-prebook": {
+      "url": "https://github.com/OCA/sale-prebook.git",
+      "description": "sale-prebook"
+    },
+    "sale-promotion": {
+      "url": "https://github.com/OCA/sale-promotion.git",
+      "description": "Module OCA"
+    },
+    "sale-reporting": {
+      "url": "https://github.com/OCA/sale-reporting.git",
+      "description": "Module OCA"
+    },
+    "sale-workflow": {
+      "url": "https://github.com/OCA/sale-workflow.git",
+      "description": "Workflow de vente"
+    },
+    "search-engine": {
+      "url": "https://github.com/OCA/search-engine.git",
+      "description": "Module OCA"
+    },
+    "server-auth": {
+      "url": "https://github.com/OCA/server-auth.git",
+      "description": "Authentification serveur"
+    },
+    "server-backend": {
+      "url": "https://github.com/OCA/server-backend.git",
+      "description": "Backend serveur"
+    },
+    "server-brand": {
+      "url": "https://github.com/OCA/server-brand.git",
+      "description": "Marque serveur"
+    },
+    "server-env": {
+      "url": "https://github.com/OCA/server-env.git",
+      "description": "Environnement serveur"
+    },
+    "server-ux": {
+      "url": "https://github.com/OCA/server-ux.git",
+      "description": "UX serveur"
+    },
+    "shift-planning": {
+      "url": "https://github.com/OCA/shift-planning.git",
+      "description": "Module OCA"
+    },
+    "shopfloor-app": {
+      "url": "https://github.com/OCA/shopfloor-app.git",
+      "description": "shopfloor-app"
+    },
+    "sign": {
+      "url": "https://github.com/OCA/sign.git",
+      "description": "Module OCA"
+    },
+    "social": {
+      "url": "https://github.com/OCA/social.git",
+      "description": "Réseaux sociaux"
+    },
+    "spreadsheet": {
+      "url": "https://github.com/OCA/spreadsheet.git",
+      "description": "Module OCA"
+    },
+    "stock-logistics-availability": {
+      "url": "https://github.com/OCA/stock-logistics-availability.git",
+      "description": "This repository contains modules to provide more information about product stock availability in terms of quantities (immediately usable, potential, unreserved ones, ...)."
+    },
+    "stock-logistics-barcode": {
+      "url": "https://github.com/OCA/stock-logistics-barcode.git",
+      "description": "Codes-barres logistique"
+    },
+    "stock-logistics-interfaces": {
+      "url": "https://github.com/OCA/stock-logistics-interfaces.git",
+      "description": "stock-logistics-interfaces"
+    },
+    "stock-logistics-orderpoint": {
+      "url": "https://github.com/OCA/stock-logistics-orderpoint.git",
+      "description": "This repository contains modules to extend reordering rules (available on warehouses locations) functionalities."
+    },
+    "stock-logistics-putaway": {
+      "url": "https://github.com/OCA/stock-logistics-putaway.git",
+      "description": "stock-logistics-putaway"
+    },
+    "stock-logistics-release-channel": {
+      "url": "https://github.com/OCA/stock-logistics-release-channel.git",
+      "description": "stock-logistics-release-channel"
+    },
+    "stock-logistics-reporting": {
+      "url": "https://github.com/OCA/stock-logistics-reporting.git",
+      "description": "Rapports logistique"
+    },
+    "stock-logistics-request": {
+      "url": "https://github.com/OCA/stock-logistics-request.git",
+      "description": "This repository contains modules to provide another way of creating stock movements. Provided as a dedicated application, users will be able to create their stock needs by product and location."
+    },
+    "stock-logistics-reservation": {
+      "url": "https://github.com/OCA/stock-logistics-reservation.git",
+      "description": "stock-logistics-reservation"
+    },
+    "stock-logistics-shopfloor": {
+      "url": "https://github.com/OCA/stock-logistics-shopfloor.git",
+      "description": "stock-logistics-shopfloor"
+    },
+    "stock-logistics-tracking": {
+      "url": "https://github.com/OCA/stock-logistics-tracking.git",
+      "description": "Traçabilité logistique"
+    },
+    "stock-logistics-transport": {
+      "url": "https://github.com/OCA/stock-logistics-transport.git",
+      "description": "Transport logistique"
+    },
+    "stock-logistics-warehouse": {
+      "url": "https://github.com/OCA/stock-logistics-warehouse.git",
+      "description": "Entrepôt logistique"
+    },
+    "stock-logistics-workflow": {
+      "url": "https://github.com/OCA/stock-logistics-workflow.git",
+      "description": "Workflow logistique"
+    },
+    "stock-weighing": {
+      "url": "https://github.com/OCA/stock-weighing.git",
+      "description": "stock-weighing"
+    },
+    "storage": {
+      "url": "https://github.com/OCA/storage.git",
+      "description": "Module OCA"
+    },
+    "survey": {
+      "url": "https://github.com/OCA/survey.git",
+      "description": "Survey addons"
+    },
+    "timesheet": {
+      "url": "https://github.com/OCA/timesheet.git",
+      "description": "Feuilles de temps"
+    },
+    "vertical-abbey": {
+      "url": "https://github.com/OCA/vertical-abbey.git",
+      "description": "Module OCA"
+    },
+    "vertical-agriculture": {
+      "url": "https://github.com/OCA/vertical-agriculture.git",
+      "description": "Agriculture verticale"
+    },
+    "vertical-association": {
+      "url": "https://github.com/OCA/vertical-association.git",
+      "description": "Associations"
+    },
+    "vertical-community": {
+      "url": "https://github.com/OCA/vertical-community.git",
+      "description": "Odoo for Communities Verticalization"
+    },
+    "vertical-construction": {
+      "url": "https://github.com/OCA/vertical-construction.git",
+      "description": "Odoo for Construction Company"
+    },
+    "vertical-cooperative-supermarket": {
+      "url": "https://github.com/OCA/vertical-cooperative-supermarket.git",
+      "description": "Module OCA"
+    },
+    "vertical-edition": {
+      "url": "https://github.com/OCA/vertical-edition.git",
+      "description": "Module OCA"
+    },
+    "vertical-education": {
+      "url": "https://github.com/OCA/vertical-education.git",
+      "description": "Éducation"
+    },
+    "vertical-hotel": {
+      "url": "https://github.com/OCA/vertical-hotel.git",
+      "description": "Hôtellerie"
+    },
+    "vertical-isp": {
+      "url": "https://github.com/OCA/vertical-isp.git",
+      "description": "Fournisseurs d'accès Internet"
+    },
+    "vertical-medical": {
+      "url": "https://github.com/OCA/vertical-medical.git",
+      "description": "Médical"
+    },
+    "vertical-ngo": {
+      "url": "https://github.com/OCA/vertical-ngo.git",
+      "description": "ONG"
+    },
+    "vertical-realestate": {
+      "url": "https://github.com/OCA/vertical-realestate.git",
+      "description": "Immobilier"
+    },
+    "vertical-rental": {
+      "url": "https://github.com/OCA/vertical-rental.git",
+      "description": "Module OCA"
+    },
+    "vertical-travel": {
+      "url": "https://github.com/OCA/vertical-travel.git",
+      "description": "Voyage et tourisme"
+    },
+    "wallet": {
+      "url": "https://github.com/OCA/wallet.git",
+      "description": "Module OCA"
     },
     "web": {
       "url": "https://github.com/OCA/web.git",
       "description": "Interface web"
+    },
+    "web-api": {
+      "url": "https://github.com/OCA/web-api.git",
+      "description": "Module OCA"
+    },
+    "web-api-contrib": {
+      "url": "https://github.com/OCA/web-api-contrib.git",
+      "description": "web-api-contrib"
+    },
+    "website": {
+      "url": "https://github.com/OCA/website.git",
+      "description": "Site web"
+    },
+    "website-cms": {
+      "url": "https://github.com/OCA/website-cms.git",
+      "description": "CMS pour site web"
+    },
+    "website-themes": {
+      "url": "https://github.com/OCA/website-themes.git",
+      "description": "Website themes for Odoo"
+    },
+    "wms": {
+      "url": "https://github.com/OCA/wms.git",
+      "description": "Warehouse Management System for advance logistic with Odoo"
     }
   },
   "client_templates": {
     "basic": {
       "description": "Configuration de base",
-      "default_modules": ["partner", "accounting", "server-tools"]
+      "default_modules": [
+        "partner-contact",
+        "account-financial-tools",
+        "server-tools"
+      ]
     },
     "ecommerce": {
       "description": "E-commerce complet",
-      "default_modules": ["partner", "website", "sale", "stock", "accounting"]
+      "default_modules": [
+        "partner-contact",
+        "website",
+        "sale-workflow",
+        "stock-logistics-workflow",
+        "account-financial-tools"
+      ]
     },
     "manufacturing": {
-      "description": "Entreprise manufacturière", 
-      "default_modules": ["partner", "sale", "purchase", "stock", "manufacturing", "accounting"]
+      "description": "Entreprise manufacturière",
+      "default_modules": [
+        "partner-contact",
+        "sale-workflow",
+        "purchase-workflow",
+        "stock-logistics-workflow",
+        "manufacture",
+        "account-financial-tools"
+      ]
     },
     "services": {
       "description": "Entreprise de services",
-      "default_modules": ["partner", "project", "hr", "accounting"]
+      "default_modules": [
+        "partner-contact",
+        "project",
+        "hr",
+        "account-financial-tools"
+      ]
     }
   }
 }
