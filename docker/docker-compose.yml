@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ODOO_VERSION: 18.0
+    volumes:
+      - ./config:/mnt/config
+      - ./requirements.txt:/mnt/requirements.txt:ro
+      - ./extra-addons:/mnt/extra-addons:ro
+      - ./addons:/mnt/addons:ro
+      - odoo-data:/var/lib/odoo
+      - ./logs:/var/log/odoo
+    ports:
+      - "8069:8069"
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=odoo
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  odoo-data:
+  postgres-data:

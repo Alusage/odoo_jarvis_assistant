@@ -214,15 +214,16 @@ version: '3.8'
 
 services:
   odoo:
-    image: odoo:$ODOO_VERSION
+    image: odoo-alusage:$ODOO_VERSION
     depends_on:
       - db
     ports:
       - "8069:8069"
     volumes:
       - ./config:/mnt/config
-      - ./extra-addons:/mnt/extra-addons
-      - ./addons:/mnt/addons
+      - ./requirements.txt:/mnt/requirements.txt:ro
+      - ./extra-addons:/mnt/extra-addons:ro
+      - ./addons:/mnt/addons:ro
       - odoo-data:/var/lib/odoo
       - ./logs:/var/log/odoo
     environment:

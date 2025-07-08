@@ -192,3 +192,7 @@ cache-status: ## Afficher le statut du cache des dépôts OCA
 
 clean-cache: ## Nettoyer le cache des dépôts OCA
 	@$(SCRIPTS_DIR)/repository_optimizer.sh clean-cache
+
+build: ## Construire l'image Docker Odoo personnalisée (usage: make build [VERSION=18.0] [TAG=odoo-custom:18.0])
+	@echo "🐳 Construction de l'image Docker Odoo personnalisée..."
+	@$(SCRIPTS_DIR)/build_docker_image.sh $(VERSION) $(TAG)
