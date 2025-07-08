@@ -196,3 +196,12 @@ clean-cache: ## Nettoyer le cache des dépôts OCA
 build: ## Construire l'image Docker Odoo personnalisée (usage: make build [VERSION=18.0] [TAG=odoo-custom:18.0])
 	@echo "🐳 Construction de l'image Docker Odoo personnalisée..."
 	@$(SCRIPTS_DIR)/build_docker_image.sh $(VERSION) $(TAG)
+
+# Versioning and changelog
+release:
+	@echo "Créer une release GitHub avec un changelog propre"
+	@read -p "Nouvelle version (ex: 0.1.0): " VERSION; \
+	git tag -a v$$VERSION -m "Release v$$VERSION"; \
+	git push origin v$$VERSION; \
+	@sed -i "s/## \[Unreleased\]/## \[Unreleased\]\n\n## [$$VERSION] - $(shell date +'%Y-%m-%d')/" CHANGELOG.md; \
+	@echo "Release v$$VERSION créée avec succès"
