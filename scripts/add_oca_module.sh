@@ -21,7 +21,7 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+echo_info() { echo -e "${BLUE}-  $1${NC}"; }
 echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
 echo_error() { echo -e "${RED}❌ $1${NC}"; }
 

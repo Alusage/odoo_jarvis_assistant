@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+echo_info() { echo -e "${BLUE}-  $1${NC}"; }
 echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
 
 # Pattern de recherche (optionnel)

@@ -18,7 +18,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Fonction d'affichage coloré
-echo_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+echo_info() { echo -e "${BLUE}-  $1${NC}"; }
 echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
 echo_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 echo_error() { echo -e "${RED}❌ $1${NC}"; }
