@@ -59,6 +59,39 @@ manage-templates: ## Gérer les templates et modules OCA
 update-oca-repos: ## Mettre à jour automatiquement la liste des dépôts OCA depuis GitHub
 	@$(SCRIPTS_DIR)/update_oca_repositories.sh --clean
 
+update-oca-repos-fast: ## Mise à jour rapide des dépôts OCA (sans vérification des addons)
+	@$(SCRIPTS_DIR)/update_oca_repositories.sh --clean --no-verify
+
+update-oca-repos-en: ## Mettre à jour la liste des dépôts OCA avec descriptions anglaises
+	@$(SCRIPTS_DIR)/update_oca_repositories.sh --lang en --clean
+
+# Gestion des descriptions multilingues
+descriptions-list: ## Lister toutes les descriptions OCA
+	@$(SCRIPTS_DIR)/manage_oca_descriptions.sh list
+
+descriptions-missing: ## Lister les descriptions manquantes (usage: make descriptions-missing LANG=fr|en)
+	@$(SCRIPTS_DIR)/manage_oca_descriptions.sh missing $(LANG)
+
+descriptions-stats: ## Afficher les statistiques des descriptions OCA
+	@$(SCRIPTS_DIR)/manage_oca_descriptions.sh stats
+
+descriptions-validate: ## Valider le fichier de descriptions OCA
+	@$(SCRIPTS_DIR)/manage_oca_descriptions.sh validate
+
+descriptions-auto: ## Compléter automatiquement les descriptions (usage: make descriptions-auto LANG=fr|en)
+	@$(SCRIPTS_DIR)/manage_oca_descriptions.sh auto-complete $(LANG)
+
+edit-descriptions: ## Éditer le fichier de descriptions OCA
+	@if command -v code >/dev/null 2>&1; then \
+		code config/oca_descriptions.json; \
+	elif command -v nano >/dev/null 2>&1; then \
+		nano config/oca_descriptions.json; \
+	elif command -v vim >/dev/null 2>&1; then \
+		vim config/oca_descriptions.json; \
+	else \
+		echo "❌ Aucun éditeur trouvé (code, nano, vim)"; \
+	fi
+
 test: ## Exécuter les tests du générateur
 	@./test.sh
 

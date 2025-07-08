@@ -152,15 +152,18 @@ Accès : http://localhost:8069
 
 ### Mise à jour automatique des dépôts OCA
 
-Le système maintient automatiquement une liste complète de tous les dépôts OCA disponibles sur GitHub :
+Le système maintient automatiquement une liste complète de tous les dépôts OCA disponibles sur GitHub avec support multilingue :
 
 ```bash
-# Mettre à jour la liste depuis GitHub (récupère ~226 dépôts)
-make update-oca-repos                    # Nettoie automatiquement les sauvegardes
+# Mettre à jour la liste depuis GitHub avec descriptions françaises
+make update-oca-repos                    # Descriptions en français (défaut)
+
+# Mettre à jour avec descriptions anglaises
+make update-oca-repos-en                 # Descriptions en anglais
 
 # Mise à jour manuelle avec options
-./scripts/update_oca_repositories.sh     # Garde les sauvegardes
-./scripts/update_oca_repositories.sh --clean  # Supprime les sauvegardes
+./scripts/update_oca_repositories.sh --lang fr --clean  # Français + nettoyage
+./scripts/update_oca_repositories.sh --lang en         # Anglais + sauvegardes
 
 # Voir tous les modules disponibles
 make list-oca-modules
@@ -170,6 +173,53 @@ make list-oca-modules PATTERN=account    # Modules comptables
 make list-oca-modules PATTERN=stock      # Modules stock/logistique
 make list-oca-modules PATTERN=l10n       # Localisations
 ```
+
+### 🌍 Gestion multilingue des descriptions
+
+Le système gère désormais les descriptions en français et anglais via un fichier centralisé :
+
+```bash
+# Voir les statistiques des descriptions
+make descriptions-stats
+
+# Lister les descriptions manquantes
+make descriptions-missing LANG=fr        # Descriptions françaises manquantes
+make descriptions-missing LANG=en        # Descriptions anglaises manquantes
+
+# Complétion automatique des descriptions
+make descriptions-auto LANG=fr           # Compléter automatiquement en français
+make descriptions-auto LANG=en           # Compléter automatiquement en anglais
+
+# Éditer le fichier de descriptions
+make edit-descriptions                    # Ouvre config/oca_descriptions.json
+
+# Valider le format du fichier
+make descriptions-validate
+
+# Lister toutes les descriptions
+make descriptions-list
+```
+
+#### Fichier des descriptions : `config/oca_descriptions.json`
+
+```json
+{
+  "account-analytic": {
+    "fr": "Comptabilité analytique",
+    "en": "Analytic accounting"
+  },
+  "stock-logistics-workflow": {
+    "fr": "Workflow logistique",
+    "en": "Logistics workflow"
+  }
+}
+```
+
+#### Enrichissement automatique
+
+- **Nouveaux modules** : Ajoutés automatiquement avec des entrées vides à compléter
+- **Complétion intelligente** : Suggestions automatiques basées sur les noms de modules
+- **Validation** : Vérification du format et de la cohérence des descriptions
 
 ### Nomenclature des dossiers
 
@@ -187,5 +237,7 @@ addons/
 
 - **Synchronisation automatique** : La liste des modules se met à jour automatiquement
 - **Nomenclature cohérente** : Les noms correspondent exactement aux dépôts GitHub
-- **Descriptions françaises** : Chaque module a une description claire en français
+- **Support multilingue** : Descriptions en français et anglais
+- **Gestion centralisée** : Toutes les descriptions dans un fichier JSON structuré
 - **Popularité visible** : Les modules sont classés par nombre d'étoiles GitHub
+- **Enrichissement collaboratif** : Facilite la contribution aux descriptions manquantes

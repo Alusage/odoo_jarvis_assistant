@@ -1,0 +1,842 @@
+{
+  "account-analytic": {
+    "fr": "Comptabilité analytique",
+    "en": "Analytic accounting"
+  },
+  "server-tools": {
+    "fr": "Outils serveur",
+    "en": "Server tools"
+  },
+  "ai": {
+    "fr": "IA",
+    "en": "OCA module"
+  },
+  "contract": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "cooperative": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "OpenUpgrade": {
+    "fr": "Chemin de mise à niveau open source pour Odoo / OpenderP",
+    "en": "OCA module"
+  },
+  "account-closing": {
+    "fr": "Outils de clôture du comptable d'Odoo",
+    "en": "OCA module"
+  },
+  "account-financial-reporting": {
+    "fr": "Rapports financiers pour Odoo",
+    "en": "OCA module"
+  },
+  "account-fiscal-rule": {
+    "fr": "Odoo Taxes & Fiscal Rules Management",
+    "en": "OCA module"
+  },
+  "account-invoice-reporting": {
+    "fr": "Rapports de facturation d'Odoo",
+    "en": "Odoo Invoicing reports"
+  },
+  "account-invoicing": {
+    "fr": "Addons d'extension de facturation d'Odoo",
+    "en": "OCA module"
+  },
+  "account-payment": {
+    "fr": "Projet supervisé par le PSC bancaire",
+    "en": "OCA module"
+  },
+  "account-reconcile": {
+    "fr": "Modules de réconciliation du compte Odoo (déclarations, achèvement des données ...)",
+    "en": "OCA module"
+  },
+  "agreement": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "bank-payment": {
+    "fr": "Paiement électronique d'Odoo",
+    "en": "OCA module"
+  },
+  "bank-payment-alternative": {
+    "fr": "Paiement bancaire - Approche alternative basée sur les méthodes de paiement des natifs d'Odoo",
+    "en": "OCA module"
+  },
+  "bank-statement-import": {
+    "fr": "Addons d'importation bancaire",
+    "en": "OCA module"
+  },
+  "brand": {
+    "fr": "Gérer les marques pour les produits et les entreprises",
+    "en": "OCA module"
+  },
+  "business-requirement": {
+    "fr": "Gestion des exigences commerciales via Odoo",
+    "en": "OCA module"
+  },
+  "calendar": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "commission": {
+    "fr": "Gestion de la commission ODO",
+    "en": "OCA module"
+  },
+  "connector": {
+    "fr": "Framework de connecteur générique Odoo (file d'attente de travaux, tâches asynchrones, canaux)",
+    "en": "OCA module"
+  },
+  "connector-accountedge": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-cmis": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-ecommerce": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-infor": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-interfaces": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-jira": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-lengow": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-lims": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-magento": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-magento-php-extension": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-odoo2odoo": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-prestashop": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-redmine": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-sage": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-salesforce": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-spscommerce": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-telephony": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "connector-woocommerce": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "credit-control": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "crm": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "crowdfunding": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "currency": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "data-protection": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "ddmrp": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "delivery-carrier": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "department": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "dms": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "donation": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "e-commerce": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "e-learning": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "edi": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "edi-framework": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "event": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "field-service": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "fleet": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "geospatial": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "helpdesk": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "hr": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "hr-attendance": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "hr-expense": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "hr-holidays": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "intrastat-extrastat": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "iot": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "knowledge": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-argentina": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-austria": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-belarus": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-belgium": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-brazil": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-bulgaria": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-cambodia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-canada": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-chile": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-china": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-colombia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-costa-rica": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-croatia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-ecuador": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-estonia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-ethiopia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-finland": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-france": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-germany": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-greece": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-india": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-indonesia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-iran": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-ireland": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-italy": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-japan": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-luxemburg": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-macedonia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-mexico": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-morocco": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-netherlands": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-norway": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-peru": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-poland": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-portugal": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-romania": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-russia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-slovenia": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-spain": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-switzerland": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-taiwan": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-thailand": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-turkey": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-ukraine": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-united-kingdom": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-uruguay": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-usa": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-venezuela": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "l10n-vietnam": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "mail": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "maintenance": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "management-system": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "manufacture": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "manufacture-reporting": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "margin-analysis": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "mass-mailing": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "mis-builder": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "mis-builder-contrib": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "multi-company": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "operating-unit": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "partner-contact": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "payroll": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "pms": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "pos": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "product-attribute": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "product-configurator": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "product-kitting": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "product-pack": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "product-variant": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "program": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "project": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "project-agile": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "project-reporting": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "purchase-reporting": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "purchase-workflow": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "pwa-builder": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "queue": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "repair": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "report-print-send": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "reporting-engine": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "resource": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "rest-api": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "rest-framework": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "rma": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "role-policy": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-blanket": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-channel": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-financial": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-prebook": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-promotion": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-reporting": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sale-workflow": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "search-engine": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "server-auth": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "server-backend": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "server-brand": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "server-env": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "server-ux": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "shift-planning": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "shopfloor-app": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "sign": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "social": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "spreadsheet": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-availability": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-barcode": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-interfaces": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-orderpoint": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-putaway": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-release-channel": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-reporting": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-request": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-reservation": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-shopfloor": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-tracking": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-transport": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-warehouse": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-logistics-workflow": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "stock-weighing": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "storage": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "survey": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "timesheet": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-abbey": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-agriculture": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-association": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-community": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-construction": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-cooperative-supermarket": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-edition": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-education": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-hotel": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-isp": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-medical": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-ngo": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-realestate": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-rental": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "vertical-travel": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "wallet": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "web": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "web-api": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "web-api-contrib": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "website": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "website-cms": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "website-themes": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  },
+  "wms": {
+    "fr": "Module OCA",
+    "en": "OCA module"
+  }
+}

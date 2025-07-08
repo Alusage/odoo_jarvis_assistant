@@ -25,912 +25,6 @@
       ]
     }
   },
-  "oca_repositories": {
-    "OCB": {
-      "url": "https://github.com/OCA/OCB.git",
-      "description": "Odoo Community Backports"
-    },
-    "OpenUpgrade": {
-      "url": "https://github.com/OCA/OpenUpgrade.git",
-      "description": "Open source upgrade path for Odoo/OpenERP"
-    },
-    "account-analytic": {
-      "url": "https://github.com/OCA/account-analytic.git",
-      "description": "Comptabilité analytique"
-    },
-    "account-budgeting": {
-      "url": "https://github.com/OCA/account-budgeting.git",
-      "description": "Budgets et contrôle budgétaire"
-    },
-    "account-closing": {
-      "url": "https://github.com/OCA/account-closing.git",
-      "description": "Clôtures comptables"
-    },
-    "account-consolidation": {
-      "url": "https://github.com/OCA/account-consolidation.git",
-      "description": "Consolidation comptable"
-    },
-    "account-financial-reporting": {
-      "url": "https://github.com/OCA/account-financial-reporting.git",
-      "description": "Rapports financiers"
-    },
-    "account-fiscal-rule": {
-      "url": "https://github.com/OCA/account-fiscal-rule.git",
-      "description": "Odoo Taxes & Fiscal Rules Management"
-    },
-    "account-invoice-reporting": {
-      "url": "https://github.com/OCA/account-invoice-reporting.git",
-      "description": "Odoo Invoicing reports"
-    },
-    "account-invoicing": {
-      "url": "https://github.com/OCA/account-invoicing.git",
-      "description": "Facturation"
-    },
-    "account-payment": {
-      "url": "https://github.com/OCA/account-payment.git",
-      "description": "Paiements et encaissements"
-    },
-    "account-reconcile": {
-      "url": "https://github.com/OCA/account-reconcile.git",
-      "description": "Rapprochements bancaires"
-    },
-    "agreement": {
-      "url": "https://github.com/OCA/agreement.git",
-      "description": "Module OCA"
-    },
-    "ai": {
-      "url": "https://github.com/OCA/ai.git",
-      "description": "ai"
-    },
-    "ansible-odoo": {
-      "url": "https://github.com/OCA/ansible-odoo.git",
-      "description": "[NOT MAINTAINED] Ansible role for Odoo"
-    },
-    "apps-store": {
-      "url": "https://github.com/OCA/apps-store.git",
-      "description": "OCA Apps store module repository"
-    },
-    "automation": {
-      "url": "https://github.com/OCA/automation.git",
-      "description": "automation"
-    },
-    "bank-payment": {
-      "url": "https://github.com/OCA/bank-payment.git",
-      "description": "Paiements bancaires"
-    },
-    "bank-payment-alternative": {
-      "url": "https://github.com/OCA/bank-payment-alternative.git",
-      "description": "Bank Payment - Alternative approach based on Odoo native payment methods"
-    },
-    "bank-statement-import": {
-      "url": "https://github.com/OCA/bank-statement-import.git",
-      "description": "Import relevés bancaires"
-    },
-    "brand": {
-      "url": "https://github.com/OCA/brand.git",
-      "description": "Gestion de marques"
-    },
-    "business-requirement": {
-      "url": "https://github.com/OCA/business-requirement.git",
-      "description": "Business Requirements Management via Odoo"
-    },
-    "calendar": {
-      "url": "https://github.com/OCA/calendar.git",
-      "description": "Module OCA"
-    },
-    "cim": {
-      "url": "https://github.com/OCA/cim.git",
-      "description": "cim"
-    },
-    "commission": {
-      "url": "https://github.com/OCA/commission.git",
-      "description": "Commissions"
-    },
-    "community-data-files": {
-      "url": "https://github.com/OCA/community-data-files.git",
-      "description": "Module OCA"
-    },
-    "connector": {
-      "url": "https://github.com/OCA/connector.git",
-      "description": "Connecteurs génériques"
-    },
-    "connector-accountedge": {
-      "url": "https://github.com/OCA/connector-accountedge.git",
-      "description": "Odoo modules to connect with Account Edge (aka MyOB)"
-    },
-    "connector-cmis": {
-      "url": "https://github.com/OCA/connector-cmis.git",
-      "description": "CMIS Connector"
-    },
-    "connector-ecommerce": {
-      "url": "https://github.com/OCA/connector-ecommerce.git",
-      "description": "Connecteurs e-commerce"
-    },
-    "connector-infor": {
-      "url": "https://github.com/OCA/connector-infor.git",
-      "description": "Odoo modules to integrate with Infor"
-    },
-    "connector-interfaces": {
-      "url": "https://github.com/OCA/connector-interfaces.git",
-      "description": "Interfaces de connecteurs"
-    },
-    "connector-jira": {
-      "url": "https://github.com/OCA/connector-jira.git",
-      "description": "Module OCA"
-    },
-    "connector-lengow": {
-      "url": "https://github.com/OCA/connector-lengow.git",
-      "description": "Connecteur Lengow"
-    },
-    "connector-lims": {
-      "url": "https://github.com/OCA/connector-lims.git",
-      "description": "Module OCA"
-    },
-    "connector-magento": {
-      "url": "https://github.com/OCA/connector-magento.git",
-      "description": "Connecteur Magento"
-    },
-    "connector-magento-php-extension": {
-      "url": "https://github.com/OCA/connector-magento-php-extension.git",
-      "description": "Module OCA"
-    },
-    "connector-odoo2odoo": {
-      "url": "https://github.com/OCA/connector-odoo2odoo.git",
-      "description": "connector-odoo2odoo. Intercompany process, based on odoo-connector"
-    },
-    "connector-prestashop": {
-      "url": "https://github.com/OCA/connector-prestashop.git",
-      "description": "Connecteur PrestaShop"
-    },
-    "connector-redmine": {
-      "url": "https://github.com/OCA/connector-redmine.git",
-      "description": "Connector Redmine (http://redmine.org)"
-    },
-    "connector-sage": {
-      "url": "https://github.com/OCA/connector-sage.git",
-      "description": "Connector with Sage"
-    },
-    "connector-salesforce": {
-      "url": "https://github.com/OCA/connector-salesforce.git",
-      "description": "Connect Salesforce with Odoo"
-    },
-    "connector-spscommerce": {
-      "url": "https://github.com/OCA/connector-spscommerce.git",
-      "description": "Connector SPS Commerce"
-    },
-    "connector-telephony": {
-      "url": "https://github.com/OCA/connector-telephony.git",
-      "description": "Odoo modules for telephony integration"
-    },
-    "connector-woocommerce": {
-      "url": "https://github.com/OCA/connector-woocommerce.git",
-      "description": "Connecteur WooCommerce"
-    },
-    "contract": {
-      "url": "https://github.com/OCA/contract.git",
-      "description": "Module OCA"
-    },
-    "cooperative": {
-      "url": "https://github.com/OCA/cooperative.git",
-      "description": "Module OCA"
-    },
-    "credit-control": {
-      "url": "https://github.com/OCA/credit-control.git",
-      "description": "Odoo modules for the customer credit control"
-    },
-    "crm": {
-      "url": "https://github.com/OCA/crm.git",
-      "description": "Gestion de la relation client (CRM)"
-    },
-    "crowdfunding": {
-      "url": "https://github.com/OCA/crowdfunding.git",
-      "description": "crowdfunding"
-    },
-    "currency": {
-      "url": "https://github.com/OCA/currency.git",
-      "description": "Devises et changes"
-    },
-    "data-protection": {
-      "url": "https://github.com/OCA/data-protection.git",
-      "description": "Protection des données (RGPD)"
-    },
-    "ddmrp": {
-      "url": "https://github.com/OCA/ddmrp.git",
-      "description": "Demand Driven MRP"
-    },
-    "delivery-carrier": {
-      "url": "https://github.com/OCA/delivery-carrier.git",
-      "description": "Transporteurs"
-    },
-    "department": {
-      "url": "https://github.com/OCA/department.git",
-      "description": "[DEPRECATED since 9.0] Odoo Department segregation and management"
-    },
-    "dms": {
-      "url": "https://github.com/OCA/dms.git",
-      "description": "Gestion documentaire (DMS)"
-    },
-    "donation": {
-      "url": "https://github.com/OCA/donation.git",
-      "description": "Dons et fundraising"
-    },
-    "dotnet": {
-      "url": "https://github.com/OCA/dotnet.git",
-      "description": "This repository holds all addons written in dotnet"
-    },
-    "e-commerce": {
-      "url": "https://github.com/OCA/e-commerce.git",
-      "description": "Commerce électronique"
-    },
-    "e-learning": {
-      "url": "https://github.com/OCA/e-learning.git",
-      "description": "e-learning"
-    },
-    "edi": {
-      "url": "https://github.com/OCA/edi.git",
-      "description": "Échange de données informatisé (EDI)"
-    },
-    "edi-framework": {
-      "url": "https://github.com/OCA/edi-framework.git",
-      "description": "Module OCA"
-    },
-    "event": {
-      "url": "https://github.com/OCA/event.git",
-      "description": "Gestion d'événements"
-    },
-    "field-service": {
-      "url": "https://github.com/OCA/field-service.git",
-      "description": "Service après-vente"
-    },
-    "fleet": {
-      "url": "https://github.com/OCA/fleet.git",
-      "description": "Odoo fleet management modules"
-    },
-    "geospatial": {
-      "url": "https://github.com/OCA/geospatial.git",
-      "description": "Géolocalisation et GIS"
-    },
-    "helpdesk": {
-      "url": "https://github.com/OCA/helpdesk.git",
-      "description": "Service d'assistance"
-    },
-    "hr": {
-      "url": "https://github.com/OCA/hr.git",
-      "description": "Ressources humaines"
-    },
-    "hr-attendance": {
-      "url": "https://github.com/OCA/hr-attendance.git",
-      "description": "Pointage et présences"
-    },
-    "hr-expense": {
-      "url": "https://github.com/OCA/hr-expense.git",
-      "description": "Notes de frais"
-    },
-    "hr-holidays": {
-      "url": "https://github.com/OCA/hr-holidays.git",
-      "description": "Congés et absences"
-    },
-    "infrastructure": {
-      "url": "https://github.com/OCA/infrastructure.git",
-      "description": "Odoo modules related to the management of Domain Name Server services within network infrastructure"
-    },
-    "interface-github": {
-      "url": "https://github.com/OCA/interface-github.git",
-      "description": "Tools to interact with github from Odoo"
-    },
-    "intrastat-extrastat": {
-      "url": "https://github.com/OCA/intrastat-extrastat.git",
-      "description": "Module OCA"
-    },
-    "iot": {
-      "url": "https://github.com/OCA/iot.git",
-      "description": "Internet des objets (IoT)"
-    },
-    "knowledge": {
-      "url": "https://github.com/OCA/knowledge.git",
-      "description": "Gestion des connaissances"
-    },
-    "l10n-argentina": {
-      "url": "https://github.com/OCA/l10n-argentina.git",
-      "description": "Localisation Argentine"
-    },
-    "l10n-austria": {
-      "url": "https://github.com/OCA/l10n-austria.git",
-      "description": "Odoo Austria Localization"
-    },
-    "l10n-belarus": {
-      "url": "https://github.com/OCA/l10n-belarus.git",
-      "description": "Module OCA"
-    },
-    "l10n-belgium": {
-      "url": "https://github.com/OCA/l10n-belgium.git",
-      "description": "Module OCA"
-    },
-    "l10n-brazil": {
-      "url": "https://github.com/OCA/l10n-brazil.git",
-      "description": "Localisation Brésil"
-    },
-    "l10n-bulgaria": {
-      "url": "https://github.com/OCA/l10n-bulgaria.git",
-      "description": "l10n-bulgaria"
-    },
-    "l10n-cambodia": {
-      "url": "https://github.com/OCA/l10n-cambodia.git",
-      "description": "Odoo Cambodian Localization"
-    },
-    "l10n-canada": {
-      "url": "https://github.com/OCA/l10n-canada.git",
-      "description": "Odoo modules for Canada"
-    },
-    "l10n-chile": {
-      "url": "https://github.com/OCA/l10n-chile.git",
-      "description": "Localisation Chili"
-    },
-    "l10n-china": {
-      "url": "https://github.com/OCA/l10n-china.git",
-      "description": "Chinese localization of Odoo"
-    },
-    "l10n-colombia": {
-      "url": "https://github.com/OCA/l10n-colombia.git",
-      "description": "Localisation Colombie"
-    },
-    "l10n-costa-rica": {
-      "url": "https://github.com/OCA/l10n-costa-rica.git",
-      "description": "Odoo modules for Costa-Rica"
-    },
-    "l10n-croatia": {
-      "url": "https://github.com/OCA/l10n-croatia.git",
-      "description": "Odoo Croatian Localization"
-    },
-    "l10n-ecuador": {
-      "url": "https://github.com/OCA/l10n-ecuador.git",
-      "description": "Odoo Localization for Ecuador"
-    },
-    "l10n-estonia": {
-      "url": "https://github.com/OCA/l10n-estonia.git",
-      "description": "Module OCA"
-    },
-    "l10n-ethiopia": {
-      "url": "https://github.com/OCA/l10n-ethiopia.git",
-      "description": "Ethiopian Localization Project"
-    },
-    "l10n-finland": {
-      "url": "https://github.com/OCA/l10n-finland.git",
-      "description": "Module OCA"
-    },
-    "l10n-france": {
-      "url": "https://github.com/OCA/l10n-france.git",
-      "description": "Localisation France"
-    },
-    "l10n-germany": {
-      "url": "https://github.com/OCA/l10n-germany.git",
-      "description": "Localisation Allemagne"
-    },
-    "l10n-greece": {
-      "url": "https://github.com/OCA/l10n-greece.git",
-      "description": "Odoo Greek Localization"
-    },
-    "l10n-india": {
-      "url": "https://github.com/OCA/l10n-india.git",
-      "description": "Odoo Localization for India"
-    },
-    "l10n-indonesia": {
-      "url": "https://github.com/OCA/l10n-indonesia.git",
-      "description": "Indonesian Localization Project"
-    },
-    "l10n-iran": {
-      "url": "https://github.com/OCA/l10n-iran.git",
-      "description": "Odoo Localization for Iran"
-    },
-    "l10n-ireland": {
-      "url": "https://github.com/OCA/l10n-ireland.git",
-      "description": "Odoo Localization for Ireland"
-    },
-    "l10n-italy": {
-      "url": "https://github.com/OCA/l10n-italy.git",
-      "description": "Localisation Italie"
-    },
-    "l10n-japan": {
-      "url": "https://github.com/OCA/l10n-japan.git",
-      "description": "Module OCA"
-    },
-    "l10n-luxemburg": {
-      "url": "https://github.com/OCA/l10n-luxemburg.git",
-      "description": "Module OCA"
-    },
-    "l10n-macedonia": {
-      "url": "https://github.com/OCA/l10n-macedonia.git",
-      "description": "Odoo Macedonian localization"
-    },
-    "l10n-mexico": {
-      "url": "https://github.com/OCA/l10n-mexico.git",
-      "description": "Mexican Localization."
-    },
-    "l10n-morocco": {
-      "url": "https://github.com/OCA/l10n-morocco.git",
-      "description": "Moroccan Localization"
-    },
-    "l10n-netherlands": {
-      "url": "https://github.com/OCA/l10n-netherlands.git",
-      "description": "Odoo Dutch Localization"
-    },
-    "l10n-norway": {
-      "url": "https://github.com/OCA/l10n-norway.git",
-      "description": "The Norwegian localization for Odoo"
-    },
-    "l10n-peru": {
-      "url": "https://github.com/OCA/l10n-peru.git",
-      "description": "Peruvian Localization"
-    },
-    "l10n-poland": {
-      "url": "https://github.com/OCA/l10n-poland.git",
-      "description": "Odoo Polish Localization"
-    },
-    "l10n-portugal": {
-      "url": "https://github.com/OCA/l10n-portugal.git",
-      "description": "Odoo Portuguese localization"
-    },
-    "l10n-romania": {
-      "url": "https://github.com/OCA/l10n-romania.git",
-      "description": "Romanian Localization for Odoo"
-    },
-    "l10n-russia": {
-      "url": "https://github.com/OCA/l10n-russia.git",
-      "description": "Module OCA"
-    },
-    "l10n-slovenia": {
-      "url": "https://github.com/OCA/l10n-slovenia.git",
-      "description": "Slovenian Localization Project"
-    },
-    "l10n-spain": {
-      "url": "https://github.com/OCA/l10n-spain.git",
-      "description": "Localisation Espagne"
-    },
-    "l10n-switzerland": {
-      "url": "https://github.com/OCA/l10n-switzerland.git",
-      "description": "Localisation Suisse"
-    },
-    "l10n-taiwan": {
-      "url": "https://github.com/OCA/l10n-taiwan.git",
-      "description": "Taiwanese localization"
-    },
-    "l10n-thailand": {
-      "url": "https://github.com/OCA/l10n-thailand.git",
-      "description": "Thai localization"
-    },
-    "l10n-turkey": {
-      "url": "https://github.com/OCA/l10n-turkey.git",
-      "description": "Turkish Localization Project"
-    },
-    "l10n-ukraine": {
-      "url": "https://github.com/OCA/l10n-ukraine.git",
-      "description": "Ukrainian localization"
-    },
-    "l10n-united-kingdom": {
-      "url": "https://github.com/OCA/l10n-united-kingdom.git",
-      "description": "Odoo Localization for United Kingdom"
-    },
-    "l10n-uruguay": {
-      "url": "https://github.com/OCA/l10n-uruguay.git",
-      "description": "Odoo Localization for Uruguay"
-    },
-    "l10n-usa": {
-      "url": "https://github.com/OCA/l10n-usa.git",
-      "description": "US Localization of Odoo"
-    },
-    "l10n-venezuela": {
-      "url": "https://github.com/OCA/l10n-venezuela.git",
-      "description": "Odoo modules for Venezuela"
-    },
-    "l10n-vietnam": {
-      "url": "https://github.com/OCA/l10n-vietnam.git",
-      "description": "Module OCA"
-    },
-    "mail": {
-      "url": "https://github.com/OCA/mail.git",
-      "description": "mail"
-    },
-    "maintenance": {
-      "url": "https://github.com/OCA/maintenance.git",
-      "description": "Odoo modules for businesses that implies maintenance tasks"
-    },
-    "management-system": {
-      "url": "https://github.com/OCA/management-system.git",
-      "description": "Odoo for Management Systems (ISO, IEC, BS)"
-    },
-    "manufacture": {
-      "url": "https://github.com/OCA/manufacture.git",
-      "description": "Manufacturing/MRP"
-    },
-    "manufacture-reporting": {
-      "url": "https://github.com/OCA/manufacture-reporting.git",
-      "description": "Module OCA"
-    },
-    "margin-analysis": {
-      "url": "https://github.com/OCA/margin-analysis.git",
-      "description": "Analyse de marge"
-    },
-    "mass-mailing": {
-      "url": "https://github.com/OCA/mass-mailing.git",
-      "description": "mass-mailing"
-    },
-    "mirrors-flake8": {
-      "url": "https://github.com/OCA/mirrors-flake8.git",
-      "description": "Module OCA"
-    },
-    "mis-builder": {
-      "url": "https://github.com/OCA/mis-builder.git",
-      "description": "Générateur de rapports MIS"
-    },
-    "mis-builder-contrib": {
-      "url": "https://github.com/OCA/mis-builder-contrib.git",
-      "description": "Modules that provide additional features on top of MIS Builder. A kind of incubator for MIS Builder features that may land in the core in the future."
-    },
-    "multi-company": {
-      "url": "https://github.com/OCA/multi-company.git",
-      "description": "Multi-sociétés"
-    },
-    "oca-ci": {
-      "url": "https://github.com/OCA/oca-ci.git",
-      "description": "Container image to run OCA CI tests"
-    },
-    "oca-weblate-deployment": {
-      "url": "https://github.com/OCA/oca-weblate-deployment.git",
-      "description": "Module OCA"
-    },
-    "oca.recipe.odoo": {
-      "url": "https://github.com/OCA/oca.recipe.odoo.git",
-      "description": "Module OCA"
-    },
-    "operating-unit": {
-      "url": "https://github.com/OCA/operating-unit.git",
-      "description": "Unités opérationnelles"
-    },
-    "partner-contact": {
-      "url": "https://github.com/OCA/partner-contact.git",
-      "description": "Gestion des partenaires et contacts"
-    },
-    "payroll": {
-      "url": "https://github.com/OCA/payroll.git",
-      "description": "Odoo modules for payroll management"
-    },
-    "pms": {
-      "url": "https://github.com/OCA/pms.git",
-      "description": "Property Management System on Odoo"
-    },
-    "pos": {
-      "url": "https://github.com/OCA/pos.git",
-      "description": "Point de vente (POS)"
-    },
-    "product-attribute": {
-      "url": "https://github.com/OCA/product-attribute.git",
-      "description": "Attributs produits"
-    },
-    "product-configurator": {
-      "url": "https://github.com/OCA/product-configurator.git",
-      "description": "Configurateur de produits"
-    },
-    "product-kitting": {
-      "url": "https://github.com/OCA/product-kitting.git",
-      "description": "Odoo Kitting Addons"
-    },
-    "product-pack": {
-      "url": "https://github.com/OCA/product-pack.git",
-      "description": "Packs de produits"
-    },
-    "product-variant": {
-      "url": "https://github.com/OCA/product-variant.git",
-      "description": "Variantes de produits"
-    },
-    "program": {
-      "url": "https://github.com/OCA/program.git",
-      "description": "Module OCA"
-    },
-    "project": {
-      "url": "https://github.com/OCA/project.git",
-      "description": "Gestion de projet"
-    },
-    "project-agile": {
-      "url": "https://github.com/OCA/project-agile.git",
-      "description": "Gestion de projet agile"
-    },
-    "project-reporting": {
-      "url": "https://github.com/OCA/project-reporting.git",
-      "description": "Module OCA"
-    },
-    "purchase-reporting": {
-      "url": "https://github.com/OCA/purchase-reporting.git",
-      "description": "Module OCA"
-    },
-    "purchase-workflow": {
-      "url": "https://github.com/OCA/purchase-workflow.git",
-      "description": "Workflow d'achat"
-    },
-    "pwa-builder": {
-      "url": "https://github.com/OCA/pwa-builder.git",
-      "description": "Module OCA"
-    },
-    "queue": {
-      "url": "https://github.com/OCA/queue.git",
-      "description": "Files d'attente"
-    },
-    "repair": {
-      "url": "https://github.com/OCA/repair.git",
-      "description": "Module OCA"
-    },
-    "repo-maintainer": {
-      "url": "https://github.com/OCA/repo-maintainer.git",
-      "description": "Module OCA"
-    },
-    "repo-maintainer-conf": {
-      "url": "https://github.com/OCA/repo-maintainer-conf.git",
-      "description": "Module OCA"
-    },
-    "report-print-send": {
-      "url": "https://github.com/OCA/report-print-send.git",
-      "description": "Impression et envoi de rapports"
-    },
-    "reporting-engine": {
-      "url": "https://github.com/OCA/reporting-engine.git",
-      "description": "Moteur de rapports"
-    },
-    "resource": {
-      "url": "https://github.com/OCA/resource.git",
-      "description": "resource"
-    },
-    "rest-api": {
-      "url": "https://github.com/OCA/rest-api.git",
-      "description": "Module OCA"
-    },
-    "rest-framework": {
-      "url": "https://github.com/OCA/rest-framework.git",
-      "description": "Framework REST API"
-    },
-    "rma": {
-      "url": "https://github.com/OCA/rma.git",
-      "description": "Odoo for Return Merchandise Authorization (RMA)"
-    },
-    "role-policy": {
-      "url": "https://github.com/OCA/role-policy.git",
-      "description": "Module OCA"
-    },
-    "sale-blanket": {
-      "url": "https://github.com/OCA/sale-blanket.git",
-      "description": "sale-blanket"
-    },
-    "sale-channel": {
-      "url": "https://github.com/OCA/sale-channel.git",
-      "description": "Module OCA"
-    },
-    "sale-financial": {
-      "url": "https://github.com/OCA/sale-financial.git",
-      "description": "Odoo Sale and Financial related Addons"
-    },
-    "sale-prebook": {
-      "url": "https://github.com/OCA/sale-prebook.git",
-      "description": "sale-prebook"
-    },
-    "sale-promotion": {
-      "url": "https://github.com/OCA/sale-promotion.git",
-      "description": "Module OCA"
-    },
-    "sale-reporting": {
-      "url": "https://github.com/OCA/sale-reporting.git",
-      "description": "Module OCA"
-    },
-    "sale-workflow": {
-      "url": "https://github.com/OCA/sale-workflow.git",
-      "description": "Workflow de vente"
-    },
-    "search-engine": {
-      "url": "https://github.com/OCA/search-engine.git",
-      "description": "Module OCA"
-    },
-    "server-auth": {
-      "url": "https://github.com/OCA/server-auth.git",
-      "description": "Authentification serveur"
-    },
-    "server-backend": {
-      "url": "https://github.com/OCA/server-backend.git",
-      "description": "Backend serveur"
-    },
-    "server-brand": {
-      "url": "https://github.com/OCA/server-brand.git",
-      "description": "Marque serveur"
-    },
-    "server-env": {
-      "url": "https://github.com/OCA/server-env.git",
-      "description": "Environnement serveur"
-    },
-    "server-ux": {
-      "url": "https://github.com/OCA/server-ux.git",
-      "description": "UX serveur"
-    },
-    "shift-planning": {
-      "url": "https://github.com/OCA/shift-planning.git",
-      "description": "Module OCA"
-    },
-    "shopfloor-app": {
-      "url": "https://github.com/OCA/shopfloor-app.git",
-      "description": "shopfloor-app"
-    },
-    "sign": {
-      "url": "https://github.com/OCA/sign.git",
-      "description": "Module OCA"
-    },
-    "social": {
-      "url": "https://github.com/OCA/social.git",
-      "description": "Réseaux sociaux"
-    },
-    "spreadsheet": {
-      "url": "https://github.com/OCA/spreadsheet.git",
-      "description": "Module OCA"
-    },
-    "stock-logistics-availability": {
-      "url": "https://github.com/OCA/stock-logistics-availability.git",
-      "description": "This repository contains modules to provide more information about product stock availability in terms of quantities (immediately usable, potential, unreserved ones, ...)."
-    },
-    "stock-logistics-barcode": {
-      "url": "https://github.com/OCA/stock-logistics-barcode.git",
-      "description": "Codes-barres logistique"
-    },
-    "stock-logistics-interfaces": {
-      "url": "https://github.com/OCA/stock-logistics-interfaces.git",
-      "description": "stock-logistics-interfaces"
-    },
-    "stock-logistics-orderpoint": {
-      "url": "https://github.com/OCA/stock-logistics-orderpoint.git",
-      "description": "This repository contains modules to extend reordering rules (available on warehouses locations) functionalities."
-    },
-    "stock-logistics-putaway": {
-      "url": "https://github.com/OCA/stock-logistics-putaway.git",
-      "description": "stock-logistics-putaway"
-    },
-    "stock-logistics-release-channel": {
-      "url": "https://github.com/OCA/stock-logistics-release-channel.git",
-      "description": "stock-logistics-release-channel"
-    },
-    "stock-logistics-reporting": {
-      "url": "https://github.com/OCA/stock-logistics-reporting.git",
-      "description": "Rapports logistique"
-    },
-    "stock-logistics-request": {
-      "url": "https://github.com/OCA/stock-logistics-request.git",
-      "description": "This repository contains modules to provide another way of creating stock movements. Provided as a dedicated application, users will be able to create their stock needs by product and location."
-    },
-    "stock-logistics-reservation": {
-      "url": "https://github.com/OCA/stock-logistics-reservation.git",
-      "description": "stock-logistics-reservation"
-    },
-    "stock-logistics-shopfloor": {
-      "url": "https://github.com/OCA/stock-logistics-shopfloor.git",
-      "description": "stock-logistics-shopfloor"
-    },
-    "stock-logistics-tracking": {
-      "url": "https://github.com/OCA/stock-logistics-tracking.git",
-      "description": "Traçabilité logistique"
-    },
-    "stock-logistics-transport": {
-      "url": "https://github.com/OCA/stock-logistics-transport.git",
-      "description": "Transport logistique"
-    },
-    "stock-logistics-warehouse": {
-      "url": "https://github.com/OCA/stock-logistics-warehouse.git",
-      "description": "Entrepôt logistique"
-    },
-    "stock-logistics-workflow": {
-      "url": "https://github.com/OCA/stock-logistics-workflow.git",
-      "description": "Workflow logistique"
-    },
-    "stock-weighing": {
-      "url": "https://github.com/OCA/stock-weighing.git",
-      "description": "stock-weighing"
-    },
-    "storage": {
-      "url": "https://github.com/OCA/storage.git",
-      "description": "Module OCA"
-    },
-    "survey": {
-      "url": "https://github.com/OCA/survey.git",
-      "description": "Survey addons"
-    },
-    "timesheet": {
-      "url": "https://github.com/OCA/timesheet.git",
-      "description": "Feuilles de temps"
-    },
-    "vertical-abbey": {
-      "url": "https://github.com/OCA/vertical-abbey.git",
-      "description": "Module OCA"
-    },
-    "vertical-agriculture": {
-      "url": "https://github.com/OCA/vertical-agriculture.git",
-      "description": "Agriculture verticale"
-    },
-    "vertical-association": {
-      "url": "https://github.com/OCA/vertical-association.git",
-      "description": "Associations"
-    },
-    "vertical-community": {
-      "url": "https://github.com/OCA/vertical-community.git",
-      "description": "Odoo for Communities Verticalization"
-    },
-    "vertical-construction": {
-      "url": "https://github.com/OCA/vertical-construction.git",
-      "description": "Odoo for Construction Company"
-    },
-    "vertical-cooperative-supermarket": {
-      "url": "https://github.com/OCA/vertical-cooperative-supermarket.git",
-      "description": "Module OCA"
-    },
-    "vertical-edition": {
-      "url": "https://github.com/OCA/vertical-edition.git",
-      "description": "Module OCA"
-    },
-    "vertical-education": {
-      "url": "https://github.com/OCA/vertical-education.git",
-      "description": "Éducation"
-    },
-    "vertical-hotel": {
-      "url": "https://github.com/OCA/vertical-hotel.git",
-      "description": "Hôtellerie"
-    },
-    "vertical-isp": {
-      "url": "https://github.com/OCA/vertical-isp.git",
-      "description": "Fournisseurs d'accès Internet"
-    },
-    "vertical-medical": {
-      "url": "https://github.com/OCA/vertical-medical.git",
-      "description": "Médical"
-    },
-    "vertical-ngo": {
-      "url": "https://github.com/OCA/vertical-ngo.git",
-      "description": "ONG"
-    },
-    "vertical-realestate": {
-      "url": "https://github.com/OCA/vertical-realestate.git",
-      "description": "Immobilier"
-    },
-    "vertical-rental": {
-      "url": "https://github.com/OCA/vertical-rental.git",
-      "description": "Module OCA"
-    },
-    "vertical-travel": {
-      "url": "https://github.com/OCA/vertical-travel.git",
-      "description": "Voyage et tourisme"
-    },
-    "wallet": {
-      "url": "https://github.com/OCA/wallet.git",
-      "description": "Module OCA"
-    },
-    "web": {
-      "url": "https://github.com/OCA/web.git",
-      "description": "Interface web"
-    },
-    "web-api": {
-      "url": "https://github.com/OCA/web-api.git",
-      "description": "Module OCA"
-    },
-    "web-api-contrib": {
-      "url": "https://github.com/OCA/web-api-contrib.git",
-      "description": "web-api-contrib"
-    },
-    "website": {
-      "url": "https://github.com/OCA/website.git",
-      "description": "Site web"
-    },
-    "website-cms": {
-      "url": "https://github.com/OCA/website-cms.git",
-      "description": "CMS pour site web"
-    },
-    "website-themes": {
-      "url": "https://github.com/OCA/website-themes.git",
-      "description": "Website themes for Odoo"
-    },
-    "wms": {
-      "url": "https://github.com/OCA/wms.git",
-      "description": "Warehouse Management System for advance logistic with Odoo"
-    }
-  },
   "client_templates": {
     "basic": {
       "description": "Configuration de base",
@@ -969,6 +63,1346 @@
         "hr",
         "account-financial-tools"
       ]
+    }
+  },
+  "oca_repositories": {
+    "OpenUpgrade": {
+      "url": "https://github.com/OCA/OpenUpgrade.git",
+      "description": "",
+      "stars": 817,
+      "last_updated": "2025-06-30T15:53:58Z"
+    },
+    "account-analytic": {
+      "url": "https://github.com/OCA/account-analytic.git",
+      "description": "Comptabilité analytique",
+      "stars": 108,
+      "last_updated": "2025-07-07T09:27:32Z"
+    },
+    "account-closing": {
+      "url": "https://github.com/OCA/account-closing.git",
+      "description": "",
+      "stars": 66,
+      "last_updated": "2025-06-06T12:46:30Z"
+    },
+    "account-financial-reporting": {
+      "url": "https://github.com/OCA/account-financial-reporting.git",
+      "description": "",
+      "stars": 254,
+      "last_updated": "2025-07-04T16:31:38Z"
+    },
+    "account-fiscal-rule": {
+      "url": "https://github.com/OCA/account-fiscal-rule.git",
+      "description": "",
+      "stars": 67,
+      "last_updated": "2025-06-23T11:33:10Z"
+    },
+    "account-invoice-reporting": {
+      "url": "https://github.com/OCA/account-invoice-reporting.git",
+      "description": "",
+      "stars": 80,
+      "last_updated": "2025-07-02T06:17:19Z"
+    },
+    "account-invoicing": {
+      "url": "https://github.com/OCA/account-invoicing.git",
+      "description": "",
+      "stars": 267,
+      "last_updated": "2025-07-03T09:36:35Z"
+    },
+    "account-payment": {
+      "url": "https://github.com/OCA/account-payment.git",
+      "description": "",
+      "stars": 95,
+      "last_updated": "2025-06-24T17:52:29Z"
+    },
+    "account-reconcile": {
+      "url": "https://github.com/OCA/account-reconcile.git",
+      "description": "",
+      "stars": 163,
+      "last_updated": "2025-06-30T12:43:33Z"
+    },
+    "agreement": {
+      "url": "https://github.com/OCA/agreement.git",
+      "description": "",
+      "stars": 16,
+      "last_updated": "2025-06-04T02:38:39Z"
+    },
+    "ai": {
+      "url": "https://github.com/OCA/ai.git",
+      "description": "IA",
+      "stars": 7,
+      "last_updated": "2025-07-04T11:29:26Z"
+    },
+    "ansible-odoo": {
+      "url": "https://github.com/OCA/ansible-odoo.git",
+      "description": "",
+      "stars": 108,
+      "last_updated": "2025-07-03T08:59:22Z"
+    },
+    "apps-store": {
+      "url": "https://github.com/OCA/apps-store.git",
+      "description": "",
+      "stars": 32,
+      "last_updated": "2025-04-04T03:32:49Z"
+    },
+    "automation": {
+      "url": "https://github.com/OCA/automation.git",
+      "description": "",
+      "stars": 19,
+      "last_updated": "2025-06-02T22:26:51Z"
+    },
+    "bank-payment": {
+      "url": "https://github.com/OCA/bank-payment.git",
+      "description": "",
+      "stars": 215,
+      "last_updated": "2025-07-04T17:15:27Z"
+    },
+    "bank-payment-alternative": {
+      "url": "https://github.com/OCA/bank-payment-alternative.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-07-08T08:14:21Z"
+    },
+    "bank-statement-import": {
+      "url": "https://github.com/OCA/bank-statement-import.git",
+      "description": "",
+      "stars": 178,
+      "last_updated": "2025-07-04T19:45:12Z"
+    },
+    "brand": {
+      "url": "https://github.com/OCA/brand.git",
+      "description": "",
+      "stars": 58,
+      "last_updated": "2025-06-19T14:32:22Z"
+    },
+    "business-requirement": {
+      "url": "https://github.com/OCA/business-requirement.git",
+      "description": "",
+      "stars": 69,
+      "last_updated": "2025-05-30T11:27:25Z"
+    },
+    "calendar": {
+      "url": "https://github.com/OCA/calendar.git",
+      "description": "",
+      "stars": 31,
+      "last_updated": "2025-07-01T13:26:03Z"
+    },
+    "cim": {
+      "url": "https://github.com/OCA/cim.git",
+      "description": "",
+      "stars": 0,
+      "last_updated": "2025-06-26T17:54:34Z"
+    },
+    "commission": {
+      "url": "https://github.com/OCA/commission.git",
+      "description": "",
+      "stars": 133,
+      "last_updated": "2025-06-30T10:27:14Z"
+    },
+    "community-data-files": {
+      "url": "https://github.com/OCA/community-data-files.git",
+      "description": "",
+      "stars": 41,
+      "last_updated": "2025-06-15T11:05:03Z"
+    },
+    "connector": {
+      "url": "https://github.com/OCA/connector.git",
+      "description": "",
+      "stars": 350,
+      "last_updated": "2025-06-24T00:34:59Z"
+    },
+    "connector-accountedge": {
+      "url": "https://github.com/OCA/connector-accountedge.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2025-04-04T03:32:50Z"
+    },
+    "connector-cmis": {
+      "url": "https://github.com/OCA/connector-cmis.git",
+      "description": "",
+      "stars": 18,
+      "last_updated": "2025-06-08T12:29:33Z"
+    },
+    "connector-ecommerce": {
+      "url": "https://github.com/OCA/connector-ecommerce.git",
+      "description": "",
+      "stars": 49,
+      "last_updated": "2025-04-04T03:32:50Z"
+    },
+    "connector-infor": {
+      "url": "https://github.com/OCA/connector-infor.git",
+      "description": "",
+      "stars": 4,
+      "last_updated": "2025-04-04T03:32:50Z"
+    },
+    "connector-interfaces": {
+      "url": "https://github.com/OCA/connector-interfaces.git",
+      "description": "",
+      "stars": 65,
+      "last_updated": "2025-06-23T12:12:50Z"
+    },
+    "connector-jira": {
+      "url": "https://github.com/OCA/connector-jira.git",
+      "description": "",
+      "stars": 22,
+      "last_updated": "2025-04-04T03:32:50Z"
+    },
+    "connector-lengow": {
+      "url": "https://github.com/OCA/connector-lengow.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:32:50Z"
+    },
+    "connector-lims": {
+      "url": "https://github.com/OCA/connector-lims.git",
+      "description": "",
+      "stars": 7,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-magento": {
+      "url": "https://github.com/OCA/connector-magento.git",
+      "description": "",
+      "stars": 105,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-magento-php-extension": {
+      "url": "https://github.com/OCA/connector-magento-php-extension.git",
+      "description": "",
+      "stars": 7,
+      "last_updated": "2024-10-29T23:18:42Z"
+    },
+    "connector-odoo2odoo": {
+      "url": "https://github.com/OCA/connector-odoo2odoo.git",
+      "description": "",
+      "stars": 27,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-prestashop": {
+      "url": "https://github.com/OCA/connector-prestashop.git",
+      "description": "",
+      "stars": 94,
+      "last_updated": "2025-05-29T16:29:14Z"
+    },
+    "connector-redmine": {
+      "url": "https://github.com/OCA/connector-redmine.git",
+      "description": "",
+      "stars": 11,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-sage": {
+      "url": "https://github.com/OCA/connector-sage.git",
+      "description": "",
+      "stars": 13,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-salesforce": {
+      "url": "https://github.com/OCA/connector-salesforce.git",
+      "description": "",
+      "stars": 10,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-spscommerce": {
+      "url": "https://github.com/OCA/connector-spscommerce.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:32:51Z"
+    },
+    "connector-telephony": {
+      "url": "https://github.com/OCA/connector-telephony.git",
+      "description": "",
+      "stars": 162,
+      "last_updated": "2025-06-14T06:31:20Z"
+    },
+    "connector-woocommerce": {
+      "url": "https://github.com/OCA/connector-woocommerce.git",
+      "description": "",
+      "stars": 57,
+      "last_updated": "2025-06-23T19:39:39Z"
+    },
+    "contract": {
+      "url": "https://github.com/OCA/contract.git",
+      "description": "Module OCA",
+      "stars": 186,
+      "last_updated": "2025-07-07T09:27:53Z"
+    },
+    "cooperative": {
+      "url": "https://github.com/OCA/cooperative.git",
+      "description": "Module OCA",
+      "stars": 14,
+      "last_updated": "2025-05-30T15:24:59Z"
+    },
+    "credit-control": {
+      "url": "https://github.com/OCA/credit-control.git",
+      "description": "",
+      "stars": 88,
+      "last_updated": "2025-06-30T17:34:22Z"
+    },
+    "crm": {
+      "url": "https://github.com/OCA/crm.git",
+      "description": "",
+      "stars": 179,
+      "last_updated": "2025-07-04T08:07:43Z"
+    },
+    "crowdfunding": {
+      "url": "https://github.com/OCA/crowdfunding.git",
+      "description": "",
+      "stars": 0,
+      "last_updated": "2025-05-07T07:57:11Z"
+    },
+    "currency": {
+      "url": "https://github.com/OCA/currency.git",
+      "description": "",
+      "stars": 73,
+      "last_updated": "2025-06-10T12:26:51Z"
+    },
+    "data-protection": {
+      "url": "https://github.com/OCA/data-protection.git",
+      "description": "",
+      "stars": 32,
+      "last_updated": "2025-07-02T14:04:31Z"
+    },
+    "ddmrp": {
+      "url": "https://github.com/OCA/ddmrp.git",
+      "description": "",
+      "stars": 93,
+      "last_updated": "2025-06-25T09:27:24Z"
+    },
+    "delivery-carrier": {
+      "url": "https://github.com/OCA/delivery-carrier.git",
+      "description": "",
+      "stars": 122,
+      "last_updated": "2025-07-07T09:27:42Z"
+    },
+    "department": {
+      "url": "https://github.com/OCA/department.git",
+      "description": "",
+      "stars": 14,
+      "last_updated": "2025-04-04T03:32:53Z"
+    },
+    "dms": {
+      "url": "https://github.com/OCA/dms.git",
+      "description": "",
+      "stars": 132,
+      "last_updated": "2025-07-03T06:27:55Z"
+    },
+    "donation": {
+      "url": "https://github.com/OCA/donation.git",
+      "description": "",
+      "stars": 22,
+      "last_updated": "2025-06-04T02:49:22Z"
+    },
+    "dotnet": {
+      "url": "https://github.com/OCA/dotnet.git",
+      "description": "",
+      "stars": 7,
+      "last_updated": "2025-04-04T03:32:54Z"
+    },
+    "e-commerce": {
+      "url": "https://github.com/OCA/e-commerce.git",
+      "description": "",
+      "stars": 182,
+      "last_updated": "2025-06-30T14:09:24Z"
+    },
+    "e-learning": {
+      "url": "https://github.com/OCA/e-learning.git",
+      "description": "",
+      "stars": 6,
+      "last_updated": "2025-05-20T09:28:30Z"
+    },
+    "edi": {
+      "url": "https://github.com/OCA/edi.git",
+      "description": "",
+      "stars": 127,
+      "last_updated": "2025-06-30T12:43:43Z"
+    },
+    "edi-framework": {
+      "url": "https://github.com/OCA/edi-framework.git",
+      "description": "",
+      "stars": 13,
+      "last_updated": "2025-06-20T10:27:59Z"
+    },
+    "event": {
+      "url": "https://github.com/OCA/event.git",
+      "description": "",
+      "stars": 70,
+      "last_updated": "2025-06-04T02:52:36Z"
+    },
+    "field-service": {
+      "url": "https://github.com/OCA/field-service.git",
+      "description": "",
+      "stars": 166,
+      "last_updated": "2025-06-25T03:16:42Z"
+    },
+    "fleet": {
+      "url": "https://github.com/OCA/fleet.git",
+      "description": "",
+      "stars": 38,
+      "last_updated": "2025-06-23T12:07:08Z"
+    },
+    "geospatial": {
+      "url": "https://github.com/OCA/geospatial.git",
+      "description": "",
+      "stars": 214,
+      "last_updated": "2025-07-07T16:38:09Z"
+    },
+    "helpdesk": {
+      "url": "https://github.com/OCA/helpdesk.git",
+      "description": "",
+      "stars": 170,
+      "last_updated": "2025-07-04T07:01:39Z"
+    },
+    "hr": {
+      "url": "https://github.com/OCA/hr.git",
+      "description": "",
+      "stars": 236,
+      "last_updated": "2025-07-02T17:02:36Z"
+    },
+    "hr-attendance": {
+      "url": "https://github.com/OCA/hr-attendance.git",
+      "description": "",
+      "stars": 59,
+      "last_updated": "2025-06-23T12:02:31Z"
+    },
+    "hr-expense": {
+      "url": "https://github.com/OCA/hr-expense.git",
+      "description": "",
+      "stars": 60,
+      "last_updated": "2025-06-10T18:58:29Z"
+    },
+    "hr-holidays": {
+      "url": "https://github.com/OCA/hr-holidays.git",
+      "description": "",
+      "stars": 44,
+      "last_updated": "2025-07-01T13:28:09Z"
+    },
+    "infrastructure": {
+      "url": "https://github.com/OCA/infrastructure.git",
+      "description": "",
+      "stars": 17,
+      "last_updated": "2025-04-04T03:32:55Z"
+    },
+    "interface-github": {
+      "url": "https://github.com/OCA/interface-github.git",
+      "description": "",
+      "stars": 49,
+      "last_updated": "2025-06-09T06:41:11Z"
+    },
+    "intrastat-extrastat": {
+      "url": "https://github.com/OCA/intrastat-extrastat.git",
+      "description": "",
+      "stars": 39,
+      "last_updated": "2025-07-07T09:27:21Z"
+    },
+    "iot": {
+      "url": "https://github.com/OCA/iot.git",
+      "description": "",
+      "stars": 66,
+      "last_updated": "2025-06-04T02:59:04Z"
+    },
+    "knowledge": {
+      "url": "https://github.com/OCA/knowledge.git",
+      "description": "",
+      "stars": 194,
+      "last_updated": "2025-07-04T05:50:18Z"
+    },
+    "l10n-argentina": {
+      "url": "https://github.com/OCA/l10n-argentina.git",
+      "description": "",
+      "stars": 28,
+      "last_updated": "2025-06-13T19:39:06Z"
+    },
+    "l10n-austria": {
+      "url": "https://github.com/OCA/l10n-austria.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:32:56Z"
+    },
+    "l10n-belarus": {
+      "url": "https://github.com/OCA/l10n-belarus.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:32:56Z"
+    },
+    "l10n-belgium": {
+      "url": "https://github.com/OCA/l10n-belgium.git",
+      "description": "",
+      "stars": 17,
+      "last_updated": "2025-06-04T03:00:23Z"
+    },
+    "l10n-brazil": {
+      "url": "https://github.com/OCA/l10n-brazil.git",
+      "description": "",
+      "stars": 285,
+      "last_updated": "2025-07-08T05:31:06Z"
+    },
+    "l10n-bulgaria": {
+      "url": "https://github.com/OCA/l10n-bulgaria.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:32:57Z"
+    },
+    "l10n-cambodia": {
+      "url": "https://github.com/OCA/l10n-cambodia.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:32:57Z"
+    },
+    "l10n-canada": {
+      "url": "https://github.com/OCA/l10n-canada.git",
+      "description": "",
+      "stars": 10,
+      "last_updated": "2025-04-04T03:32:57Z"
+    },
+    "l10n-chile": {
+      "url": "https://github.com/OCA/l10n-chile.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2025-06-04T03:01:55Z"
+    },
+    "l10n-china": {
+      "url": "https://github.com/OCA/l10n-china.git",
+      "description": "",
+      "stars": 37,
+      "last_updated": "2025-04-04T03:32:57Z"
+    },
+    "l10n-colombia": {
+      "url": "https://github.com/OCA/l10n-colombia.git",
+      "description": "",
+      "stars": 10,
+      "last_updated": "2025-06-17T00:41:36Z"
+    },
+    "l10n-costa-rica": {
+      "url": "https://github.com/OCA/l10n-costa-rica.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:32:57Z"
+    },
+    "l10n-croatia": {
+      "url": "https://github.com/OCA/l10n-croatia.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-06T17:00:32Z"
+    },
+    "l10n-ecuador": {
+      "url": "https://github.com/OCA/l10n-ecuador.git",
+      "description": "",
+      "stars": 18,
+      "last_updated": "2025-06-22T02:19:54Z"
+    },
+    "l10n-estonia": {
+      "url": "https://github.com/OCA/l10n-estonia.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:32:58Z"
+    },
+    "l10n-ethiopia": {
+      "url": "https://github.com/OCA/l10n-ethiopia.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:32:58Z"
+    },
+    "l10n-finland": {
+      "url": "https://github.com/OCA/l10n-finland.git",
+      "description": "",
+      "stars": 6,
+      "last_updated": "2025-06-30T09:45:39Z"
+    },
+    "l10n-france": {
+      "url": "https://github.com/OCA/l10n-france.git",
+      "description": "",
+      "stars": 50,
+      "last_updated": "2025-07-02T22:33:12Z"
+    },
+    "l10n-germany": {
+      "url": "https://github.com/OCA/l10n-germany.git",
+      "description": "",
+      "stars": 17,
+      "last_updated": "2025-06-06T08:06:38Z"
+    },
+    "l10n-greece": {
+      "url": "https://github.com/OCA/l10n-greece.git",
+      "description": "",
+      "stars": 4,
+      "last_updated": "2025-04-04T03:32:58Z"
+    },
+    "l10n-india": {
+      "url": "https://github.com/OCA/l10n-india.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:32:58Z"
+    },
+    "l10n-indonesia": {
+      "url": "https://github.com/OCA/l10n-indonesia.git",
+      "description": "",
+      "stars": 11,
+      "last_updated": "2025-04-04T03:32:58Z"
+    },
+    "l10n-iran": {
+      "url": "https://github.com/OCA/l10n-iran.git",
+      "description": "",
+      "stars": 19,
+      "last_updated": "2025-04-15T15:50:29Z"
+    },
+    "l10n-ireland": {
+      "url": "https://github.com/OCA/l10n-ireland.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:32:58Z"
+    },
+    "l10n-italy": {
+      "url": "https://github.com/OCA/l10n-italy.git",
+      "description": "",
+      "stars": 174,
+      "last_updated": "2025-07-06T12:51:07Z"
+    },
+    "l10n-japan": {
+      "url": "https://github.com/OCA/l10n-japan.git",
+      "description": "",
+      "stars": 9,
+      "last_updated": "2025-06-26T10:06:14Z"
+    },
+    "l10n-luxemburg": {
+      "url": "https://github.com/OCA/l10n-luxemburg.git",
+      "description": "",
+      "stars": 4,
+      "last_updated": "2025-04-04T03:33:00Z"
+    },
+    "l10n-macedonia": {
+      "url": "https://github.com/OCA/l10n-macedonia.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:33:00Z"
+    },
+    "l10n-mexico": {
+      "url": "https://github.com/OCA/l10n-mexico.git",
+      "description": "",
+      "stars": 7,
+      "last_updated": "2025-06-17T22:01:46Z"
+    },
+    "l10n-morocco": {
+      "url": "https://github.com/OCA/l10n-morocco.git",
+      "description": "",
+      "stars": 5,
+      "last_updated": "2025-04-25T20:47:10Z"
+    },
+    "l10n-netherlands": {
+      "url": "https://github.com/OCA/l10n-netherlands.git",
+      "description": "",
+      "stars": 24,
+      "last_updated": "2025-06-14T17:03:44Z"
+    },
+    "l10n-norway": {
+      "url": "https://github.com/OCA/l10n-norway.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:33:00Z"
+    },
+    "l10n-peru": {
+      "url": "https://github.com/OCA/l10n-peru.git",
+      "description": "",
+      "stars": 17,
+      "last_updated": "2025-04-09T10:10:42Z"
+    },
+    "l10n-poland": {
+      "url": "https://github.com/OCA/l10n-poland.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:33:00Z"
+    },
+    "l10n-portugal": {
+      "url": "https://github.com/OCA/l10n-portugal.git",
+      "description": "",
+      "stars": 7,
+      "last_updated": "2025-06-04T03:07:32Z"
+    },
+    "l10n-romania": {
+      "url": "https://github.com/OCA/l10n-romania.git",
+      "description": "",
+      "stars": 30,
+      "last_updated": "2025-06-09T22:52:59Z"
+    },
+    "l10n-russia": {
+      "url": "https://github.com/OCA/l10n-russia.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:33:01Z"
+    },
+    "l10n-slovenia": {
+      "url": "https://github.com/OCA/l10n-slovenia.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:33:01Z"
+    },
+    "l10n-spain": {
+      "url": "https://github.com/OCA/l10n-spain.git",
+      "description": "",
+      "stars": 354,
+      "last_updated": "2025-07-08T09:14:43Z"
+    },
+    "l10n-switzerland": {
+      "url": "https://github.com/OCA/l10n-switzerland.git",
+      "description": "",
+      "stars": 55,
+      "last_updated": "2025-06-21T09:27:28Z"
+    },
+    "l10n-taiwan": {
+      "url": "https://github.com/OCA/l10n-taiwan.git",
+      "description": "",
+      "stars": 6,
+      "last_updated": "2025-04-04T03:33:01Z"
+    },
+    "l10n-thailand": {
+      "url": "https://github.com/OCA/l10n-thailand.git",
+      "description": "",
+      "stars": 59,
+      "last_updated": "2025-06-25T09:59:19Z"
+    },
+    "l10n-turkey": {
+      "url": "https://github.com/OCA/l10n-turkey.git",
+      "description": "",
+      "stars": 7,
+      "last_updated": "2025-04-04T03:33:01Z"
+    },
+    "l10n-ukraine": {
+      "url": "https://github.com/OCA/l10n-ukraine.git",
+      "description": "",
+      "stars": 9,
+      "last_updated": "2025-04-04T03:33:02Z"
+    },
+    "l10n-united-kingdom": {
+      "url": "https://github.com/OCA/l10n-united-kingdom.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2024-10-06T15:14:51Z"
+    },
+    "l10n-uruguay": {
+      "url": "https://github.com/OCA/l10n-uruguay.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:33:02Z"
+    },
+    "l10n-usa": {
+      "url": "https://github.com/OCA/l10n-usa.git",
+      "description": "",
+      "stars": 15,
+      "last_updated": "2025-04-23T07:30:26Z"
+    },
+    "l10n-venezuela": {
+      "url": "https://github.com/OCA/l10n-venezuela.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:33:02Z"
+    },
+    "l10n-vietnam": {
+      "url": "https://github.com/OCA/l10n-vietnam.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2024-10-06T15:15:03Z"
+    },
+    "mail": {
+      "url": "https://github.com/OCA/mail.git",
+      "description": "",
+      "stars": 12,
+      "last_updated": "2025-07-03T13:15:55Z"
+    },
+    "maintenance": {
+      "url": "https://github.com/OCA/maintenance.git",
+      "description": "",
+      "stars": 88,
+      "last_updated": "2025-07-04T17:19:58Z"
+    },
+    "management-system": {
+      "url": "https://github.com/OCA/management-system.git",
+      "description": "",
+      "stars": 204,
+      "last_updated": "2025-07-07T07:22:26Z"
+    },
+    "manufacture": {
+      "url": "https://github.com/OCA/manufacture.git",
+      "description": "",
+      "stars": 199,
+      "last_updated": "2025-07-01T01:44:40Z"
+    },
+    "manufacture-reporting": {
+      "url": "https://github.com/OCA/manufacture-reporting.git",
+      "description": "",
+      "stars": 37,
+      "last_updated": "2025-05-16T21:48:01Z"
+    },
+    "margin-analysis": {
+      "url": "https://github.com/OCA/margin-analysis.git",
+      "description": "",
+      "stars": 76,
+      "last_updated": "2025-06-04T03:17:36Z"
+    },
+    "mass-mailing": {
+      "url": "https://github.com/OCA/mass-mailing.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-06-11T11:40:26Z"
+    },
+    "mirrors-flake8": {
+      "url": "https://github.com/OCA/mirrors-flake8.git",
+      "description": "",
+      "stars": 0,
+      "last_updated": "2022-02-25T04:45:23Z"
+    },
+    "mis-builder": {
+      "url": "https://github.com/OCA/mis-builder.git",
+      "description": "",
+      "stars": 160,
+      "last_updated": "2025-06-17T15:59:43Z"
+    },
+    "mis-builder-contrib": {
+      "url": "https://github.com/OCA/mis-builder-contrib.git",
+      "description": "",
+      "stars": 10,
+      "last_updated": "2025-04-04T03:33:03Z"
+    },
+    "multi-company": {
+      "url": "https://github.com/OCA/multi-company.git",
+      "description": "",
+      "stars": 111,
+      "last_updated": "2025-07-01T11:19:43Z"
+    },
+    "oca-ci": {
+      "url": "https://github.com/OCA/oca-ci.git",
+      "description": "",
+      "stars": 35,
+      "last_updated": "2025-07-04T15:29:13Z"
+    },
+    "oca-weblate-deployment": {
+      "url": "https://github.com/OCA/oca-weblate-deployment.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2025-04-04T03:33:04Z"
+    },
+    "oca.recipe.odoo": {
+      "url": "https://github.com/OCA/oca.recipe.odoo.git",
+      "description": "",
+      "stars": 5,
+      "last_updated": "2025-01-14T16:30:48Z"
+    },
+    "operating-unit": {
+      "url": "https://github.com/OCA/operating-unit.git",
+      "description": "",
+      "stars": 83,
+      "last_updated": "2025-07-03T07:34:21Z"
+    },
+    "partner-contact": {
+      "url": "https://github.com/OCA/partner-contact.git",
+      "description": "",
+      "stars": 227,
+      "last_updated": "2025-06-27T16:31:03Z"
+    },
+    "payroll": {
+      "url": "https://github.com/OCA/payroll.git",
+      "description": "",
+      "stars": 92,
+      "last_updated": "2025-06-23T11:55:25Z"
+    },
+    "pms": {
+      "url": "https://github.com/OCA/pms.git",
+      "description": "",
+      "stars": 75,
+      "last_updated": "2025-05-29T16:28:32Z"
+    },
+    "pos": {
+      "url": "https://github.com/OCA/pos.git",
+      "description": "",
+      "stars": 305,
+      "last_updated": "2025-07-07T21:13:05Z"
+    },
+    "product-attribute": {
+      "url": "https://github.com/OCA/product-attribute.git",
+      "description": "",
+      "stars": 203,
+      "last_updated": "2025-07-07T06:56:02Z"
+    },
+    "product-configurator": {
+      "url": "https://github.com/OCA/product-configurator.git",
+      "description": "",
+      "stars": 38,
+      "last_updated": "2025-06-26T12:19:21Z"
+    },
+    "product-kitting": {
+      "url": "https://github.com/OCA/product-kitting.git",
+      "description": "",
+      "stars": 17,
+      "last_updated": "2024-10-06T15:16:22Z"
+    },
+    "product-pack": {
+      "url": "https://github.com/OCA/product-pack.git",
+      "description": "",
+      "stars": 55,
+      "last_updated": "2025-07-07T09:27:47Z"
+    },
+    "product-variant": {
+      "url": "https://github.com/OCA/product-variant.git",
+      "description": "",
+      "stars": 71,
+      "last_updated": "2025-07-02T17:11:38Z"
+    },
+    "program": {
+      "url": "https://github.com/OCA/program.git",
+      "description": "",
+      "stars": 13,
+      "last_updated": "2025-04-04T03:33:06Z"
+    },
+    "project": {
+      "url": "https://github.com/OCA/project.git",
+      "description": "",
+      "stars": 330,
+      "last_updated": "2025-07-04T11:06:36Z"
+    },
+    "project-agile": {
+      "url": "https://github.com/OCA/project-agile.git",
+      "description": "",
+      "stars": 33,
+      "last_updated": "2025-06-15T23:46:06Z"
+    },
+    "project-reporting": {
+      "url": "https://github.com/OCA/project-reporting.git",
+      "description": "",
+      "stars": 25,
+      "last_updated": "2025-04-04T03:33:07Z"
+    },
+    "purchase-reporting": {
+      "url": "https://github.com/OCA/purchase-reporting.git",
+      "description": "",
+      "stars": 25,
+      "last_updated": "2025-06-05T11:26:36Z"
+    },
+    "purchase-workflow": {
+      "url": "https://github.com/OCA/purchase-workflow.git",
+      "description": "",
+      "stars": 234,
+      "last_updated": "2025-07-02T21:50:53Z"
+    },
+    "pwa-builder": {
+      "url": "https://github.com/OCA/pwa-builder.git",
+      "description": "",
+      "stars": 14,
+      "last_updated": "2025-04-04T03:33:07Z"
+    },
+    "queue": {
+      "url": "https://github.com/OCA/queue.git",
+      "description": "",
+      "stars": 214,
+      "last_updated": "2025-06-30T12:45:27Z"
+    },
+    "repair": {
+      "url": "https://github.com/OCA/repair.git",
+      "description": "",
+      "stars": 21,
+      "last_updated": "2025-06-04T11:21:35Z"
+    },
+    "repo-maintainer": {
+      "url": "https://github.com/OCA/repo-maintainer.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:33:08Z"
+    },
+    "repo-maintainer-conf": {
+      "url": "https://github.com/OCA/repo-maintainer-conf.git",
+      "description": "",
+      "stars": 4,
+      "last_updated": "2025-06-26T17:54:41Z"
+    },
+    "report-print-send": {
+      "url": "https://github.com/OCA/report-print-send.git",
+      "description": "",
+      "stars": 125,
+      "last_updated": "2025-07-04T11:36:42Z"
+    },
+    "reporting-engine": {
+      "url": "https://github.com/OCA/reporting-engine.git",
+      "description": "",
+      "stars": 375,
+      "last_updated": "2025-07-07T20:09:46Z"
+    },
+    "resource": {
+      "url": "https://github.com/OCA/resource.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:33:09Z"
+    },
+    "rest-api": {
+      "url": "https://github.com/OCA/rest-api.git",
+      "description": "",
+      "stars": 6,
+      "last_updated": "2025-06-09T22:45:25Z"
+    },
+    "rest-framework": {
+      "url": "https://github.com/OCA/rest-framework.git",
+      "description": "",
+      "stars": 347,
+      "last_updated": "2025-07-03T12:07:22Z"
+    },
+    "rma": {
+      "url": "https://github.com/OCA/rma.git",
+      "description": "",
+      "stars": 85,
+      "last_updated": "2025-06-21T13:32:01Z"
+    },
+    "role-policy": {
+      "url": "https://github.com/OCA/role-policy.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2025-04-21T04:15:50Z"
+    },
+    "sale-blanket": {
+      "url": "https://github.com/OCA/sale-blanket.git",
+      "description": "",
+      "stars": 4,
+      "last_updated": "2025-04-21T05:38:29Z"
+    },
+    "sale-channel": {
+      "url": "https://github.com/OCA/sale-channel.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2025-06-06T18:56:03Z"
+    },
+    "sale-financial": {
+      "url": "https://github.com/OCA/sale-financial.git",
+      "description": "",
+      "stars": 22,
+      "last_updated": "2025-04-04T03:33:10Z"
+    },
+    "sale-prebook": {
+      "url": "https://github.com/OCA/sale-prebook.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-06-04T03:36:09Z"
+    },
+    "sale-promotion": {
+      "url": "https://github.com/OCA/sale-promotion.git",
+      "description": "",
+      "stars": 41,
+      "last_updated": "2025-06-23T19:33:00Z"
+    },
+    "sale-reporting": {
+      "url": "https://github.com/OCA/sale-reporting.git",
+      "description": "",
+      "stars": 54,
+      "last_updated": "2025-07-08T06:52:15Z"
+    },
+    "sale-workflow": {
+      "url": "https://github.com/OCA/sale-workflow.git",
+      "description": "",
+      "stars": 339,
+      "last_updated": "2025-07-07T10:18:53Z"
+    },
+    "search-engine": {
+      "url": "https://github.com/OCA/search-engine.git",
+      "description": "",
+      "stars": 51,
+      "last_updated": "2025-06-03T16:10:02Z"
+    },
+    "server-auth": {
+      "url": "https://github.com/OCA/server-auth.git",
+      "description": "",
+      "stars": 178,
+      "last_updated": "2025-07-07T07:59:45Z"
+    },
+    "server-backend": {
+      "url": "https://github.com/OCA/server-backend.git",
+      "description": "",
+      "stars": 113,
+      "last_updated": "2025-06-28T22:45:18Z"
+    },
+    "server-brand": {
+      "url": "https://github.com/OCA/server-brand.git",
+      "description": "",
+      "stars": 72,
+      "last_updated": "2025-07-07T04:00:39Z"
+    },
+    "server-env": {
+      "url": "https://github.com/OCA/server-env.git",
+      "description": "",
+      "stars": 67,
+      "last_updated": "2025-06-15T16:52:13Z"
+    },
+    "server-ux": {
+      "url": "https://github.com/OCA/server-ux.git",
+      "description": "",
+      "stars": 178,
+      "last_updated": "2025-07-02T07:39:54Z"
+    },
+    "shift-planning": {
+      "url": "https://github.com/OCA/shift-planning.git",
+      "description": "",
+      "stars": 8,
+      "last_updated": "2025-05-01T19:17:29Z"
+    },
+    "shopfloor-app": {
+      "url": "https://github.com/OCA/shopfloor-app.git",
+      "description": "",
+      "stars": 5,
+      "last_updated": "2025-07-04T14:47:13Z"
+    },
+    "sign": {
+      "url": "https://github.com/OCA/sign.git",
+      "description": "",
+      "stars": 20,
+      "last_updated": "2025-06-14T09:28:03Z"
+    },
+    "social": {
+      "url": "https://github.com/OCA/social.git",
+      "description": "",
+      "stars": 183,
+      "last_updated": "2025-07-04T19:15:01Z"
+    },
+    "spreadsheet": {
+      "url": "https://github.com/OCA/spreadsheet.git",
+      "description": "",
+      "stars": 63,
+      "last_updated": "2025-06-25T03:18:01Z"
+    },
+    "stock-logistics-availability": {
+      "url": "https://github.com/OCA/stock-logistics-availability.git",
+      "description": "",
+      "stars": 20,
+      "last_updated": "2025-07-03T07:43:59Z"
+    },
+    "stock-logistics-barcode": {
+      "url": "https://github.com/OCA/stock-logistics-barcode.git",
+      "description": "",
+      "stars": 178,
+      "last_updated": "2025-07-05T22:30:34Z"
+    },
+    "stock-logistics-interfaces": {
+      "url": "https://github.com/OCA/stock-logistics-interfaces.git",
+      "description": "",
+      "stars": 3,
+      "last_updated": "2025-04-04T03:33:12Z"
+    },
+    "stock-logistics-orderpoint": {
+      "url": "https://github.com/OCA/stock-logistics-orderpoint.git",
+      "description": "",
+      "stars": 12,
+      "last_updated": "2025-07-04T08:31:31Z"
+    },
+    "stock-logistics-putaway": {
+      "url": "https://github.com/OCA/stock-logistics-putaway.git",
+      "description": "",
+      "stars": 0,
+      "last_updated": "2025-06-18T09:48:08Z"
+    },
+    "stock-logistics-release-channel": {
+      "url": "https://github.com/OCA/stock-logistics-release-channel.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-07-05T16:40:11Z"
+    },
+    "stock-logistics-reporting": {
+      "url": "https://github.com/OCA/stock-logistics-reporting.git",
+      "description": "",
+      "stars": 79,
+      "last_updated": "2025-07-02T06:16:28Z"
+    },
+    "stock-logistics-request": {
+      "url": "https://github.com/OCA/stock-logistics-request.git",
+      "description": "",
+      "stars": 14,
+      "last_updated": "2025-06-04T11:28:34Z"
+    },
+    "stock-logistics-reservation": {
+      "url": "https://github.com/OCA/stock-logistics-reservation.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-07-03T11:28:20Z"
+    },
+    "stock-logistics-shopfloor": {
+      "url": "https://github.com/OCA/stock-logistics-shopfloor.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-04-04T03:33:14Z"
+    },
+    "stock-logistics-tracking": {
+      "url": "https://github.com/OCA/stock-logistics-tracking.git",
+      "description": "",
+      "stars": 54,
+      "last_updated": "2025-07-02T08:40:15Z"
+    },
+    "stock-logistics-transport": {
+      "url": "https://github.com/OCA/stock-logistics-transport.git",
+      "description": "",
+      "stars": 76,
+      "last_updated": "2025-07-01T15:08:28Z"
+    },
+    "stock-logistics-warehouse": {
+      "url": "https://github.com/OCA/stock-logistics-warehouse.git",
+      "description": "",
+      "stars": 346,
+      "last_updated": "2025-07-01T15:17:39Z"
+    },
+    "stock-logistics-workflow": {
+      "url": "https://github.com/OCA/stock-logistics-workflow.git",
+      "description": "",
+      "stars": 252,
+      "last_updated": "2025-07-04T17:05:02Z"
+    },
+    "stock-weighing": {
+      "url": "https://github.com/OCA/stock-weighing.git",
+      "description": "",
+      "stars": 6,
+      "last_updated": "2025-06-04T03:55:24Z"
+    },
+    "storage": {
+      "url": "https://github.com/OCA/storage.git",
+      "description": "",
+      "stars": 89,
+      "last_updated": "2025-06-24T21:00:23Z"
+    },
+    "survey": {
+      "url": "https://github.com/OCA/survey.git",
+      "description": "",
+      "stars": 30,
+      "last_updated": "2025-06-04T03:56:16Z"
+    },
+    "timesheet": {
+      "url": "https://github.com/OCA/timesheet.git",
+      "description": "",
+      "stars": 141,
+      "last_updated": "2025-06-30T09:27:20Z"
+    },
+    "vertical-abbey": {
+      "url": "https://github.com/OCA/vertical-abbey.git",
+      "description": "",
+      "stars": 10,
+      "last_updated": "2025-06-04T03:57:33Z"
+    },
+    "vertical-agriculture": {
+      "url": "https://github.com/OCA/vertical-agriculture.git",
+      "description": "",
+      "stars": 34,
+      "last_updated": "2025-06-09T06:37:45Z"
+    },
+    "vertical-association": {
+      "url": "https://github.com/OCA/vertical-association.git",
+      "description": "",
+      "stars": 41,
+      "last_updated": "2025-06-04T03:58:06Z"
+    },
+    "vertical-community": {
+      "url": "https://github.com/OCA/vertical-community.git",
+      "description": "",
+      "stars": 26,
+      "last_updated": "2024-10-07T18:05:20Z"
+    },
+    "vertical-construction": {
+      "url": "https://github.com/OCA/vertical-construction.git",
+      "description": "",
+      "stars": 18,
+      "last_updated": "2025-04-04T03:33:15Z"
+    },
+    "vertical-cooperative-supermarket": {
+      "url": "https://github.com/OCA/vertical-cooperative-supermarket.git",
+      "description": "",
+      "stars": 2,
+      "last_updated": "2025-04-04T03:33:16Z"
+    },
+    "vertical-edition": {
+      "url": "https://github.com/OCA/vertical-edition.git",
+      "description": "",
+      "stars": 10,
+      "last_updated": "2025-04-04T03:33:16Z"
+    },
+    "vertical-education": {
+      "url": "https://github.com/OCA/vertical-education.git",
+      "description": "",
+      "stars": 38,
+      "last_updated": "2025-04-04T03:33:16Z"
+    },
+    "vertical-hotel": {
+      "url": "https://github.com/OCA/vertical-hotel.git",
+      "description": "",
+      "stars": 150,
+      "last_updated": "2025-04-30T18:11:02Z"
+    },
+    "vertical-isp": {
+      "url": "https://github.com/OCA/vertical-isp.git",
+      "description": "",
+      "stars": 27,
+      "last_updated": "2025-06-04T03:58:55Z"
+    },
+    "vertical-medical": {
+      "url": "https://github.com/OCA/vertical-medical.git",
+      "description": "",
+      "stars": 277,
+      "last_updated": "2025-05-18T19:31:26Z"
+    },
+    "vertical-ngo": {
+      "url": "https://github.com/OCA/vertical-ngo.git",
+      "description": "",
+      "stars": 32,
+      "last_updated": "2025-04-12T13:47:01Z"
+    },
+    "vertical-realestate": {
+      "url": "https://github.com/OCA/vertical-realestate.git",
+      "description": "",
+      "stars": 20,
+      "last_updated": "2025-06-04T03:59:07Z"
+    },
+    "vertical-rental": {
+      "url": "https://github.com/OCA/vertical-rental.git",
+      "description": "",
+      "stars": 23,
+      "last_updated": "2025-04-21T04:16:19Z"
+    },
+    "vertical-travel": {
+      "url": "https://github.com/OCA/vertical-travel.git",
+      "description": "",
+      "stars": 34,
+      "last_updated": "2025-04-22T03:57:16Z"
+    },
+    "wallet": {
+      "url": "https://github.com/OCA/wallet.git",
+      "description": "",
+      "stars": 5,
+      "last_updated": "2025-04-04T03:33:16Z"
+    },
+    "web": {
+      "url": "https://github.com/OCA/web.git",
+      "description": "",
+      "stars": 1043,
+      "last_updated": "2025-07-06T19:25:45Z"
+    },
+    "web-api": {
+      "url": "https://github.com/OCA/web-api.git",
+      "description": "",
+      "stars": 29,
+      "last_updated": "2025-07-03T18:59:21Z"
+    },
+    "web-api-contrib": {
+      "url": "https://github.com/OCA/web-api-contrib.git",
+      "description": "",
+      "stars": 1,
+      "last_updated": "2025-06-04T04:01:06Z"
+    },
+    "website": {
+      "url": "https://github.com/OCA/website.git",
+      "description": "",
+      "stars": 273,
+      "last_updated": "2025-07-01T10:28:50Z"
+    },
+    "website-cms": {
+      "url": "https://github.com/OCA/website-cms.git",
+      "description": "",
+      "stars": 43,
+      "last_updated": "2025-05-12T19:59:10Z"
+    },
+    "website-themes": {
+      "url": "https://github.com/OCA/website-themes.git",
+      "description": "",
+      "stars": 33,
+      "last_updated": "2025-04-15T07:36:01Z"
+    },
+    "wms": {
+      "url": "https://github.com/OCA/wms.git",
+      "description": "",
+      "stars": 178,
+      "last_updated": "2025-07-07T01:57:49Z"
     }
   }
 }
