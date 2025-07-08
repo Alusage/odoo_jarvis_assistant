@@ -32,7 +32,7 @@ client_repo/
 
 ```bash
 cd docker/
-docker build -t odoo-custom:18.0 .
+docker build -t odoo-alusage:18.0 .
 ```
 
 ### 2. Utiliser dans un dépôt client
@@ -44,7 +44,7 @@ version: "3.8"
 
 services:
   odoo:
-    image: odoo-custom:18.0 # Utilisez votre image construite
+    image: odoo-alusage:18.0 # Utilisez votre image construite
     volumes:
       - ./config:/mnt/config
       - ./requirements.txt:/mnt/requirements.txt:ro
@@ -79,7 +79,7 @@ volumes:
 
 ```bash
 cd client_repo/
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Variables d'environnement
@@ -116,5 +116,5 @@ Les logs de l'initialisation utilisent des couleurs pour faciliter le debug :
 Cette image supporte toutes les versions d'Odoo disponibles dans l'image officielle. Modifiez l'argument `ODOO_VERSION` lors de la construction :
 
 ```bash
-docker build --build-arg ODOO_VERSION=17.0 -t odoo-custom:17.0 .
+docker build --build-arg ODOO_VERSION=17.0 -t odoo-alusage:17.0 .
 ```

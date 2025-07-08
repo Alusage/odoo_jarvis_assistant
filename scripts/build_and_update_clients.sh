@@ -69,4 +69,4 @@ echo
 echo_success "🎯 Processus terminé !"
 echo_info "💡 Pour démarrer un client :"
 echo_info "   cd clients/<nom_client>"
-echo_info "   docker-compose up -d"
+echo_info "   docker compose up -d"

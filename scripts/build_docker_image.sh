@@ -50,7 +50,7 @@ if docker build --build-arg ODOO_VERSION="$ODOO_VERSION" -t "$TAG_NAME" .; then
     echo
     echo_info "📋 Pour utiliser cette image dans un dépôt client :"
     echo_info "   1. Modifiez le docker-compose.yml du client pour utiliser '$TAG_NAME'"
-    echo_info "   2. Lancez avec 'docker-compose up -d'"
+    echo_info "   2. Lancez avec 'docker compose up -d'"
     echo
     echo_info "🔍 Informations sur l'image :"
     docker images "$TAG_NAME"

@@ -436,7 +436,7 @@ fi
 echo_info "💡 Pour installer les dépendances :"
 echo_info "   pip install -r requirements.txt"
 echo_info "🐳 Ou pour Docker :"
-echo_info "   docker-compose exec odoo pip install -r requirements.txt"
+echo_info "   docker compose exec odoo pip install -r requirements.txt"
 EOF
 
     # Script pour créer des liens symboliques
@@ -475,7 +475,7 @@ echo "🚀 Démarrage de l'environnement Odoo..."
 ./scripts/update_submodules.sh
 
 # Démarrer Docker Compose
-docker-compose up -d
+docker compose up -d
 
 echo "✅ Environnement démarré"
 echo "🌐 Odoo accessible sur: http://localhost:8069"
