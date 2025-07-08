@@ -259,3 +259,4 @@ addons/
 - **Gestion centralisée** : Toutes les descriptions dans un fichier JSON structuré
 - **Popularité visible** : Les modules sont classés par nombre d'étoiles GitHub
 - **Enrichissement collaboratif** : Facilite la contribution aux descriptions manquantes
+
