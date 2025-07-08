@@ -1,6 +1,6 @@
 # Makefile pour la gestion des clients Odoo
 
-.PHONY: help create-client list-clients update-client add-module list-modules clean diagnostics cache-status
+.PHONY: help create-client list-clients update-client add-module list-modules merge-pr clean diagnostics cache-status
 
 # Variables
 CLIENTS_DIR = clients
@@ -47,6 +47,28 @@ list-modules: ## Lister les modules disponibles pour un client (usage: make list
 
 list-oca-modules: ## Lister tous les modules OCA disponibles (usage: make list-oca-modules [PATTERN=pattern])
 	@$(SCRIPTS_DIR)/list_oca_modules.sh $(PATTERN)
+
+merge-pr: ## Merger une Pull Request dans un submodule client (usage: make merge-pr CLIENT=nom_client SUBMODULE=chemin_submodule PR=numero [BRANCH=branche])
+	@if [ -z "$(CLIENT)" ] || [ -z "$(SUBMODULE)" ] || [ -z "$(PR)" ]; then \
+		echo "❌ Usage: make merge-pr CLIENT=nom_client SUBMODULE=chemin_submodule PR=numero [BRANCH=branche]"; \
+		echo "Exemple: make merge-pr CLIENT=mon_client SUBMODULE=addons/partner-contact PR=1234 BRANCH=16.0"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@echo "🔄 Merge de la PR #$(PR) dans $(SUBMODULE) pour le client $(CLIENT)..."
+	@cd "$(CLIENTS_DIR)/$(CLIENT)" && \
+	if [ -x "scripts/merge_pr.sh" ]; then \
+		./scripts/merge_pr.sh "$(SUBMODULE)" "$(PR)" "$(BRANCH)"; \
+	else \
+		echo "❌ Script merge_pr.sh non trouvé dans le client $(CLIENT)"; \
+		echo "💡 Régénérez le client ou ajoutez le script manuellement"; \
+		exit 1; \
+	fi
 
 clean: ## Nettoyer les fichiers temporaires
 	@echo "🧹 Nettoyage des fichiers temporaires..."
