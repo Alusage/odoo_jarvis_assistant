@@ -6,9 +6,10 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ### Changed
 
-- docs: add git hooksPath configuration in README and include update_changelog hook (b065659)
-
+- fix: remove duplicate entries in CHANGELOG after post-commit run (1d8dd6b)
 - test: commit pour tester le hook post-commit (5703a5b)
+- docs: add git hooksPath configuration in README and include update_changelog hook (b065659)
+- docs: add relase and update CHANGELOG after release 0.2.0 (8b52ee5)
 
 ## [0.2.0] - 2025-07-08
 

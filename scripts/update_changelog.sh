@@ -24,8 +24,11 @@ echo "### Changed" > $TMPFILE
 echo "$COMMITS" >> $TMPFILE
 echo "" >> $TMPFILE
 
-# Insérer sous la section Unreleased
-sed -i "/## \[Unreleased\]/r $TMPFILE" CHANGELOG.md
+# Nettoyer l'ancienne section "### Changed" entre Unreleased et la version suivante
+sed -i '/^## \[Unreleased\]/,/^## \[[0-9]/ { /^## \[Unreleased\]/b; /^## \[[0-9]/b; d }' CHANGELOG.md
+
+# Insérer la nouvelle section de commits
+sed -i "/^## \[Unreleased\]/r $TMPFILE" CHANGELOG.md
 
 rm $TMPFILE
 
