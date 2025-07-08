@@ -3,9 +3,12 @@
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
 ## [Unreleased]
-### Changed
-- docs: add relase and update CHANGELOG after release 0.2.0 (8b52ee5)
 
+### Changed
+
+- docs: add git hooksPath configuration in README and include update_changelog hook (b065659)
+
+- test: commit pour tester le hook post-commit (5703a5b)
 
 ## [0.2.0] - 2025-07-08
 
