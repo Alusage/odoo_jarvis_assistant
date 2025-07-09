@@ -132,8 +132,8 @@ add_submodules() {
         read -p "Entrez les modules souhaités (séparés par des espaces): " modules_list
         modules_array=($modules_list)
     else
-        # Récupérer les modules du template
-        readarray -t modules_array < <(jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/client_templates.json")
+        # Récupérer les modules du template avec la nouvelle structure
+        process_template_modules "$TEMPLATE"
     fi
     
     # Valider les modules avec l'optimisateur
@@ -176,6 +176,83 @@ add_submodules() {
             fi
         fi
     done
+}
+
+# Traiter les modules du template avec la nouvelle structure
+process_template_modules() {
+    local template="$1"
+    local temp_file="/tmp/module_linking_${CLIENT_NAME}.txt"
+    
+    # Nettoyer le fichier temporaire
+    rm -f "$temp_file"
+    
+    # Extraire les repositories et créer le fichier de linking
+    modules_array=()
+    while IFS= read -r module_config; do
+        local repository=$(echo "$module_config" | jq -r '.repository')
+        local modules=$(echo "$module_config" | jq -r '.modules')
+        
+        # Ajouter le repository à la liste des modules à installer
+        modules_array+=("$repository")
+        
+        # Stocker les informations de linking pour plus tard
+        if [ "$modules" = "all" ]; then
+            echo "$repository:all" >> "$temp_file"
+        else
+            local module_list=$(echo "$module_config" | jq -r '.modules | join(",")')
+            echo "$repository:$module_list" >> "$temp_file"
+        fi
+    done < <(jq -c ".client_templates.\"$template\".default_modules[]" "$CONFIG_DIR/client_templates.json")
+}
+
+# Appliquer le linking automatique selon la configuration du template
+apply_automatic_linking() {
+    local temp_file="/tmp/module_linking_${CLIENT_NAME}.txt"
+    
+    if [ ! -f "$temp_file" ]; then
+        return 0
+    fi
+    
+    if [ ! -d "extra-addons" ]; then
+        mkdir -p extra-addons
+        echo_info "Création du répertoire extra-addons"
+    fi
+    
+    echo_info "Application du linking automatique selon le template..."
+    
+    while IFS=':' read -r repository module_spec; do
+        local submodule_path="addons/$repository"
+        
+        if [ ! -d "$submodule_path" ]; then
+            echo_warning "Dépôt $repository non trouvé, linking ignoré"
+            continue
+        fi
+        
+        if [ "$module_spec" = "all" ]; then
+            echo_info "Linking de tous les modules de $repository..."
+            for dir in "$submodule_path"/*; do
+                if [ -d "$dir" ] && [ -f "$dir/__manifest__.py" ]; then
+                    local module_name=$(basename "$dir")
+                    ln -sf "../../$submodule_path/$module_name" "extra-addons/$module_name"
+                    echo_success "Module '$module_name' lié dans extra-addons"
+                fi
+            done
+        else
+            echo_info "Linking des modules spécifiés de $repository: $module_spec"
+            IFS=',' read -ra modules <<< "$module_spec"
+            for module in "${modules[@]}"; do
+                if [ -d "$submodule_path/$module" ] && [ -f "$submodule_path/$module/__manifest__.py" ]; then
+                    ln -sf "../../$submodule_path/$module" "extra-addons/$module"
+                    echo_success "Module '$module' lié dans extra-addons"
+                else
+                    echo_warning "Module '$module' non trouvé dans $repository"
+                fi
+            done
+        fi
+    done < "$temp_file"
+    
+    # Nettoyer le fichier temporaire
+    rm -f "$temp_file"
 }
 
 # Ajouter Odoo Enterprise si demandé
@@ -679,9 +756,17 @@ EOF
 
     # Ajouter la liste des modules installés
     if [ "$TEMPLATE" != "custom" ]; then
-        jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/client_templates.json" | while read module; do
-            local desc=$(jq -r ".oca_repositories[\"$module\"].description" "$CONFIG_DIR/repositories.json")
-            echo "- **$module**: $desc" >> "$CLIENT_DIR/README.md"
+        jq -c ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/client_templates.json" | while read -r module_config; do
+            local repository=$(echo "$module_config" | jq -r '.repository')
+            local modules=$(echo "$module_config" | jq -r '.modules')
+            local desc=$(jq -r ".oca_repositories[\"$repository\"].description" "$CONFIG_DIR/repositories.json")
+            
+            if [ "$modules" = "all" ]; then
+                echo "- **$repository**: $desc (tous les modules)" >> "$CLIENT_DIR/README.md"
+            else
+                local module_list=$(echo "$module_config" | jq -r '.modules | join(", ")')
+                echo "- **$repository**: $desc (modules: $module_list)" >> "$CLIENT_DIR/README.md"
+            fi
         done
     fi
 
@@ -764,6 +849,7 @@ main() {
     validate_parameters
     create_client_structure
     add_submodules
+    apply_automatic_linking
     add_enterprise
     create_enterprise_links
     create_config_files

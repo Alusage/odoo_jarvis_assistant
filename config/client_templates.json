@@ -3,39 +3,93 @@
     "basic": {
       "description": "Configuration de base",
       "default_modules": [
-        "partner-contact",
-        "account-analytic",
-        "server-ux"
+        {
+          "repository": "partner-contact",
+          "modules": ["base_location", "partner_contact_configuration"]
+        },
+        {
+          "repository": "account-analytic", 
+          "modules": "all"
+        },
+        {
+          "repository": "server-ux",
+          "modules": ["base_tier_validation", "date_range"]
+        }
       ]
     },
     "ecommerce": {
       "description": "E-commerce complet",
       "default_modules": [
-        "partner-contact",
-        "website",
-        "sale-workflow",
-        "stock-logistics-workflow",
-        "account-analytic"
+        {
+          "repository": "partner-contact",
+          "modules": "all"
+        },
+        {
+          "repository": "website",
+          "modules": ["website_sale_extra_field", "website_sale_stock_available"]
+        },
+        {
+          "repository": "sale-workflow",
+          "modules": "all"
+        },
+        {
+          "repository": "stock-logistics-workflow",
+          "modules": ["stock_available", "stock_available_immediately"]
+        },
+        {
+          "repository": "account-analytic",
+          "modules": "all"
+        }
       ]
     },
     "manufacturing": {
       "description": "Entreprise manufacturière",
       "default_modules": [
-        "partner-contact",
-        "sale-workflow",
-        "purchase-workflow",
-        "stock-logistics-workflow",
-        "manufacture",
-        "account-financial-tools"
+        {
+          "repository": "partner-contact",
+          "modules": ["base_location"]
+        },
+        {
+          "repository": "sale-workflow", 
+          "modules": "all"
+        },
+        {
+          "repository": "purchase-workflow",
+          "modules": "all"
+        },
+        {
+          "repository": "stock-logistics-workflow",
+          "modules": "all"
+        },
+        {
+          "repository": "manufacture",
+          "modules": "all"
+        },
+        {
+          "repository": "account-financial-tools",
+          "modules": ["account_move_line_purchase_info"]
+        }
       ]
     },
     "services": {
       "description": "Entreprise de services",
       "default_modules": [
-        "partner-contact",
-        "project",
-        "hr",
-        "account-financial-tools"
+        {
+          "repository": "partner-contact",
+          "modules": ["base_location", "partner_contact_configuration"]
+        },
+        {
+          "repository": "project",
+          "modules": "all"
+        },
+        {
+          "repository": "hr",
+          "modules": ["hr_timesheet"]
+        },
+        {
+          "repository": "account-financial-tools",
+          "modules": ["account_move_line_purchase_info", "account_chart_update"]
+        }
       ]
     }
   }
