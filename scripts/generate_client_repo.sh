@@ -913,6 +913,28 @@ create_initial_commit() {
 - OCA modules configured"
 }
 
+# Mise à jour automatique des requirements.txt
+update_requirements_automatically() {
+    echo_info "Génération automatique des requirements.txt basés sur les modules installés..."
+    
+    cd "$CLIENT_DIR"
+    
+    # Vérifier que le script existe et est exécutable
+    if [ -f "scripts/update_requirements.sh" ] && [ -x "scripts/update_requirements.sh" ]; then
+        echo_info "Exécution du script update_requirements.sh..."
+        ./scripts/update_requirements.sh --clean
+        
+        if [ $? -eq 0 ]; then
+            echo_success "Requirements.txt mis à jour automatiquement"
+        else
+            echo_warning "Échec de la mise à jour automatique des requirements"
+            echo_info "Vous pouvez lancer manuellement: ./scripts/update_requirements.sh"
+        fi
+    else
+        echo_warning "Script update_requirements.sh non trouvé ou non exécutable"
+    fi
+}
+
 # Fonction principale
 main() {
     validate_parameters
@@ -924,6 +946,7 @@ main() {
     create_config_files
     create_scripts
     create_readme
+    update_requirements_automatically
     create_initial_commit
     
     echo_success "Dépôt client '$CLIENT_NAME' créé avec succès !"
