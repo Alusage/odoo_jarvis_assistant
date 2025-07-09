@@ -233,7 +233,7 @@ apply_automatic_linking() {
             for dir in "$submodule_path"/*; do
                 if [ -d "$dir" ] && [ -f "$dir/__manifest__.py" ]; then
                     local module_name=$(basename "$dir")
-                    ln -sf "../../$submodule_path/$module_name" "extra-addons/$module_name"
+                    ln -sf "../$submodule_path/$module_name" "extra-addons/$module_name"
                     echo_success "Module '$module_name' lié dans extra-addons"
                 fi
             done
@@ -242,7 +242,7 @@ apply_automatic_linking() {
             IFS=',' read -ra modules <<< "$module_spec"
             for module in "${modules[@]}"; do
                 if [ -d "$submodule_path/$module" ] && [ -f "$submodule_path/$module/__manifest__.py" ]; then
-                    ln -sf "../../$submodule_path/$module" "extra-addons/$module"
+                    ln -sf "../$submodule_path/$module" "extra-addons/$module"
                     echo_success "Module '$module' lié dans extra-addons"
                 else
                     echo_warning "Module '$module' non trouvé dans $repository"
