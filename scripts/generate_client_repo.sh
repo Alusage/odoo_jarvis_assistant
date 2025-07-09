@@ -5,6 +5,20 @@
 
 set -e
 
+# Gestion des options d'aide
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    echo "Usage: $0 <client_name> <odoo_version> <template> <has_enterprise>"
+    echo ""
+    echo "Paramètres:"
+    echo "  client_name      - Nom du client"
+    echo "  odoo_version     - Version d'Odoo (ex: 18.0)"
+    echo "  template         - Template à utiliser"
+    echo "  has_enterprise   - true/false pour Odoo Enterprise"
+    echo ""
+    echo "Exemple: $0 mon_client 18.0 basic false"
+    exit 0
+fi
+
 CLIENT_NAME="$1"
 ODOO_VERSION="$2"
 TEMPLATE="$3"
@@ -41,18 +55,18 @@ validate_parameters() {
     fi
     
     # Vérifier que le template existe
-    if ! jq -e ".client_templates.\"$TEMPLATE\"" "$CONFIG_DIR/templates.json" >/dev/null 2>&1; then
+    if ! jq -e ".client_templates.\"$TEMPLATE\"" "$CONFIG_DIR/client_templates.json" >/dev/null 2>&1; then
         echo_error "Template '$TEMPLATE' non trouvé dans la configuration"
         echo_info "Templates disponibles :"
-        jq -r '.client_templates | keys[]' "$CONFIG_DIR/templates.json"
+        jq -r '.client_templates | keys[]' "$CONFIG_DIR/client_templates.json"
         exit 1
     fi
     
     # Vérifier que la version Odoo est supportée
-    if ! jq -e ".odoo_versions.\"$ODOO_VERSION\"" "$CONFIG_DIR/templates.json" >/dev/null 2>&1; then
+    if ! jq -e ".odoo_versions.\"$ODOO_VERSION\"" "$CONFIG_DIR/odoo_versions.json" >/dev/null 2>&1; then
         echo_error "Version Odoo '$ODOO_VERSION' non supportée"
         echo_info "Versions disponibles :"
-        jq -r '.odoo_versions | keys[]' "$CONFIG_DIR/templates.json"
+        jq -r '.odoo_versions | keys[]' "$CONFIG_DIR/odoo_versions.json"
         exit 1
     fi
 }
@@ -113,13 +127,13 @@ add_submodules() {
     if [ "$TEMPLATE" = "custom" ]; then
         # Pour custom, on demande à l'utilisateur
         echo_info "Modules OCA disponibles :"
-        jq -r '.oca_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/templates.json"
+        jq -r '.oca_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/repositories.json"
         echo
         read -p "Entrez les modules souhaités (séparés par des espaces): " modules_list
         modules_array=($modules_list)
     else
         # Récupérer les modules du template
-        readarray -t modules_array < <(jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/templates.json")
+        readarray -t modules_array < <(jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/client_templates.json")
     fi
     
     # Valider les modules avec l'optimisateur
@@ -138,7 +152,7 @@ add_submodules() {
     
     for module in "${validated_modules[@]}"; do
         if [[ -n "$module" ]]; then
-            local url=$(jq -r ".oca_repositories[\"$module\"].url" "$CONFIG_DIR/templates.json")
+            local url=$(jq -r ".oca_repositories[\"$module\"].url" "$CONFIG_DIR/repositories.json")
             if [ "$url" != "null" ]; then
                 echo_info "Ajout du submodule: $module"
                 
@@ -665,8 +679,8 @@ EOF
 
     # Ajouter la liste des modules installés
     if [ "$TEMPLATE" != "custom" ]; then
-        jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/templates.json" | while read module; do
-            local desc=$(jq -r ".oca_repositories[\"$module\"].description" "$CONFIG_DIR/templates.json")
+        jq -r ".client_templates.\"$TEMPLATE\".default_modules[]" "$CONFIG_DIR/client_templates.json" | while read module; do
+            local desc=$(jq -r ".oca_repositories[\"$module\"].description" "$CONFIG_DIR/repositories.json")
             echo "- **$module**: $desc" >> "$CLIENT_DIR/README.md"
         done
     fi
