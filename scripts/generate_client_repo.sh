@@ -167,24 +167,67 @@ add_submodules() {
 # Ajouter Odoo Enterprise si demandé
 add_enterprise() {
     if [ "$HAS_ENTERPRISE" = "true" ]; then
-        echo_info "Préparation pour Odoo Enterprise..."
+        echo_info "Ajout d'Odoo Enterprise comme submodule..."
         cd "$CLIENT_DIR"
         
-        # Créer un placeholder pour enterprise
-        mkdir -p addons/enterprise
-        cat > addons/enterprise/README.md << EOF
+        # URL du dépôt Enterprise (peut être personnalisé)
+        ENTERPRISE_URL="https://github.com/odoo/enterprise.git"
+        
+        # Supprimer le dossier s'il existe déjà (au cas où il y aurait un placeholder)
+        if [ -d "addons/enterprise" ]; then
+            echo_info "Suppression du placeholder Enterprise existant..."
+            rm -rf addons/enterprise
+        fi
+        
+        # Ajouter le submodule Enterprise
+        echo_info "Clonage du dépôt Enterprise (branche $ODOO_VERSION)..."
+        if git submodule add -b "$ODOO_VERSION" "$ENTERPRISE_URL" "addons/enterprise"; then
+            echo_success "Submodule Enterprise ajouté avec succès"
+        else
+            echo_warning "Échec de l'ajout du submodule Enterprise"
+            echo_warning "Cela peut être dû à des problèmes d'accès au dépôt privé"
+            echo_info "Création d'un placeholder avec instructions..."
+            
+            # Créer un placeholder si le submodule échoue
+            mkdir -p addons/enterprise
+            cat > addons/enterprise/README.md << EOF
 # Odoo Enterprise
 
 Ce dossier doit contenir les modules Odoo Enterprise.
 
-Pour l'ajouter comme submodule :
-\`\`\`bash
-rm -rf addons/enterprise
-git submodule add -b $ODOO_VERSION https://github.com/odoo/enterprise.git addons/enterprise
-\`\`\`
+ERREUR: Le clonage automatique du dépôt Enterprise a échoué.
+Cela peut être dû à :
+- Problèmes d'authentification (pas de token GitHub ou clé SSH)
+- Pas d'accès au dépôt privé odoo/enterprise
+- Problèmes de réseau
+
+## Solution manuelle
+
+Pour ajouter manuellement le submodule Enterprise :
+
+1. **Avec accès GitHub** :
+   \`\`\`bash
+   rm -rf addons/enterprise
+   git submodule add -b $ODOO_VERSION https://github.com/odoo/enterprise.git addons/enterprise
+   \`\`\`
+
+2. **Avec token GitHub** :
+   \`\`\`bash
+   rm -rf addons/enterprise
+   git submodule add -b $ODOO_VERSION https://YOUR_TOKEN@github.com/odoo/enterprise.git addons/enterprise
+   \`\`\`
+
+3. **Avec SSH** :
+   \`\`\`bash
+   rm -rf addons/enterprise
+   git submodule add -b $ODOO_VERSION git@github.com:odoo/enterprise.git addons/enterprise
+   \`\`\`
 
 Note: Vous devez avoir accès au dépôt Odoo Enterprise.
 EOF
+            git add addons/enterprise/README.md
+            echo_info "Placeholder créé dans addons/enterprise/"
+        fi
     fi
 }
 
@@ -647,6 +690,47 @@ Le fichier \`docker-compose.yml\` configure :
 EOF
 }
 
+# Créer les liens symboliques pour les modules Enterprise
+create_enterprise_links() {
+    if [ "$HAS_ENTERPRISE" = "true" ] && [ -d "$CLIENT_DIR/addons/enterprise" ]; then
+        echo_info "Création des liens symboliques pour les modules Enterprise..."
+        cd "$CLIENT_DIR"
+        
+        # Compter le nombre de modules
+        local module_count=0
+        local linked_count=0
+        
+        # Parcourir tous les dossiers dans addons/enterprise
+        for module_dir in addons/enterprise/*/; do
+            if [ -d "$module_dir" ]; then
+                module_count=$((module_count + 1))
+                module_name=$(basename "$module_dir")
+                
+                # Ignorer certains dossiers techniques
+                case "$module_name" in
+                    ".git"|".tx"|"setup")
+                        continue
+                        ;;
+                esac
+                
+                # Vérifier que c'est bien un module Odoo (contient __manifest__.py)
+                if [ -f "$module_dir/__manifest__.py" ] || [ -f "$module_dir/__openerp__.py" ]; then
+                    # Créer le lien symbolique dans extra-addons
+                    if ln -sf "../$module_dir" "extra-addons/$module_name" 2>/dev/null; then
+                        linked_count=$((linked_count + 1))
+                    else
+                        echo_warning "Échec de création du lien pour $module_name"
+                    fi
+                fi
+            fi
+        done
+        
+        echo_success "Liens symboliques Enterprise créés : $linked_count modules liés"
+        echo_info "   - Modules Enterprise trouvés : $module_count"
+        echo_info "   - Modules liés dans extra-addons : $linked_count"
+    fi
+}
+
 # Commit initial
 create_initial_commit() {
     echo_info "Création du commit initial..."
@@ -667,6 +751,7 @@ main() {
     create_client_structure
     add_submodules
     add_enterprise
+    create_enterprise_links
     create_config_files
     create_scripts
     create_readme
