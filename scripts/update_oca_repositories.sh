@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script pour mettre à jour automatiquement la liste des dépôts OCA dans templates.json
+# Script pour mettre à jour automatiquement la liste des dépôts OCA dans repositories.json
 # Ce script récupère tous les dépôts de l'organisation OCA sur GitHub
 # Usage: update_oca_repositories.sh [--clean]
 
@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_DIR="$ROOT_DIR/config"
-TEMPLATES_FILE="$CONFIG_DIR/templates.json"
+REPOSITORIES_FILE="$CONFIG_DIR/repositories.json"
 DESCRIPTIONS_FILE="$CONFIG_DIR/oca_descriptions.json"
 TEMP_FILE="/tmp/oca_repos.json"
 
@@ -356,7 +356,7 @@ manage_descriptions() {
         fi
     fi
     
-    # Générer le mapping final pour templates.json
+    # Générer le mapping final pour repositories.json
     local final_descriptions=$(echo "$descriptions" | jq --arg lang "$LANGUAGE" '
         to_entries | map({
             key: .key,
@@ -367,16 +367,15 @@ manage_descriptions() {
     echo "$final_descriptions" > "${TEMP_FILE}.descriptions"
     echo_success "Descriptions préparées pour la langue '$LANGUAGE'"
 }
-# Fonction pour mettre à jour le fichier templates.json
-update_templates_file() {
-    echo_info "Mise à jour du fichier templates.json..."
+# Fonction pour mettre à jour le fichier repositories.json
+update_repositories_file() {
+    echo_info "Mise à jour du fichier repositories.json..."
     
     # Lire la configuration actuelle
-    local current_config=$(cat "$TEMPLATES_FILE")
+    local current_config=$(cat "$REPOSITORIES_FILE")
     
     # Extraire les sections non-OCA
-    local odoo_versions=$(echo "$current_config" | jq '.odoo_versions')
-    local client_templates=$(echo "$current_config" | jq '.client_templates')
+    local external_repositories=$(echo "$current_config" | jq '.external_repositories')
     
     # Charger les descriptions préparées
     local descriptions=$(cat "${TEMP_FILE}.descriptions")
@@ -396,26 +395,25 @@ update_templates_file() {
     ' "${TEMP_FILE}.filtered")
     
     # Assembler la nouvelle configuration
-    local new_config=$(jq -n --argjson versions "$odoo_versions" --argjson templates "$client_templates" --argjson oca "$new_oca_repos" '
+    local new_config=$(jq -n --argjson external "$external_repositories" --argjson oca "$new_oca_repos" '
         {
-            "odoo_versions": $versions,
-            "client_templates": $templates,
+            "external_repositories": $external,
             "oca_repositories": $oca
         }
     ')
     
     # Écrire le nouveau fichier
-    echo "$new_config" | jq '.' > "$TEMPLATES_FILE"
+    echo "$new_config" | jq '.' > "$REPOSITORIES_FILE"
     
     local repo_count=$(echo "$new_oca_repos" | jq 'keys | length')
-    echo_success "templates.json mis à jour avec $repo_count dépôts OCA"
+    echo_success "repositories.json mis à jour avec $repo_count dépôts OCA"
 }
 
 # Fonction pour sauvegarder la configuration actuelle
 backup_current_config() {
-    if [ -f "$TEMPLATES_FILE" ]; then
-        local backup_file="${TEMPLATES_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
-        cp "$TEMPLATES_FILE" "$backup_file"
+    if [ -f "$REPOSITORIES_FILE" ]; then
+        local backup_file="${REPOSITORIES_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "$REPOSITORIES_FILE" "$backup_file"
         echo_info "Sauvegarde de la configuration actuelle: $backup_file"
     fi
 }
@@ -436,16 +434,16 @@ show_statistics() {
     echo_info "🔧 Nouveaux dépôts détectés (non présents dans la configuration précédente):"
     
     # Vérifier s'il existe des fichiers de sauvegarde
-    local backup_files=(${TEMPLATES_FILE}.backup.*)
+    local backup_files=(${REPOSITORIES_FILE}.backup.*)
     if [ -f "${backup_files[0]}" ]; then
-        local latest_backup=$(ls -t "${TEMPLATES_FILE}.backup."* 2>/dev/null | head -1)
+        local latest_backup=$(ls -t "${REPOSITORIES_FILE}.backup."* 2>/dev/null | head -1)
         local old_repos=$(jq -r '.oca_repositories | keys[]' "$latest_backup" 2>/dev/null || echo "")
-        local new_repos=$(jq -r '.oca_repositories | keys[]' "$TEMPLATES_FILE")
+        local new_repos=$(jq -r '.oca_repositories | keys[]' "$REPOSITORIES_FILE")
         
         local new_count=0
         echo "$new_repos" | while read repo; do
             if ! echo "$old_repos" | grep -q "^$repo$"; then
-                local desc=$(jq -r ".oca_repositories[\"$repo\"].description" "$TEMPLATES_FILE")
+                local desc=$(jq -r ".oca_repositories[\"$repo\"].description" "$REPOSITORIES_FILE")
                 echo "     ✨ $repo - $desc"
                 new_count=$((new_count + 1))
             fi
@@ -466,18 +464,18 @@ clean_backup_files() {
         
         local total_count=0
         
-        # Nettoyer les sauvegardes de templates.json
-        local templates_backup_files=(${TEMPLATES_FILE}.backup.*)
-        if [ -f "${templates_backup_files[0]}" ]; then
+        # Nettoyer les sauvegardes de repositories.json
+        local repositories_backup_files=(${REPOSITORIES_FILE}.backup.*)
+        if [ -f "${repositories_backup_files[0]}" ]; then
             local count=0
-            for backup_file in "${templates_backup_files[@]}"; do
+            for backup_file in "${repositories_backup_files[@]}"; do
                 if [ -f "$backup_file" ]; then
                     rm -f "$backup_file"
                     count=$((count + 1))
                     total_count=$((total_count + 1))
                 fi
             done
-            echo_info "Supprimé $count sauvegarde(s) de templates.json"
+            echo_info "Supprimé $count sauvegarde(s) de repositories.json"
         fi
         
         # Nettoyer les sauvegardes de oca_descriptions.json
@@ -516,9 +514,9 @@ main() {
     backup_current_config
     
     if [ "$FILTER_EXISTING" = true ]; then
-        echo_info "🔄 Filtrage du fichier existant templates.json..."
-        # Charger les dépôts existants depuis templates.json
-        local existing_repos=$(jq -r '.oca_repositories | to_entries[] | {name: .key, url: .value.url, description: .value.description, stars: .value.stars, updated: .value.last_updated}' "$TEMPLATES_FILE")
+        echo_info "🔄 Filtrage du fichier existant repositories.json..."
+        # Charger les dépôts existants depuis repositories.json
+        local existing_repos=$(jq -r '.oca_repositories | to_entries[] | {name: .key, url: .value.url, description: .value.description, stars: .value.stars, updated: .value.last_updated}' "$REPOSITORIES_FILE")
         
         # Sauvegarder les dépôts existants dans un fichier temporaire
         echo "$existing_repos" > "$TEMP_FILE"
@@ -534,7 +532,7 @@ main() {
         fi
         
         manage_descriptions
-        update_templates_file
+        update_repositories_file
         show_statistics
     else
         fetch_oca_repositories
@@ -548,7 +546,7 @@ main() {
         fi
         
         manage_descriptions
-        update_templates_file
+        update_repositories_file
         show_statistics
     fi
     
@@ -556,7 +554,7 @@ main() {
     clean_backup_files
     
     echo_success "✨ Mise à jour terminée avec succès !"
-    echo_info "📝 Le fichier templates.json a été mis à jour avec tous les dépôts OCA disponibles (langue: $LANGUAGE)."
+    echo_info "📝 Le fichier repositories.json a été mis à jour avec tous les dépôts OCA disponibles (langue: $LANGUAGE)."
     echo_info "🔄 Vous pouvez maintenant utiliser ces nouveaux dépôts dans vos projets clients."
     if [ "$CLEAN_BACKUPS" = true ]; then
         echo_info "🧹 Les fichiers de sauvegarde ont été supprimés (option --clean)"
