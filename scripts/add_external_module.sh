@@ -1,13 +1,50 @@
 #!/bin/bash
 
 # Script pour ajouter un dépôt de module Odoo externe (non-OCA) à un client
-# Usage: add_external_module.sh <client_name> <repo_key_or_url> [branch]
+# Usage: add_external_module.sh <client_name> <repo_key_or_url> [branch] [--all | --link module1,module2,...]
 
 set -e
 
-CLIENT_NAME="$1"
-REPO_KEY_OR_URL="$2"
-BRANCH="$3"
+# Variables par défaut
+CLIENT_NAME=""
+REPO_KEY_OR_URL=""
+BRANCH=""
+LINK_ALL=false
+LINK_MODULES=""
+
+# Parser les arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --all)
+            LINK_ALL=true
+            shift
+            ;;
+        --link)
+            LINK_MODULES="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: $0 <client_name> <repo_key_or_url> [branch] [--all | --link module1,module2,...]"
+            echo ""
+            echo "Options:"
+            echo "  --all                    Linker tous les modules du dépôt dans extra-addons"
+            echo "  --link module1,module2   Linker les modules spécifiés dans extra-addons"
+            echo ""
+            echo "Exemple: $0 mon_client odoo-alusage-addons 18.0 --link module_custom"
+            exit 0
+            ;;
+        *)
+            if [[ -z "$CLIENT_NAME" ]]; then
+                CLIENT_NAME="$1"
+            elif [[ -z "$REPO_KEY_OR_URL" ]]; then
+                REPO_KEY_OR_URL="$1"
+            elif [[ -z "$BRANCH" ]]; then
+                BRANCH="$1"
+            fi
+            shift
+            ;;
+    esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -27,7 +64,7 @@ echo_error() { echo -e "${RED}❌ $1${NC}"; }
 
 # Vérifications
 if [ -z "$CLIENT_NAME" ] || [ -z "$REPO_KEY_OR_URL" ]; then
-    echo_error "Usage: $0 <client_name> <repo_key_or_url> [branch]"
+    echo_error "Usage: $0 <client_name> <repo_key_or_url> [branch] [--all | --link module1,module2,...]"
     echo_info "Dépôts externes disponibles :"
     jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/repositories.json"
     exit 1
@@ -104,5 +141,59 @@ fi
 git submodule update --init "$SUBMODULE_PATH"
 
 echo_success "Dépôt externe '$REPO_NAME' ajouté avec succès"
-echo_info "Pour activer des modules de ce dépôt, utilisez:"
-echo_info "  ./scripts/link_modules.sh $SUBMODULE_PATH <nom_du_module>"
+
+# Fonction pour lister les modules disponibles dans un dépôt
+list_available_modules() {
+    local submodule_path="$1"
+    local modules=()
+    
+    if [ -d "$submodule_path" ]; then
+        for dir in "$submodule_path"/*; do
+            if [ -d "$dir" ] && [ -f "$dir/__manifest__.py" ]; then
+                modules+=($(basename "$dir"))
+            fi
+        done
+    fi
+    
+    printf '%s\n' "${modules[@]}"
+}
+
+# Fonction pour linker les modules
+link_modules() {
+    local submodule_path="$1"
+    local modules_to_link=("${@:2}")
+    
+    if [ ! -d "extra-addons" ]; then
+        mkdir -p extra-addons
+        echo_info "Création du répertoire extra-addons"
+    fi
+    
+    for module in "${modules_to_link[@]}"; do
+        if [ -d "$submodule_path/$module" ] && [ -f "$submodule_path/$module/__manifest__.py" ]; then
+            ln -sf "../../$submodule_path/$module" "extra-addons/$module"
+            echo_success "Module '$module' lié dans extra-addons"
+        else
+            echo_error "Module '$module' non trouvé dans $submodule_path"
+        fi
+    done
+}
+
+# Gérer le linking des modules si demandé
+if [ "$LINK_ALL" = true ]; then
+    echo_info "Linking de tous les modules disponibles..."
+    available_modules=($(list_available_modules "$SUBMODULE_PATH"))
+    if [ ${#available_modules[@]} -gt 0 ]; then
+        link_modules "$SUBMODULE_PATH" "${available_modules[@]}"
+        echo_success "Tous les modules (${#available_modules[@]}) ont été liés dans extra-addons"
+    else
+        echo_error "Aucun module trouvé dans $SUBMODULE_PATH"
+    fi
+elif [ -n "$LINK_MODULES" ]; then
+    echo_info "Linking des modules spécifiés..."
+    IFS=',' read -ra modules_array <<< "$LINK_MODULES"
+    link_modules "$SUBMODULE_PATH" "${modules_array[@]}"
+else
+    echo_info "Pour activer des modules de ce dépôt, utilisez:"
+    echo_info "  ./scripts/link_modules.sh $SUBMODULE_PATH <nom_du_module>"
+    echo_info "Ou relancez ce script avec --all ou --link module1,module2"
+fi
