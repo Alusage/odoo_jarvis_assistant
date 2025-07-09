@@ -1,0 +1,42 @@
+{
+  "client_templates": {
+    "basic": {
+      "description": "Configuration de base",
+      "default_modules": [
+        "partner-contact",
+        "account-analytic",
+        "server-ux"
+      ]
+    },
+    "ecommerce": {
+      "description": "E-commerce complet",
+      "default_modules": [
+        "partner-contact",
+        "website",
+        "sale-workflow",
+        "stock-logistics-workflow",
+        "account-analytic"
+      ]
+    },
+    "manufacturing": {
+      "description": "Entreprise manufacturière",
+      "default_modules": [
+        "partner-contact",
+        "sale-workflow",
+        "purchase-workflow",
+        "stock-logistics-workflow",
+        "manufacture",
+        "account-financial-tools"
+      ]
+    },
+    "services": {
+      "description": "Entreprise de services",
+      "default_modules": [
+        "partner-contact",
+        "project",
+        "hr",
+        "account-financial-tools"
+      ]
+    }
+  }
+}

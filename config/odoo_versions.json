@@ -1,0 +1,28 @@
+{
+  "odoo_versions": {
+    "16.0": {
+      "branch": "16.0",
+      "python_version": "3.9",
+      "requirements": [
+        "wheel",
+        "setuptools"
+      ]
+    },
+    "17.0": {
+      "branch": "17.0",
+      "python_version": "3.10",
+      "requirements": [
+        "wheel",
+        "setuptools"
+      ]
+    },
+    "18.0": {
+      "branch": "18.0",
+      "python_version": "3.11",
+      "requirements": [
+        "wheel",
+        "setuptools"
+      ]
+    }
+  }
+}
