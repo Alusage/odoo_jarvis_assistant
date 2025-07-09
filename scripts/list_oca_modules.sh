@@ -6,7 +6,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_DIR="$ROOT_DIR/config"
-TEMPLATES_FILE="$CONFIG_DIR/templates.json"
+REPOSITORIES_FILE="$CONFIG_DIR/repositories.json"
 
 # Couleurs
 GREEN='\033[0;32m'
@@ -29,19 +29,19 @@ if [ -n "$SEARCH_PATTERN" ]; then
 fi
 
 # Compter le total
-TOTAL_COUNT=$(jq '.oca_repositories | length' "$TEMPLATES_FILE")
+TOTAL_COUNT=$(jq '.oca_repositories | length' "$REPOSITORIES_FILE")
 
 # Lister les modules avec descriptions
 if [ -n "$SEARCH_PATTERN" ]; then
     # Filtrer par pattern
-    jq -r ".oca_repositories | to_entries[] | select(.key | test(\"$SEARCH_PATTERN\"; \"i\")) | \"  📦 \\(.key)\\n     \\(.value.description)\\n\"" "$TEMPLATES_FILE"
+    jq -r ".oca_repositories | to_entries[] | select(.key | test(\"$SEARCH_PATTERN\"; \"i\")) | \"  📦 \\(.key)\\n     \\(.value.description)\\n\"" "$REPOSITORIES_FILE"
     
     # Compter les résultats filtrés
-    FILTERED_COUNT=$(jq -r ".oca_repositories | to_entries[] | select(.key | test(\"$SEARCH_PATTERN\"; \"i\")) | .key" "$TEMPLATES_FILE" | wc -l)
+    FILTERED_COUNT=$(jq -r ".oca_repositories | to_entries[] | select(.key | test(\"$SEARCH_PATTERN\"; \"i\")) | .key" "$REPOSITORIES_FILE" | wc -l)
     echo_info "Trouvé $FILTERED_COUNT modules correspondant à '$SEARCH_PATTERN' sur $TOTAL_COUNT total"
 else
     # Lister tous les modules
-    jq -r '.oca_repositories | to_entries[] | "  📦 \(.key)\n     \(.value.description)\n"' "$TEMPLATES_FILE"
+    jq -r '.oca_repositories | to_entries[] | "  📦 \(.key)\n     \(.value.description)\n"' "$REPOSITORIES_FILE"
     echo_info "Total: $TOTAL_COUNT modules OCA disponibles"
 fi
 

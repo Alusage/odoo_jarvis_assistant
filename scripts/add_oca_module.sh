@@ -29,7 +29,7 @@ echo_error() { echo -e "${RED}❌ $1${NC}"; }
 if [ -z "$CLIENT_NAME" ] || [ -z "$MODULE_KEY" ]; then
     echo_error "Usage: $0 <client_name> <module_key> [custom_url]"
     echo_info "Modules OCA disponibles :"
-    jq -r '.oca_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/templates.json"
+    jq -r '.oca_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/repositories.json"
     exit 1
 fi
 
@@ -45,7 +45,7 @@ if [ -n "$CUSTOM_URL" ]; then
     MODULE_URL="$CUSTOM_URL"
     echo_info "Utilisation de l'URL personnalisée: $MODULE_URL"
 else
-    MODULE_URL=$(jq -r ".oca_repositories[\"$MODULE_KEY\"].url" "$CONFIG_DIR/templates.json")
+    MODULE_URL=$(jq -r ".oca_repositories[\"$MODULE_KEY\"].url" "$CONFIG_DIR/repositories.json")
     if [ "$MODULE_URL" = "null" ]; then
         echo_error "Module '$MODULE_KEY' non trouvé dans la configuration"
         exit 1
