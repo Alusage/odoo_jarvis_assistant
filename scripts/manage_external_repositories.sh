@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script pour gérer les dépôts externes dans templates.json
+# Script pour gérer les dépôts externes dans repositories.json
 # Usage: manage_external_repositories.sh <action> [args...]
 
 set -e
@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_DIR="$ROOT_DIR/config"
-TEMPLATES_FILE="$CONFIG_DIR/templates.json"
+REPOSITORIES_FILE="$CONFIG_DIR/repositories.json"
 
 # Couleurs
 GREEN='\033[0;32m'
@@ -32,7 +32,7 @@ show_help() {
 
 list_external_repos() {
     echo_info "Dépôts externes configurés :"
-    jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description) (\(.value.url))"' "$TEMPLATES_FILE"
+    jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description) (\(.value.url))"' "$REPOSITORIES_FILE"
 }
 
 add_external_repo() {
@@ -46,7 +46,7 @@ add_external_repo() {
     fi
     
     # Vérifier si le dépôt existe déjà
-    if jq -e ".external_repositories[\"$name\"]" "$TEMPLATES_FILE" > /dev/null; then
+    if jq -e ".external_repositories[\"$name\"]" "$REPOSITORIES_FILE" > /dev/null; then
         echo_error "Le dépôt '$name' existe déjà"
         exit 1
     fi
@@ -54,7 +54,7 @@ add_external_repo() {
     # Ajouter le dépôt
     jq --arg name "$name" --arg url "$url" --arg desc "$description" \
        '.external_repositories[$name] = {"url": $url, "description": $desc, "type": "custom"}' \
-       "$TEMPLATES_FILE" > "$TEMPLATES_FILE.tmp" && mv "$TEMPLATES_FILE.tmp" "$TEMPLATES_FILE"
+       "$REPOSITORIES_FILE" > "$REPOSITORIES_FILE.tmp" && mv "$REPOSITORIES_FILE.tmp" "$REPOSITORIES_FILE"
     
     echo_success "Dépôt externe '$name' ajouté avec succès"
 }
@@ -68,14 +68,14 @@ remove_external_repo() {
     fi
     
     # Vérifier si le dépôt existe
-    if ! jq -e ".external_repositories[\"$name\"]" "$TEMPLATES_FILE" > /dev/null; then
+    if ! jq -e ".external_repositories[\"$name\"]" "$REPOSITORIES_FILE" > /dev/null; then
         echo_error "Le dépôt '$name' n'existe pas"
         exit 1
     fi
     
     # Supprimer le dépôt
     jq --arg name "$name" 'del(.external_repositories[$name])' \
-       "$TEMPLATES_FILE" > "$TEMPLATES_FILE.tmp" && mv "$TEMPLATES_FILE.tmp" "$TEMPLATES_FILE"
+       "$REPOSITORIES_FILE" > "$REPOSITORIES_FILE.tmp" && mv "$REPOSITORIES_FILE.tmp" "$REPOSITORIES_FILE"
     
     echo_success "Dépôt externe '$name' supprimé avec succès"
 }
@@ -90,7 +90,7 @@ update_external_repo() {
     fi
     
     # Vérifier si le dépôt existe
-    if ! jq -e ".external_repositories[\"$name\"]" "$TEMPLATES_FILE" > /dev/null; then
+    if ! jq -e ".external_repositories[\"$name\"]" "$REPOSITORIES_FILE" > /dev/null; then
         echo_error "Le dépôt '$name' n'existe pas"
         exit 1
     fi
@@ -98,7 +98,7 @@ update_external_repo() {
     # Mettre à jour l'URL
     jq --arg name "$name" --arg url "$url" \
        '.external_repositories[$name].url = $url' \
-       "$TEMPLATES_FILE" > "$TEMPLATES_FILE.tmp" && mv "$TEMPLATES_FILE.tmp" "$TEMPLATES_FILE"
+       "$REPOSITORIES_FILE" > "$REPOSITORIES_FILE.tmp" && mv "$REPOSITORIES_FILE.tmp" "$REPOSITORIES_FILE"
     
     echo_success "URL du dépôt externe '$name' mise à jour avec succès"
 }

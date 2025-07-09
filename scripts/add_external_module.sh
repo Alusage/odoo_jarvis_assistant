@@ -29,7 +29,7 @@ echo_error() { echo -e "${RED}❌ $1${NC}"; }
 if [ -z "$CLIENT_NAME" ] || [ -z "$REPO_KEY_OR_URL" ]; then
     echo_error "Usage: $0 <client_name> <repo_key_or_url> [branch]"
     echo_info "Dépôts externes disponibles :"
-    jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/templates.json"
+    jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/repositories.json"
     exit 1
 fi
 
@@ -47,12 +47,12 @@ if [[ "$REPO_KEY_OR_URL" =~ ^(https?://|git@) ]]; then
     REPO_NAME=$(basename "$REPO_URL" .git)
     echo_info "Utilisation de l'URL directe: $REPO_URL"
 else
-    # C'est une clé dans templates.json
-    REPO_URL=$(jq -r ".external_repositories[\"$REPO_KEY_OR_URL\"].url" "$CONFIG_DIR/templates.json")
+    # C'est une clé dans repositories.json
+    REPO_URL=$(jq -r ".external_repositories[\"$REPO_KEY_OR_URL\"].url" "$CONFIG_DIR/repositories.json")
     if [ "$REPO_URL" = "null" ]; then
         echo_error "Dépôt externe '$REPO_KEY_OR_URL' non trouvé dans la configuration"
         echo_info "Dépôts externes disponibles :"
-        jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/templates.json"
+        jq -r '.external_repositories | to_entries[] | "\(.key) - \(.value.description)"' "$CONFIG_DIR/repositories.json"
         exit 1
     fi
     REPO_NAME="$REPO_KEY_OR_URL"
