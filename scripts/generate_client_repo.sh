@@ -82,7 +82,18 @@ create_client_structure() {
     git init
     
     # Créer les dossiers principaux
-    mkdir -p addons extra-addons config scripts
+    mkdir -p addons extra-addons config scripts data logs
+    
+    # Créer les sous-dossiers nécessaires pour Odoo dans data
+    mkdir -p data/filestore data/sessions
+    
+    # Définir les permissions appropriées pour les dossiers de données
+    # L'utilisateur odoo dans le conteneur a l'UID 101
+    if command -v chown >/dev/null 2>&1; then
+        # Essayer de définir les permissions pour l'utilisateur odoo (UID 101)
+        chown -R 101:101 data logs 2>/dev/null || true
+        chmod -R 755 data logs 2>/dev/null || true
+    fi
     
     # Créer le .gitignore
     cat > .gitignore << 'EOF'
@@ -96,6 +107,10 @@ __pycache__/
 filestore/
 sessions/
 .odoorc
+
+# Dossiers de données Odoo
+data/
+logs/
 
 # IDE
 .vscode/
@@ -331,7 +346,7 @@ create_config_files() {
 [options]
 addons_path = extra-addons,addons/odoo/addons$([ "$HAS_ENTERPRISE" = "true" ] && echo ",addons/enterprise")
 data_dir = data
-db_host = localhost
+db_host = db
 db_port = 5432
 db_user = odoo
 db_password = odoo
@@ -349,7 +364,6 @@ version: '3.8'
 services:
   odoo:
     image: odoo-alusage:$ODOO_VERSION
-    user: "100:101"  # Utiliser l'UID/GID de l'utilisateur odoo du conteneur
     depends_on:
       - db
     ports:
@@ -359,12 +373,13 @@ services:
       - ./requirements.txt:/mnt/requirements.txt:ro
       - ./extra-addons:/mnt/extra-addons:ro
       - ./addons:/mnt/addons:ro
-      - odoo-data:/var/lib/odoo
+      - ./data:/data
       - ./logs:/var/log/odoo
     environment:
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo
+      - DEBUG_MODE=false
     restart: unless-stopped
 
   db:
@@ -378,7 +393,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  odoo-data:
   postgres-data:
 EOF
 
@@ -389,9 +403,9 @@ wheel
 setuptools
 EOF
 
-    # Créer le dossier logs
-    mkdir -p "$CLIENT_DIR/logs"
+    # Créer les fichiers .gitkeep pour les dossiers vides
     touch "$CLIENT_DIR/logs/.gitkeep"
+    touch "$CLIENT_DIR/data/.gitkeep"
 }
 
 # Créer les scripts utilitaires
@@ -657,6 +671,61 @@ if [ $? -eq 0 ]; then
 else
   echo "⚠️ Conflits détectés. Veuillez les résoudre manuellement dans $REPO_PATH."
 fi
+EOF
+
+    # Script de configuration des permissions
+    cat > "$CLIENT_DIR/scripts/setup_permissions.sh" << 'EOF'
+#!/bin/bash
+
+# Script pour configurer les permissions des dossiers Odoo
+# Généré automatiquement - ne pas modifier manuellement
+
+set -e
+
+echo "🔧 Configuration des permissions des dossiers Odoo..."
+
+# Créer les dossiers nécessaires s'ils n'existent pas
+mkdir -p data/filestore data/sessions logs
+
+# Vérifier si nous sommes en mode développement (avec sudo)
+if [ "$EUID" -eq 0 ] || command -v sudo >/dev/null 2>&1; then
+    echo "📁 Configuration des permissions avec les privilèges administrateur..."
+    
+    # L'utilisateur odoo dans le conteneur a l'UID 101 et GID 101
+    ODOO_UID=101
+    ODOO_GID=101
+    
+    # Créer le groupe et l'utilisateur s'ils n'existent pas
+    if ! getent group odoo-container >/dev/null 2>&1; then
+        groupadd -g $ODOO_GID odoo-container 2>/dev/null || true
+    fi
+    
+    if ! getent passwd odoo-container >/dev/null 2>&1; then
+        useradd -u $ODOO_UID -g $ODOO_GID -s /bin/false odoo-container 2>/dev/null || true
+    fi
+    
+    # Configurer les permissions
+    if command -v sudo >/dev/null 2>&1 && [ "$EUID" -ne 0 ]; then
+        sudo chown -R $ODOO_UID:$ODOO_GID data logs
+        sudo chmod -R 755 data logs
+    else
+        chown -R $ODOO_UID:$ODOO_GID data logs
+        chmod -R 755 data logs
+    fi
+    
+    echo "✅ Permissions configurées pour l'utilisateur odoo-container (UID: $ODOO_UID, GID: $ODOO_GID)"
+else
+    echo "📁 Configuration des permissions en mode utilisateur..."
+    
+    # En mode utilisateur, essayer de configurer les permissions de base
+    chmod -R 755 data logs 2>/dev/null || true
+    
+    echo "✅ Permissions de base configurées"
+    echo "💡 Pour des permissions optimales, exécutez: sudo ./scripts/setup_permissions.sh"
+fi
+
+echo "📂 Structure des dossiers de données:"
+ls -la data/ logs/ 2>/dev/null || true
 EOF
 
     # Rendre les scripts exécutables
