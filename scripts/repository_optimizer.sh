@@ -2,7 +2,10 @@
 
 # Optimization and robustness improvements for OCA repository management
 
-CONFIG_DIR="$(dirname "$0")/../config"
+# Ne pas redéfinir CONFIG_DIR s'il est déjà défini
+if [ -z "$CONFIG_DIR" ]; then
+    CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config"
+fi
 CACHE_DIR="$HOME/.cache/odoo_client_generator"
 
 # Create cache directory if it doesn't exist
