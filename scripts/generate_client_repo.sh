@@ -357,43 +357,102 @@ workers = 2
 max_cron_threads = 1
 EOF
 
-    # docker-compose.yml
+    # docker-compose.yml - Version complète avec build intégré
     cat > "$CLIENT_DIR/docker-compose.yml" << EOF
+# Docker Compose pour le client $CLIENT_NAME
+# Version fusionnée avec les meilleures pratiques
+
 version: '3.8'
 
 services:
   odoo:
-    image: odoo-alusage:$ODOO_VERSION
-    depends_on:
-      - db
+    # Option 1: Utiliser l'image construite localement (recommandé)
+    build: 
+      context: ./docker
+      args:
+        ODOO_VERSION: $ODOO_VERSION
+    image: odoo-alusage-$CLIENT_NAME:$ODOO_VERSION
+    
+    # Option 2: Utiliser l'image générique (décommentez si nécessaire)
+    # image: odoo:$ODOO_VERSION
+    
+    container_name: odoo-$CLIENT_NAME
+    restart: unless-stopped
+    
     ports:
       - "8069:8069"
+      - "8072:8072"  # Pour le mode longpolling
+    
     volumes:
-      - ./config:/mnt/config
-      - ./requirements.txt:/mnt/requirements.txt:ro
+      # Configuration
+      - ./config:/mnt/config:ro
+      
+      # Modules personnalisés et OCA
       - ./extra-addons:/mnt/extra-addons:ro
       - ./addons:/mnt/addons:ro
+      
+      # Dépendances Python
+      - ./requirements.txt:/mnt/requirements.txt:ro
+      
+      # Données persistantes
       - ./data:/data
-      - ./logs:/var/log/odoo
+    
     environment:
+      # Configuration de base
       - HOST=db
       - USER=odoo
       - PASSWORD=odoo
-      - DEBUG_MODE=false
-    restart: unless-stopped
+      
+      # Configuration spécifique au client
+      - CLIENT_NAME=$CLIENT_NAME
+      - ODOO_VERSION=$ODOO_VERSION
+      - TEMPLATE=$TEMPLATE
+      - HAS_ENTERPRISE=$HAS_ENTERPRISE
+      
+      # Mode debug (décommentez si nécessaire)
+      # - DEBUG_MODE=true
+    
+    depends_on:
+      - db
+    
+    # Healthcheck pour vérifier que le service fonctionne
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   db:
-    image: postgres:13
+    image: postgres:15
+    container_name: postgres-$CLIENT_NAME
+    restart: unless-stopped
+    
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - ./data/postgresql:/var/lib/postgresql/data/pgdata
+    
+    # Healthcheck pour PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  postgres-data:
+# Réseaux optionnels
+networks:
+  default:
+    name: odoo-$CLIENT_NAME-network
+
+# Volumes nommés optionnels (alternative aux bind mounts)
+# volumes:
+#   odoo_data:
+#   postgres_data:
 EOF
 
     # requirements.txt
@@ -406,6 +465,31 @@ EOF
     # Créer les fichiers .gitkeep pour les dossiers vides
     touch "$CLIENT_DIR/logs/.gitkeep"
     touch "$CLIENT_DIR/data/.gitkeep"
+    
+    # Créer le dossier docker avec les fichiers nécessaires pour le build
+    create_docker_files
+}
+
+# Créer les fichiers Docker nécessaires pour le build
+create_docker_files() {
+    echo_info "Création des fichiers Docker pour le build..."
+    
+    local docker_dir="$CLIENT_DIR/docker"
+    mkdir -p "$docker_dir"
+    
+    # Créer le Dockerfile adapté au client
+    create_client_dockerfile "$docker_dir"
+    
+    # Copier et adapter l'entrypoint
+    create_client_entrypoint "$docker_dir"
+    
+    # Copier le script d'installation des requirements
+    create_client_install_requirements "$docker_dir"
+    
+    # Créer un script de build pour faciliter l'usage
+    create_client_build_script "$docker_dir"
+    
+    echo_success "Fichiers Docker créés dans docker/"
 }
 
 # Créer les scripts utilitaires
@@ -841,12 +925,70 @@ EOF
 
     cat >> "$CLIENT_DIR/README.md" << EOF
 
+    cat >> "$CLIENT_DIR/README.md" << EOF
+
+## Utilisation avec Docker
+
+Ce projet inclut deux options pour utiliser Docker :
+
+### Option 1 : Image Docker dédiée (Recommandée)
+
+Le sous-dossier \`docker/\` contient tous les fichiers nécessaires pour construire une image Docker spécifique au client.
+
+1. **Construire l'image** :
+   \`\`\`bash
+   cd docker/
+   ./build.sh
+   \`\`\`
+
+2. **Lancer les services** :
+   \`\`\`bash
+   docker-compose up -d
+   \`\`\`
+
+3. **Accéder à Odoo** :
+   - URL: http://localhost:8069
+
+**Avantages** :
+- Image optimisée pour le client
+- Dépendances Python pré-installées
+- Configuration spécifique intégrée
+- Autonomie complète du projet
+
+### Option 2 : Image générique (À la racine)
+
+Utiliser le \`docker-compose.yml\` à la racine avec l'image Odoo générique.
+
+\`\`\`bash
+docker-compose up -d
+\`\`\`
+
+### Fichiers Docker inclus
+
+\`\`\`
+docker/
+├── Dockerfile              # Image Docker dédiée odoo-alusage-$CLIENT_NAME
+├── docker-compose.yml      # Services complets (Odoo + PostgreSQL)
+├── entrypoint.sh          # Script d'entrée personnalisé
+├── install_requirements.sh # Installation des dépendances Python
+└── build.sh               # Script de construction simplifié
+\`\`\`
+
+### Commandes Docker utiles
+
+- **Voir les logs** : \`docker-compose logs -f odoo\`
+- **Shell dans le conteneur** : \`docker-compose exec odoo bash\`
+- **Mode debug** : Décommentez \`DEBUG_MODE=true\` dans docker-compose.yml
+- **Rebuild l'image** : \`cd docker && ./build.sh --no-cache\`
+
 ## Configuration Docker
 
 Le fichier \`docker-compose.yml\` configure :
 - Service Odoo sur le port 8069
 - Base de données PostgreSQL
 - Volumes persistants pour les données
+- Healthchecks pour les services
+- Réseau dédié
 
 ## Notes importantes
 
@@ -935,6 +1077,241 @@ update_requirements_automatically() {
     fi
 }
 
+# Créer le Dockerfile spécifique au client
+create_client_dockerfile() {
+    local docker_dir="$1"
+    local dockerfile="$docker_dir/Dockerfile"
+    
+    echo_info "Génération du Dockerfile pour odoo-alusage-$CLIENT_NAME..."
+    
+    cat > "$dockerfile" << EOF
+# Dockerfile pour le client $CLIENT_NAME
+# Image Odoo personnalisée avec modules spécifiques
+# Généré automatiquement - ne pas modifier manuellement
+
+# Étape 1 : Utiliser l'image officielle Odoo comme base
+ARG ODOO_VERSION=$ODOO_VERSION
+FROM odoo:\${ODOO_VERSION}
+
+# Métadonnées de l'image
+LABEL maintainer="Odoo Alusage"
+LABEL description="Image Odoo personnalisée pour le client $CLIENT_NAME"
+LABEL version="1.0"
+LABEL odoo.version="$ODOO_VERSION"
+LABEL client.name="$CLIENT_NAME"
+LABEL client.template="$TEMPLATE"
+LABEL client.enterprise="$HAS_ENTERPRISE"
+
+# Étape 2 : Installer les outils nécessaires et les polices
+USER root
+RUN apt-get update && apt-get install -y \\
+    python3-pip \\
+    fonts-liberation \\
+    fonts-dejavu-core \\
+    fontconfig \\
+    gosu \\
+    && fc-cache -f -v \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Étape 3 : Définir les variables d'environnement
+ENV ODOO_CONF_DIR=/etc/odoo
+ENV CUSTOM_CONF_DIR=/mnt/config
+ENV REQUIREMENTS_FILE=/mnt/requirements.txt
+ENV EXTRA_ADDONS_DIR=/mnt/extra-addons
+ENV ADDONS_DIR=/mnt/addons
+ENV DEBUG_MODE=false
+ENV CLIENT_NAME=$CLIENT_NAME
+
+# Étape 4 : Créer les répertoires nécessaires avec les bonnes permissions
+RUN mkdir -p \${CUSTOM_CONF_DIR} \${EXTRA_ADDONS_DIR} \${ADDONS_DIR} /data /var/lib/odoo && \\
+    chown -R odoo:odoo \${CUSTOM_CONF_DIR} \${EXTRA_ADDONS_DIR} \${ADDONS_DIR} /data /var/lib/odoo && \\
+    chmod -R 755 /data /var/lib/odoo
+
+# Étape 5 : Copier les scripts personnalisés
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY install_requirements.sh /usr/local/bin/install_requirements.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/install_requirements.sh
+
+# Étape 6 : Configurer le PATH pour l'utilisateur odoo
+ENV PATH="/var/lib/odoo/.local/bin:\$PATH"
+
+# Étape 7 : Remplacer le point d'entrée par le script personnalisé
+# L'entrypoint s'exécute en tant que root pour configurer les permissions
+# puis bascule vers l'utilisateur odoo
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Étape 8 : Commande par défaut
+CMD ["odoo"]
+
+# Instructions de build :
+# docker build -t odoo-alusage-$CLIENT_NAME .
+# 
+# Instructions d'usage :
+# docker run -d \\
+#   --name odoo-$CLIENT_NAME \\
+#   -p 8069:8069 \\
+#   -v \$(pwd)/../config:/mnt/config \\
+#   -v \$(pwd)/../extra-addons:/mnt/extra-addons \\
+#   -v \$(pwd)/../addons:/mnt/addons \\
+#   -v \$(pwd)/../requirements.txt:/mnt/requirements.txt \\
+#   -v \$(pwd)/../data:/data \\
+#   odoo-alusage-$CLIENT_NAME
+EOF
+}
+
+# Créer l'entrypoint spécifique au client
+create_client_entrypoint() {
+    local docker_dir="$1"
+    local entrypoint="$docker_dir/entrypoint.sh"
+    
+    echo_info "Création de l'entrypoint pour le client..."
+    
+    # Copier l'entrypoint principal et l'adapter
+    cp "$ROOT_DIR/docker/entrypoint.sh" "$entrypoint"
+    
+    # Ajouter une section spécifique au client au début
+    sed -i '1a\\n# Entrypoint personnalisé pour le client '$CLIENT_NAME'\n# Version Odoo: '$ODOO_VERSION'\n# Template: '$TEMPLATE'\n# Enterprise: '$HAS_ENTERPRISE'\n' "$entrypoint"
+    
+    chmod +x "$entrypoint"
+}
+
+# Créer le script d'installation des requirements
+create_client_install_requirements() {
+    local docker_dir="$1"
+    local install_script="$docker_dir/install_requirements.sh"
+    
+    echo_info "Création du script d'installation des requirements..."
+    
+    # Copier le script principal
+    cp "$ROOT_DIR/docker/install_requirements.sh" "$install_script"
+    chmod +x "$install_script"
+}
+
+# Créer un script de build pour faciliter l'usage
+create_client_build_script() {
+    local docker_dir="$1"
+    local build_script="$docker_dir/build.sh"
+    
+    echo_info "Création du script de build..."
+    
+    cat > "$build_script" << EOF
+#!/bin/bash
+
+# Script de build pour l'image Docker du client $CLIENT_NAME
+# Usage: ./build.sh [options]
+
+set -e
+
+# Couleurs
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo_info() { echo -e "\${BLUE}-  \$1\${NC}"; }
+echo_success() { echo -e "\${GREEN}✅ \$1\${NC}"; }
+echo_warning() { echo -e "\${YELLOW}⚠️  \$1\${NC}"; }
+echo_error() { echo -e "\${RED}❌ \$1\${NC}"; }
+
+# Variables
+CLIENT_NAME="$CLIENT_NAME"
+ODOO_VERSION="$ODOO_VERSION"
+IMAGE_NAME="odoo-alusage-\$CLIENT_NAME"
+IMAGE_TAG="$ODOO_VERSION"
+
+# Options
+PUSH=false
+NO_CACHE=false
+
+# Gestion des arguments
+while [[ \$# -gt 0 ]]; do
+    case \$1 in
+        --push)
+            PUSH=true
+            shift
+            ;;
+        --no-cache)
+            NO_CACHE=true
+            shift
+            ;;
+        --tag)
+            IMAGE_TAG="\$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: \$0 [options]"
+            echo ""
+            echo "Options:"
+            echo "  --push      Push l'image vers le registry après build"
+            echo "  --no-cache  Build sans utiliser le cache"
+            echo "  --tag TAG   Tag à utiliser (défaut: $ODOO_VERSION)"
+            echo "  --help      Afficher cette aide"
+            exit 0
+            ;;
+        *)
+            echo_error "Option inconnue: \$1"
+            exit 1
+            ;;
+    esac
+done
+
+echo_info "🐳 Build de l'image Docker pour le client \$CLIENT_NAME"
+echo_info "📋 Configuration:"
+echo "   - Client: \$CLIENT_NAME"
+echo "   - Version Odoo: \$ODOO_VERSION"
+echo "   - Image: \$IMAGE_NAME:\$IMAGE_TAG"
+echo "   - Push: \$([ \$PUSH = true ] && echo "Oui" || echo "Non")"
+echo "   - No Cache: \$([ \$NO_CACHE = true ] && echo "Oui" || echo "Non")"
+
+# Construction de l'image
+echo_info "🔨 Construction de l'image..."
+
+BUILD_ARGS="--build-arg ODOO_VERSION=\$ODOO_VERSION"
+BUILD_ARGS="\$BUILD_ARGS --tag \$IMAGE_NAME:\$IMAGE_TAG"
+
+if [ \$NO_CACHE = true ]; then
+    BUILD_ARGS="\$BUILD_ARGS --no-cache"
+fi
+
+if docker build \$BUILD_ARGS .; then
+    echo_success "✅ Image construite avec succès: \$IMAGE_NAME:\$IMAGE_TAG"
+else
+    echo_error "❌ Échec de la construction de l'image"
+    exit 1
+fi
+
+# Push optionnel
+if [ \$PUSH = true ]; then
+    echo_info "📤 Push de l'image vers le registry..."
+    if docker push "\$IMAGE_NAME:\$IMAGE_TAG"; then
+        echo_success "✅ Image pushée avec succès"
+    else
+        echo_error "❌ Échec du push de l'image"
+        exit 1
+    fi
+fi
+
+echo_success "🎉 Build terminé avec succès !"
+echo_info "💡 Pour lancer le conteneur:"
+echo "   docker-compose up -d"
+echo ""
+echo_info "💡 Pour lancer manuellement:"
+echo "   docker run -d \\\\"
+echo "     --name odoo-\$CLIENT_NAME \\\\"
+echo "     -p 8069:8069 \\\\"
+echo "     -v \\\$(pwd)/../config:/mnt/config \\\\"
+echo "     -v \\\$(pwd)/../extra-addons:/mnt/extra-addons \\\\"
+echo "     -v \\\$(pwd)/../addons:/mnt/addons \\\\"
+echo "     -v \\\$(pwd)/../requirements.txt:/mnt/requirements.txt \\\\"
+echo "     -v \\\$(pwd)/../data:/data \\\\"
+echo "     \$IMAGE_NAME:\$IMAGE_TAG"
+
+EOF
+
+    chmod +x "$build_script"
+}
+
 # Fonction principale
 main() {
     validate_parameters
@@ -950,6 +1327,20 @@ main() {
     create_initial_commit
     
     echo_success "Dépôt client '$CLIENT_NAME' créé avec succès !"
+    echo_info "💡 Structure créée:"
+    echo "   📁 clients/$CLIENT_NAME/"
+    echo "   ├── ⚙️  config/          (Configuration Odoo)"
+    echo "   ├── 📦 extra-addons/     (Modules OCA et externes)"
+    echo "   ├── 🏢 addons/           (Modules Enterprise)"
+    echo "   ├── 🛠️  scripts/         (Scripts de gestion)"
+    echo "   ├── 🐳 docker/           (Fichiers Docker pour le build)"
+    echo "   ├── 📄 requirements.txt  (Dépendances Python)"
+    echo "   ├── 🐙 docker-compose.yml (Configuration complète)"
+    echo "   └── 🐙 .git/            (Dépôt Git)"
+    echo ""
+    echo_info "🚀 Pour démarrer:"
+    echo "   cd clients/$CLIENT_NAME"
+    echo "   docker-compose up -d      # Lancer les services"
 }
 
 # Exécuter

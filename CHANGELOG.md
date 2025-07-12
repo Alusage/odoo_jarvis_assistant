@@ -4,6 +4,13 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
+- refactor: organize MCP server with comprehensive test suite (02bba88)
+- fix: correct client creation parameters for generate_client_repo.sh (6bd694d)
+- feat: add MCP server for Claude Desktop integration (a99bfc8)
+- feat: automatic Python requirements generation for new clients (c3ebd2e)
+- feat: enhance client generation with proper data directory handling (88924c6)
+- fix: Docker infrastructure improvements for data permissions (0e8f1ad)
+- fix: wrong symlink on extra-addons (b06d678)
 - feat: enhance client templates with granular module control (9b4a0cf)
 - feat: add automatic module linking options to add_oca_module.sh and add_external_module.sh (d4f8499)
 - fix: remove old config file for templates (ae603a3)

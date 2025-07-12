@@ -276,6 +276,25 @@ class OdooClientMCPServer:
                         },
                         "required": ["client"]
                     }
+                ),
+                types.Tool(
+                    name="delete_client",
+                    description="Delete a client repository (REQUIRES USER CONFIRMATION)",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client to delete"
+                            },
+                            "confirmed": {
+                                "type": "boolean",
+                                "description": "User confirmation for deletion (must be true to proceed)",
+                                "default": False
+                            }
+                        },
+                        "required": ["client"]
+                    }
                 )
             ]
         
@@ -320,6 +339,11 @@ class OdooClientMCPServer:
                 )
             elif name == "backup_client":
                 return await self._backup_client(arguments.get("client"))
+            elif name == "delete_client":
+                return await self._delete_client(
+                    arguments.get("client"),
+                    arguments.get("confirmed", False)
+                )
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
@@ -505,6 +529,86 @@ class OdooClientMCPServer:
                 type="text",
                 text=f"❌ Failed to backup client '{client}'\n\nError: {result['stderr']}"
             )]
+    
+    async def _delete_client(self, client: str, confirmed: bool = False):
+        """Delete a client repository with confirmation"""
+        
+        # Vérifier que le client existe d'abord
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found.\n\nAvailable clients:\n" + 
+                     "\n".join([f"  - {c.name}" for c in (self.repo_path / "clients").iterdir() if c.is_dir()])
+            )]
+        
+        # Si pas confirmé, demander la confirmation avec les détails
+        if not confirmed:
+            # Affichons les infos de base sans essayer de lire les contenus qui pourraient bloquer
+            module_count = "Unknown"
+            try:
+                if (client_dir / "extra-addons").exists():
+                    # Utiliser un timeout pour éviter les blocages
+                    import subprocess
+                    result = subprocess.run(
+                        ["find", str(client_dir / "extra-addons"), "-maxdepth", "1", "-type", "l"], 
+                        capture_output=True, text=True, timeout=2
+                    )
+                    if result.returncode == 0:
+                        module_count = len(result.stdout.strip().split('\n')) - 1 if result.stdout.strip() else 0
+            except Exception:
+                module_count = "Unknown (permission issues)"
+            
+            return [types.TextContent(
+                type="text",
+                text=f"⚠️ CONFIRMATION REQUIRED: Delete client '{client}'\n\n" +
+                     f"📁 Client path: {client_dir}\n" +
+                     f"📦 Linked modules: {module_count}\n" +
+                     f"💾 All data, configurations, and Git history will be lost!\n\n" +
+                     f"❗ This action cannot be undone!\n\n" +
+                     f"To proceed with deletion, please confirm by calling this tool again with confirmed=true.\n\n" +
+                     f"Example: delete_client(client='{client}', confirmed=True)"
+            )]
+        
+        # Si confirmé, procéder à la suppression - utiliser directement le script bash
+        # pour éviter les blocages Python avec les permissions
+        result = self._run_command(["make", "delete-client", f"CLIENT={client}", "FORCE=true"])
+        
+        if result["success"]:
+            return [types.TextContent(
+                type="text",
+                text=f"✅ Client '{client}' deleted successfully\n\n{result['stdout']}"
+            )]
+        else:
+            # Analyser l'erreur pour donner des instructions spécifiques
+            error_msg = result.get('stderr', '')
+            
+            if "Permission denied" in error_msg:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Failed to delete client '{client}' due to permission issues\n\n" +
+                             f"🔧 The client directory contains files owned by root (probably created by Docker).\n\n" +
+                             f"📋 To fix this, run these commands in your terminal:\n\n" +
+                             f"```bash\n" +
+                             f"# Fix permissions first\n" +
+                             f"sudo chown -R $(whoami):$(whoami) {client_dir}\n" +
+                             f"sudo chmod -R u+w {client_dir}\n\n" +
+                             f"# Then delete the client\n" +
+                             f"rm -rf {client_dir}\n" +
+                             f"```\n\n" +
+                             f"💡 Or run this single command:\n" +
+                             f"```bash\n" +
+                             f"sudo rm -rf {client_dir}\n" +
+                             f"```\n\n" +
+                             f"After running these commands manually, the client will be deleted."
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Failed to delete client '{client}'\n\n" +
+                         f"Error: {error_msg}\n\n" +
+                         f"💡 Try manually: sudo rm -rf {client_dir}"
+                )]
 
 
 async def main():

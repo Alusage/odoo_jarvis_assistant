@@ -122,7 +122,40 @@ client_abc/
 
 ## 🐳 Utilisation avec Docker
 
-Chaque client généré inclut une configuration Docker Compose :
+Chaque client généré inclut **deux options Docker** :
+
+### Option 1 : Image Docker dédiée (Recommandée) 🎯
+
+Chaque client dispose d'un sous-dossier `docker/` avec tous les fichiers nécessaires pour construire une **image Docker spécifique** :
+
+```bash
+cd clients/client_abc/docker
+./build.sh                      # Construit l'image odoo-alusage-client_abc:18.0
+docker-compose up -d             # Lance avec l'image dédiée
+```
+
+**Avantages** :
+
+- ✅ **Autonomie complète** : Le client peut utiliser son image sans dépendance externe
+- ✅ **Tag versionné** : L'image utilise la version d'Odoo comme tag (`18.0`, `17.0`, etc.)
+- ✅ **Optimisation** : Dépendances Python pré-installées dans l'image
+- ✅ **Configuration intégrée** : Variables d'environnement spécifiques au client
+- ✅ **Facilité de déploiement** : Image prête pour registry Docker
+
+**Structure générée** :
+
+```
+clients/client_abc/docker/
+├── Dockerfile               # Image odoo-alusage-client_abc:18.0
+├── docker-compose.yml       # Configuration complète (Odoo + PostgreSQL)
+├── entrypoint.sh            # Script d'entrée personnalisé
+├── install_requirements.sh  # Installation dépendances Python
+└── build.sh                 # Script de construction simplifié
+```
+
+### Option 2 : Image générique (À la racine)
+
+Utiliser le `docker-compose.yml` à la racine avec l'image Odoo standard :
 
 ```bash
 cd clients/client_abc
@@ -131,15 +164,25 @@ cd clients/client_abc
 docker-compose up -d
 ```
 
+### Commandes Docker utiles
+
+```bash
+# Construction personnalisée
+./build.sh --no-cache           # Rebuild sans cache
+./build.sh --tag 1.0            # Tag personnalisé
+
+# Gestion des conteneurs
+docker-compose logs -f odoo     # Voir les logs
+docker-compose exec odoo bash   # Shell dans le conteneur
+docker-compose down -v          # Arrêter et supprimer les volumes
+
+# Debug mode
+# Décommentez DEBUG_MODE=true dans docker-compose.yml
+```
+
 Accès : http://localhost:8069
 
-**Restart policy**
-
-Pour garantir que les services redémarrent après un plantage ou un reboot, ajoutez la directive suivante dans votre `docker-compose.yml` sous chaque service :
-
-```yaml
-restart: unless-stopped
-```
+**Tags des images** : Les images générées utilisent la version d'Odoo comme tag (`odoo-alusage-client:18.0`) pour une meilleure traçabilité et gestion des versions.
 
 ## 🔌 Hooks Git versionnés
 
@@ -259,4 +302,3 @@ addons/
 - **Gestion centralisée** : Toutes les descriptions dans un fichier JSON structuré
 - **Popularité visible** : Les modules sont classés par nombre d'étoiles GitHub
 - **Enrichissement collaboratif** : Facilite la contribution aux descriptions manquantes
-

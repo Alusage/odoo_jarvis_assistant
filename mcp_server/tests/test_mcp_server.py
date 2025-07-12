@@ -67,12 +67,12 @@ class TestMCPServer:
             server = OdooClientMCPServer(str(self.repo_path))
             
             # Tester que le serveur a bien été configuré avec les handlers
-            # Version actuelle fonctionnelle (12 outils sans delete_client)
+            # Version actuelle avec delete_client (13 outils)
             expected_tools = [
                 "create_client", "list_clients", "update_client", "add_module",
                 "list_modules", "list_oca_modules", "client_status", "check_client",
                 "update_requirements", "update_oca_repos", "build_docker_image",
-                "backup_client"
+                "backup_client", "delete_client"
             ]
             
             # Vérifier que toutes les méthodes d'implémentation existent
@@ -217,7 +217,7 @@ class TestMCPServer:
                 "create_client", "list_clients", "update_client", "add_module",
                 "list_modules", "list_oca_modules", "client_status", "check_client",
                 "update_requirements", "update_oca_repos", "build_docker_image",
-                "backup_client"
+                "backup_client", "delete_client"
             ]
             
             # Vérifier que chaque outil a bien une méthode correspondante
