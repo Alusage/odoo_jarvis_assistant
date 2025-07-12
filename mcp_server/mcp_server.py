@@ -331,12 +331,13 @@ class OdooClientMCPServer:
         """Create a new Odoo client repository"""
         script_path = self.repo_path / "scripts" / "generate_client_repo.sh"
         
+        # Le script attend: <client_name> <odoo_version> <template> <has_enterprise>
         result = self._run_command([
             str(script_path),
-            "--name", name,
-            "--template", template,
-            "--version", version,
-            "--non-interactive"
+            name,           # client_name
+            version,        # odoo_version  
+            template,       # template
+            "false"         # has_enterprise (par défaut false)
         ])
         
         if result["success"]:
