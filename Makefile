@@ -136,6 +136,13 @@ edit-descriptions: ## Éditer le fichier de descriptions OCA
 test: ## Exécuter les tests du générateur
 	@./test.sh
 
+test-mcp: ## Lancer les tests du serveur MCP
+	@echo "🧪 Lancement des tests du serveur MCP..."
+	@./mcp_server/tests/run_tests.sh
+
+dev-mcp: ## Outils de développement MCP (usage: make dev-mcp ARGS="test")
+	@cd mcp_server && ./dev_mcp.sh $(ARGS)
+
 demo: ## Lancer une démonstration complète
 	@./demo.sh
 
@@ -161,6 +168,19 @@ backup-client: ## Sauvegarder un client (usage: make backup-client CLIENT=nom_cl
 	@echo "💾 Sauvegarde du client $(CLIENT)..."
 	@tar -czf "backup_$(CLIENT)_$(shell date +%Y%m%d_%H%M%S).tar.gz" -C $(CLIENTS_DIR) $(CLIENT)
 	@echo "✅ Sauvegarde créée: backup_$(CLIENT)_$(shell date +%Y%m%d_%H%M%S).tar.gz"
+
+delete-client: ## Supprimer un client (usage: make delete-client CLIENT=nom_client [FORCE=true])
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make delete-client CLIENT=nom_client [FORCE=true]"; \
+		echo "Options:"; \
+		echo "  FORCE=true  Supprimer sans confirmation"; \
+		exit 1; \
+	fi
+	@if [ "$(FORCE)" = "true" ]; then \
+		$(SCRIPTS_DIR)/delete_client.sh $(CLIENT) --force; \
+	else \
+		$(SCRIPTS_DIR)/delete_client.sh $(CLIENT); \
+	fi
 
 status: ## Afficher le statut de tous les clients
 	@echo "📊 Statut des clients:"

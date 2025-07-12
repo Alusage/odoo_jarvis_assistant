@@ -81,7 +81,7 @@ class OdooClientMCPServer:
         """Setup MCP handlers"""
         
         @self.server.list_tools()
-        async def handle_list_tools() -> List[types.Tool]:
+        async def handle_list_tools():
             """Return list of available tools"""
             return [
                 types.Tool(
@@ -280,7 +280,7 @@ class OdooClientMCPServer:
             ]
         
         @self.server.call_tool()
-        async def handle_call_tool(name: str, arguments: dict) -> List[types.TextContent]:
+        async def handle_call_tool(name: str, arguments: dict):
             """Handle tool calls"""
             
             if name == "create_client":
@@ -327,17 +327,16 @@ class OdooClientMCPServer:
     
     # Tool implementation methods
     
-    async def _create_client(self, name: str, template: str = "basic", version: str = "18.0") -> List[types.TextContent]:
+    async def _create_client(self, name: str, template: str = "basic", version: str = "18.0"):
         """Create a new Odoo client repository"""
         script_path = self.repo_path / "scripts" / "generate_client_repo.sh"
         
-        # Le script attend: <client_name> <odoo_version> <template> <has_enterprise>
         result = self._run_command([
             str(script_path),
             name,           # client_name
             version,        # odoo_version  
             template,       # template
-            "false"         # has_enterprise (par défaut false)
+            "false"         # has_enterprise
         ])
         
         if result["success"]:
@@ -351,7 +350,7 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to create client '{name}'\n\nError: {result['stderr']}\n\nOutput: {result['stdout']}"
             )]
     
-    async def _list_clients(self) -> List[types.TextContent]:
+    async def _list_clients(self):
         """List all existing client repositories"""
         result = self._run_command(["make", "list-clients"])
         
@@ -360,7 +359,7 @@ class OdooClientMCPServer:
             text=result["stdout"] if result["success"] else f"Error: {result['stderr']}"
         )]
     
-    async def _update_client(self, client: str) -> List[types.TextContent]:
+    async def _update_client(self, client: str):
         """Update submodules for a specific client"""
         result = self._run_command(["make", "update-client", f"CLIENT={client}"])
         
@@ -375,7 +374,7 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to update client '{client}'\n\nError: {result['stderr']}"
             )]
     
-    async def _add_module(self, client: str, module: str) -> List[types.TextContent]:
+    async def _add_module(self, client: str, module: str):
         """Add an OCA module to a client"""
         result = self._run_command(["make", "add-module", f"CLIENT={client}", f"MODULE={module}"])
         
@@ -390,7 +389,7 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to add module '{module}' to client '{client}'\n\nError: {result['stderr']}"
             )]
     
-    async def _list_modules(self, client: str) -> List[types.TextContent]:
+    async def _list_modules(self, client: str):
         """List available modules for a specific client"""
         result = self._run_command(["make", "list-modules", f"CLIENT={client}"])
         
@@ -399,7 +398,7 @@ class OdooClientMCPServer:
             text=result["stdout"] if result["success"] else f"Error: {result['stderr']}"
         )]
     
-    async def _list_oca_modules(self, pattern: str = "") -> List[types.TextContent]:
+    async def _list_oca_modules(self, pattern: str = ""):
         """List all available OCA modules with optional filtering"""
         cmd = ["make", "list-oca-modules"]
         if pattern:
@@ -412,7 +411,7 @@ class OdooClientMCPServer:
             text=result["stdout"] if result["success"] else f"Error: {result['stderr']}"
         )]
     
-    async def _client_status(self) -> List[types.TextContent]:
+    async def _client_status(self):
         """Show status of all clients"""
         result = self._run_command(["make", "status"])
         
@@ -421,7 +420,7 @@ class OdooClientMCPServer:
             text=result["stdout"] if result["success"] else f"Error: {result['stderr']}"
         )]
     
-    async def _check_client(self, client: str) -> List[types.TextContent]:
+    async def _check_client(self, client: str):
         """Run diagnostics on a specific client"""
         result = self._run_command(["make", "check-client", f"CLIENT={client}"])
         
@@ -430,7 +429,7 @@ class OdooClientMCPServer:
             text=result["stdout"] if result["success"] else f"Error: {result['stderr']}"
         )]
     
-    async def _update_requirements(self, client: str, clean: bool = False) -> List[types.TextContent]:
+    async def _update_requirements(self, client: str, clean: bool = False):
         """Update Python requirements for a client"""
         cmd = ["make", "update-requirements", f"CLIENT={client}"]
         if clean:
@@ -449,7 +448,7 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to update requirements for client '{client}'\n\nError: {result['stderr']}"
             )]
     
-    async def _update_oca_repos(self, language: str = "fr", fast: bool = False) -> List[types.TextContent]:
+    async def _update_oca_repos(self, language: str = "fr", fast: bool = False):
         """Update OCA repository list from GitHub"""
         if fast:
             cmd = ["make", "update-oca-repos-fast"]
@@ -471,7 +470,7 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to update OCA repositories\n\nError: {result['stderr']}"
             )]
     
-    async def _build_docker_image(self, version: str = "18.0", tag: str = "") -> List[types.TextContent]:
+    async def _build_docker_image(self, version: str = "18.0", tag: str = ""):
         """Build custom Odoo Docker image"""
         cmd = ["make", "build"]
         if version:
@@ -492,7 +491,7 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to build Docker image\n\nError: {result['stderr']}"
             )]
     
-    async def _backup_client(self, client: str) -> List[types.TextContent]:
+    async def _backup_client(self, client: str):
         """Create a backup of a client"""
         result = self._run_command(["make", "backup-client", f"CLIENT={client}"])
         

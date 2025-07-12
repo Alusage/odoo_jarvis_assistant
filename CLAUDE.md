@@ -89,6 +89,10 @@ cd clients/client_name/docker
 make test
 ./test.sh
 
+# Run MCP server tests (unit tests for MCP functionality)
+make test-mcp
+./mcp_server/tests/run_tests.sh
+
 # Run demo with example client creation
 make demo
 ./demo.sh
@@ -183,6 +187,15 @@ OCA modules use **exact GitHub repository names** for consistency:
 ### Multi-language Support
 
 The system supports French and English descriptions for OCA modules via `config/oca_descriptions.json`, allowing for internationalization of module documentation.
+
+### MCP Server Integration
+
+The project includes an **MCP (Model Context Protocol) server** that exposes all functionality to Claude Desktop:
+- **Location**: `mcp_server/` (serveur, tests, outils de développement)
+- **Configuration**: `~/.config/Claude/claude_desktop_config.json`
+- **Tools exposed**: 12 outils stables pour gestion clients, modules OCA, Docker
+- **Testing**: `make test-mcp` pour tests unitaires complets (12/12 ✅)
+- **Development**: `make dev-mcp ARGS="help"` pour outils de développement
 
 ## Important Notes
 
