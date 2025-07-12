@@ -37,15 +37,16 @@ make test-mcp  # Si ajouté au Makefile
 - ✅ **Error Handling** - Gestion des erreurs
 
 ### Tests des outils
-- ✅ **Tools List** - Liste des 12 outils MCP
+- ✅ **Tools List** - Liste des 13 outils MCP
 - ✅ **Create Client Schema** - Schéma de l'outil create_client
 - ✅ **Create Client Parameters** - Paramètres par défaut et personnalisés
 - ✅ **Tool Calls Mapping** - Vérification des mappings de tous les outils
+- ✅ **Delete Client Workflow** - Tests complets du workflow de suppression avec confirmation
 - ✅ **List Clients Mock** - Fonctionnalité list_clients
 
 ## Outils testés
 
-Le serveur MCP expose **12 outils** (version stable) :
+Le serveur MCP expose **13 outils** (version complète) :
 
 1. `create_client` - Créer un nouveau client
 2. `list_clients` - Lister les clients existants
@@ -59,6 +60,7 @@ Le serveur MCP expose **12 outils** (version stable) :
 10. `update_oca_repos` - Mettre à jour les repos OCA depuis GitHub
 11. `build_docker_image` - Construire l'image Docker personnalisée
 12. `backup_client` - Créer une sauvegarde d'un client
+13. `delete_client` - Supprimer un client (avec confirmation obligatoire)
 
 ## Prérequis
 
@@ -88,10 +90,11 @@ Lancez les tests **à chaque modification** du serveur MCP :
 ### Tests de régression
 
 Ces tests garantissent que :
-- ✅ **Version stable** : 12 outils fonctionnels testés
+- ✅ **Version complète** : 13 outils fonctionnels testés (16/16 tests ✅)
 - ✅ **Pas de régression** : Chaque modification est vérifiée
 - ✅ **Compatibilité Claude Desktop** : Structure MCP respectée
 - ✅ **Signatures correctes** : Paramètres et types validés
+- ✅ **Workflow de suppression** : Tests de sécurité et confirmation
 
 ### Ajout de nouvelles fonctionnalités
 

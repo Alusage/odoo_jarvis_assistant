@@ -240,6 +240,78 @@ class TestMCPServer:
         except Exception as e:
             self.log_test("Tool Calls Mapping", False, f"Erreur: {e}")
     
+    async def test_delete_client_workflow(self):
+        """Test du workflow de suppression de client avec confirmation"""
+        try:
+            server = OdooClientMCPServer(str(self.repo_path))
+            
+            # Test avec un client inexistant
+            result = await server._delete_client("client_inexistant", False)
+            
+            if len(result) == 1 and "not found" in result[0].text:
+                self.log_test("Delete Client (Not Found)", True, "Gestion client inexistant correcte")
+            else:
+                self.log_test("Delete Client (Not Found)", False, f"Réponse inattendue: {result}")
+            
+            # Test des paramètres et de la signature de la méthode
+            import inspect
+            sig = inspect.signature(server._delete_client)
+            params = list(sig.parameters.keys())
+            
+            expected_params = ["client", "confirmed"]
+            if all(p in params for p in expected_params):
+                self.log_test("Delete Client (Signature)", True, "Signature _delete_client correcte")
+            else:
+                self.log_test("Delete Client (Signature)", False, f"Paramètres manquants: {set(expected_params) - set(params)}")
+            
+            # Test avec mock pour vérifier les appels de commande
+            with patch.object(server, '_run_command') as mock_run:
+                mock_run.return_value = {
+                    "success": True,
+                    "stdout": "Client deleted successfully",
+                    "stderr": ""
+                }
+                
+                # Mock du répertoire client pour qu'il existe
+                with patch('pathlib.Path.exists') as mock_exists:
+                    mock_exists.return_value = True
+                    
+                    # Test avec confirmation
+                    result = await server._delete_client("test_client", True)
+                    
+                    # Vérifier que la commande make delete-client a été appelée
+                    if mock_run.called:
+                        call_args = mock_run.call_args[0][0]
+                        if ("make" in call_args and "delete-client" in call_args):
+                            self.log_test("Delete Client (Command)", True, "Commande de suppression appelée correctement")
+                        else:
+                            self.log_test("Delete Client (Command)", False, f"Commande incorrecte: {call_args}")
+                    else:
+                        self.log_test("Delete Client (Command)", False, "Commande de suppression non appelée")
+            
+            # Test de gestion d'erreur
+            with patch.object(server, '_run_command') as mock_run:
+                mock_run.return_value = {
+                    "success": False,
+                    "stdout": "",
+                    "stderr": "Permission denied"
+                }
+                
+                with patch('pathlib.Path.exists') as mock_exists:
+                    mock_exists.return_value = True
+                    
+                    result = await server._delete_client("test_client", True)
+                    
+                    if (len(result) == 1 and 
+                        "permission issues" in result[0].text and 
+                        "sudo" in result[0].text):
+                        self.log_test("Delete Client (Permissions)", True, "Gestion erreurs de permissions OK")
+                    else:
+                        self.log_test("Delete Client (Permissions)", False, "Gestion erreurs de permissions manquante")
+                        
+        except Exception as e:
+            self.log_test("Delete Client Workflow", False, f"Erreur: {e}")
+    
     async def test_performance(self):
         """Test de performance du serveur MCP"""
         try:
@@ -303,6 +375,7 @@ class TestMCPServer:
             self.test_list_clients_mock,
             self.test_create_client_parameters,
             self.test_tool_calls_mapping,
+            self.test_delete_client_workflow,
             self.test_performance,
             self.test_error_handling
         ]
