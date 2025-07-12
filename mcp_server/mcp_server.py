@@ -105,6 +105,11 @@ class OdooClientMCPServer:
                                 "description": "Odoo version",
                                 "enum": ["16.0", "17.0", "18.0"],
                                 "default": "18.0"
+                            },
+                            "has_enterprise": {
+                                "type": "boolean",
+                                "description": "Include Odoo Enterprise modules and repositories",
+                                "default": False
                             }
                         },
                         "required": ["name"]
@@ -306,7 +311,8 @@ class OdooClientMCPServer:
                 return await self._create_client(
                     arguments.get("name"),
                     arguments.get("template", "basic"),
-                    arguments.get("version", "18.0")
+                    arguments.get("version", "18.0"),
+                    arguments.get("has_enterprise", False)
                 )
             elif name == "list_clients":
                 return await self._list_clients()
@@ -351,22 +357,23 @@ class OdooClientMCPServer:
     
     # Tool implementation methods
     
-    async def _create_client(self, name: str, template: str = "basic", version: str = "18.0"):
+    async def _create_client(self, name: str, template: str = "basic", version: str = "18.0", has_enterprise: bool = False):
         """Create a new Odoo client repository"""
         script_path = self.repo_path / "scripts" / "generate_client_repo.sh"
         
         result = self._run_command([
             str(script_path),
-            name,           # client_name
-            version,        # odoo_version  
-            template,       # template
-            "false"         # has_enterprise
+            name,                              # client_name
+            version,                           # odoo_version  
+            template,                          # template
+            "true" if has_enterprise else "false"  # has_enterprise
         ])
         
         if result["success"]:
+            enterprise_msg = " (with Enterprise)" if has_enterprise else ""
             return [types.TextContent(
                 type="text",
-                text=f"✅ Client '{name}' created successfully with template '{template}' for Odoo {version}\n\n{result['stdout']}"
+                text=f"✅ Client '{name}' created successfully with template '{template}' for Odoo {version}{enterprise_msg}\n\n{result['stdout']}"
             )]
         else:
             return [types.TextContent(

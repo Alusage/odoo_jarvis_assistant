@@ -45,6 +45,7 @@ Ajouter dans `~/.config/Claude/claude_desktop_config.json` :
 
 Dans Claude Desktop, utilisez des commandes naturelles :
 - *"Créer un nouveau client avec le template ecommerce pour Odoo 18.0"*
+- *"Créer un client avec Odoo Enterprise pour la version 17.0"*
 - *"Lister tous les clients existants"*
 - *"Ajouter le module sale_management au client mon_client"*
 - *"Mettre à jour les repositories OCA"*
@@ -94,7 +95,7 @@ Le serveur expose **12 outils** :
 
 | Outil | Description |
 |-------|-------------|
-| `create_client` | Créer un nouveau client Odoo |
+| `create_client` | Créer un nouveau client Odoo (avec support Enterprise) |
 | `list_clients` | Lister tous les clients existants |
 | `update_client` | Mettre à jour les submodules d'un client |
 | `add_module` | Ajouter un module OCA à un client |

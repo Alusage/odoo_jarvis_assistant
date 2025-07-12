@@ -4,6 +4,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
+- test: add comprehensive unit tests for delete_client workflow (9efd852)
+- feat: add delete_client tool to MCP server with confirmation workflow (d153e53)
 - refactor: organize MCP server with comprehensive test suite (02bba88)
 - fix: correct client creation parameters for generate_client_repo.sh (6bd694d)
 - feat: add MCP server for Claude Desktop integration (a99bfc8)

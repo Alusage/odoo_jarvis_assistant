@@ -106,7 +106,7 @@ class TestMCPServer:
             sig = inspect.signature(server._create_client)
             params = list(sig.parameters.keys())
             
-            expected_params = ["name", "template", "version"]
+            expected_params = ["name", "template", "version", "has_enterprise"]
             missing_params = [p for p in expected_params if p not in params]
             
             if missing_params:
@@ -115,9 +115,11 @@ class TestMCPServer:
                 # Vérifier les valeurs par défaut
                 template_param = sig.parameters.get("template")
                 version_param = sig.parameters.get("version")
+                enterprise_param = sig.parameters.get("has_enterprise")
                 if (template_param and template_param.default == "basic" and
-                    version_param and version_param.default == "18.0"):
-                    self.log_test("Create Client Schema", True, "Méthode _create_client correctement configurée")
+                    version_param and version_param.default == "18.0" and
+                    enterprise_param and enterprise_param.default is False):
+                    self.log_test("Create Client Schema", True, "Méthode _create_client avec has_enterprise configurée")
                 else:
                     self.log_test("Create Client Schema", False, "Valeurs par défaut incorrectes")
                     
@@ -203,6 +205,19 @@ class TestMCPServer:
                     self.log_test("Create Client Parameters (Custom)", True, "Paramètres personnalisés transmis correctement")
                 else:
                     self.log_test("Create Client Parameters (Custom)", False, f"Paramètres incorrects: {args_called}")
+                
+                # Test avec Enterprise
+                mock_run.reset_mock()
+                await server._create_client("test_enterprise", "basic", "18.0", True)
+                args_called = mock_run.call_args[0][0]
+                
+                expected_elements = ["test_enterprise", "18.0", "basic", "true"]
+                all_present = all(elem in args_called for elem in expected_elements)
+                
+                if all_present:
+                    self.log_test("Create Client Parameters (Enterprise)", True, "Paramètre has_enterprise=True transmis correctement")
+                else:
+                    self.log_test("Create Client Parameters (Enterprise)", False, f"Paramètres Enterprise incorrects: {args_called}")
                     
         except Exception as e:
             self.log_test("Create Client Parameters", False, f"Erreur: {e}")

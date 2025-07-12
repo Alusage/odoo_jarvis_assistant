@@ -90,7 +90,8 @@ Lancez les tests **à chaque modification** du serveur MCP :
 ### Tests de régression
 
 Ces tests garantissent que :
-- ✅ **Version complète** : 13 outils fonctionnels testés (16/16 tests ✅)
+- ✅ **Version complète** : 13 outils fonctionnels testés (17/17 tests ✅)
+- ✅ **Support Enterprise** : Tests de création avec modules Enterprise
 - ✅ **Pas de régression** : Chaque modification est vérifiée
 - ✅ **Compatibilité Claude Desktop** : Structure MCP respectée
 - ✅ **Signatures correctes** : Paramètres et types validés
