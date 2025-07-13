@@ -90,7 +90,7 @@ else
 fi
 
 # Détecter la version Odoo du client
-ODOO_VERSION=$(grep "image:.*odoo" docker-compose.yml | sed 's/.*:\([0-9]\+\.[0-9]\+\).*/\1/' 2>/dev/null || echo "18.0")
+ODOO_VERSION=$(grep -v "^#" docker-compose.yml | grep "image:.*odoo" | head -1 | sed 's/.*:\([0-9]\+\.[0-9]\+\).*/\1/' 2>/dev/null || echo "18.0")
 echo_info "Version Odoo détectée: $ODOO_VERSION"
 
 # Ajouter le submodule

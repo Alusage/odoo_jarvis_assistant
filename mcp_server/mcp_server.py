@@ -151,9 +151,45 @@ class OdooClientMCPServer:
                             "module": {
                                 "type": "string", 
                                 "description": "Module key/name to add"
+                            },
+                            "link_all": {
+                                "type": "boolean",
+                                "description": "Link all modules from the repository to extra-addons",
+                                "default": False
+                            },
+                            "link_modules": {
+                                "type": "string",
+                                "description": "Comma-separated list of specific modules to link to extra-addons (e.g. 'module1,module2')"
                             }
                         },
                         "required": ["client", "module"]
+                    }
+                ),
+                types.Tool(
+                    name="link_modules",
+                    description="Link existing repository modules to extra-addons for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "repository": {
+                                "type": "string",
+                                "description": "Repository name (e.g. 'sale-workflow', 'account-analytic')"
+                            },
+                            "link_all": {
+                                "type": "boolean",
+                                "description": "Link all modules from the repository",
+                                "default": False
+                            },
+                            "modules": {
+                                "type": "string",
+                                "description": "Comma-separated list of specific modules to link (e.g. 'module1,module2')"
+                            }
+                        },
+                        "required": ["client", "repository"]
                     }
                 ),
                 types.Tool(
@@ -319,7 +355,19 @@ class OdooClientMCPServer:
             elif name == "update_client":
                 return await self._update_client(arguments.get("client"))
             elif name == "add_module":
-                return await self._add_module(arguments.get("client"), arguments.get("module"))
+                return await self._add_module(
+                    arguments.get("client"), 
+                    arguments.get("module"),
+                    arguments.get("link_all", False),
+                    arguments.get("link_modules", "")
+                )
+            elif name == "link_modules":
+                return await self._link_modules(
+                    arguments.get("client"),
+                    arguments.get("repository"),
+                    arguments.get("link_all", False),
+                    arguments.get("modules", "")
+                )
             elif name == "list_modules":
                 return await self._list_modules(arguments.get("client"))
             elif name == "list_oca_modules":
@@ -405,20 +453,152 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to update client '{client}'\n\nError: {result['stderr']}"
             )]
     
-    async def _add_module(self, client: str, module: str):
+    async def _add_module(self, client: str, module: str, link_all: bool = False, link_modules: str = ""):
         """Add an OCA module to a client"""
-        result = self._run_command(["make", "add-module", f"CLIENT={client}", f"MODULE={module}"])
+        # Build command with linking options
+        cmd = [str(self.repo_path / "scripts" / "add_oca_module.sh"), client, module]
+        
+        if link_all:
+            cmd.append("--all")
+        elif link_modules:
+            cmd.extend(["--link", link_modules])
+            
+        result = self._run_command(cmd)
         
         if result["success"]:
+            # Verify the module was properly cloned and has content
+            module_path = self.repo_path / "clients" / client / "addons" / module
+            if module_path.exists():
+                # Check if the directory has content (more than just .git)
+                try:
+                    contents = list(module_path.iterdir())
+                    non_git_contents = [f for f in contents if f.name != '.git']
+                    
+                    if len(non_git_contents) == 0:
+                        return [types.TextContent(
+                            type="text",
+                            text=f"⚠️ Module '{module}' was added but appears to be empty\n\nThe repository may need to be reinitialized. Try updating the client submodules with:\n`update_client(client='{client}')`"
+                        )]
+                except Exception:
+                    pass  # If we can't check, just continue with success message
+                    
             return [types.TextContent(
                 type="text",
                 text=f"✅ Module '{module}' added to client '{client}'\n\n{result['stdout']}"
             )]
         else:
+            # Check if the module already exists (can be in stdout or stderr)
+            combined_output = result["stdout"] + " " + result["stderr"]
+            if "Le submodule existe déjà" in combined_output or "submodule exists" in combined_output.lower():
+                # Also check if the existing module is empty and offer to fix it
+                module_path = self.repo_path / "clients" / client / "addons" / module
+                if module_path.exists():
+                    try:
+                        contents = list(module_path.iterdir())
+                        non_git_contents = [f for f in contents if f.name != '.git']
+                        
+                        if len(non_git_contents) == 0:
+                            return [types.TextContent(
+                                type="text",
+                                text=f"⚠️ Module '{module}' exists but appears to be empty\n\nThe repository may be corrupted. To fix this, you can:\n1. Update submodules: `update_client(client='{client}')`\n2. Or manually remove and re-add the module"
+                            )]
+                    except Exception:
+                        pass
+                        
+                return [types.TextContent(
+                    type="text",
+                    text=f"ℹ️ Module '{module}' is already present in client '{client}'\n\nThe module is already installed and available for use."
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Failed to add module '{module}' to client '{client}'\n\nError: {result['stderr']}\n\nOutput: {result['stdout']}"
+                )]
+    
+    async def _link_modules(self, client: str, repository: str, link_all: bool = False, modules: str = ""):
+        """Link existing repository modules to extra-addons for a client"""
+        client_path = self.repo_path / "clients" / client
+        repo_path = client_path / "addons" / repository
+        extra_addons_path = client_path / "extra-addons"
+        
+        # Check if client and repository exist
+        if not client_path.exists():
             return [types.TextContent(
                 type="text",
-                text=f"❌ Failed to add module '{module}' to client '{client}'\n\nError: {result['stderr']}"
+                text=f"❌ Client '{client}' not found"
             )]
+            
+        if not repo_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Repository '{repository}' not found in client '{client}'\n\nAvailable repositories can be listed with `list_modules(client='{client}')`"
+            )]
+        
+        # Create extra-addons directory if it doesn't exist
+        if not extra_addons_path.exists():
+            extra_addons_path.mkdir(exist_ok=True)
+        
+        # Get list of modules to link
+        modules_to_link = []
+        if link_all:
+            # Find all directories with __manifest__.py files
+            for item in repo_path.iterdir():
+                if item.is_dir() and (item / "__manifest__.py").exists():
+                    modules_to_link.append(item.name)
+        elif modules:
+            modules_to_link = [m.strip() for m in modules.split(",")]
+        else:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ You must specify either link_all=True or provide a list of modules to link\n\nExample: link_modules(client='{client}', repository='{repository}', link_all=True)"
+            )]
+        
+        if not modules_to_link:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ No valid modules found in repository '{repository}'"
+            )]
+        
+        # Link modules
+        linked_modules = []
+        failed_modules = []
+        
+        for module in modules_to_link:
+            module_source = repo_path / module
+            module_link = extra_addons_path / module
+            
+            if not module_source.exists() or not (module_source / "__manifest__.py").exists():
+                failed_modules.append(f"{module} (not found or invalid)")
+                continue
+            
+            try:
+                # Remove existing link if it exists
+                if module_link.exists() or module_link.is_symlink():
+                    module_link.unlink()
+                
+                # Create relative symlink
+                relative_path = f"../addons/{repository}/{module}"
+                module_link.symlink_to(relative_path)
+                linked_modules.append(module)
+            except Exception as e:
+                failed_modules.append(f"{module} (error: {str(e)})")
+        
+        # Build result message
+        result_parts = []
+        if linked_modules:
+            result_parts.append(f"✅ Successfully linked {len(linked_modules)} modules from '{repository}':")
+            for module in linked_modules:
+                result_parts.append(f"  - {module}")
+        
+        if failed_modules:
+            result_parts.append(f"❌ Failed to link {len(failed_modules)} modules:")
+            for module in failed_modules:
+                result_parts.append(f"  - {module}")
+        
+        return [types.TextContent(
+            type="text",
+            text="\n".join(result_parts)
+        )]
     
     async def _list_modules(self, client: str):
         """List available modules for a specific client"""
