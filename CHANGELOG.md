@@ -4,7 +4,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
-- feat: enhance MCP server with comprehensive module linking capabilities (57311d4)
+- feat: add comprehensive client diagnostic system with Traefik support (f83374e)
+- feat: enhance MCP server with comprehensive module linking capabilities (0bfa856)
 - feat: add Enterprise support to MCP server (244d5e8)
 - test: add comprehensive unit tests for delete_client workflow (9efd852)
 - feat: add delete_client tool to MCP server with confirmation workflow (d153e53)

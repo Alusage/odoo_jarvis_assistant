@@ -346,7 +346,7 @@ create_config_files() {
 [options]
 addons_path = extra-addons,addons/odoo/addons$([ "$HAS_ENTERPRISE" = "true" ] && echo ",addons/enterprise")
 data_dir = data
-db_host = db
+db_host = postgresql-$CLIENT_NAME
 db_port = 5432
 db_user = odoo
 db_password = odoo
@@ -360,7 +360,7 @@ EOF
     # docker-compose.yml - Version complète avec build intégré
     cat > "$CLIENT_DIR/docker-compose.yml" << EOF
 # Docker Compose pour le client $CLIENT_NAME
-# Version fusionnée avec les meilleures pratiques
+# Version avec support Traefik
 
 version: '3.8'
 
@@ -379,11 +379,29 @@ services:
     container_name: odoo-$CLIENT_NAME
     restart: unless-stopped
     
-    ports:
-      - "8069:8069"
-      - "8072:8072"  # Pour le mode longpolling
+    # Ports exposés uniquement pour accès direct (optionnel avec Traefik)
+    # ports:
+    #   - "8069:8069"
+    #   - "8072:8072"
+    
+    labels:
+      - traefik.enable=true
+      # Odoo
+      - traefik.http.routers.odoo-$CLIENT_NAME.entrypoints=web
+      - traefik.http.routers.odoo-$CLIENT_NAME.rule=Host(\`dev.$CLIENT_NAME.localhost\`)
+      - traefik.http.services.odoo-$CLIENT_NAME.loadbalancer.server.port=8069
+      - traefik.http.routers.odoo-$CLIENT_NAME.service=odoo-$CLIENT_NAME@docker
+      - traefik.http.routers.odoo-$CLIENT_NAME.middlewares=odoo-forward@docker,odoo-compress@docker
+      # Odoo Websocket
+      - traefik.http.routers.odoo-$CLIENT_NAME-ws.entrypoints=web
+      - traefik.http.routers.odoo-$CLIENT_NAME-ws.rule=Path(\`/websocket\`) && Host(\`dev.$CLIENT_NAME.localhost\`)
+      - traefik.http.services.odoo-$CLIENT_NAME-ws.loadbalancer.server.port=8072
+      - traefik.http.routers.odoo-$CLIENT_NAME-ws.service=odoo-$CLIENT_NAME-ws@docker
+      - traefik.http.routers.odoo-$CLIENT_NAME-ws.middlewares=odoo-headers@docker,odoo-forward@docker,odoo-compress@docker
     
     volumes:
+      # Container localtime
+      - /etc/localtime:/etc/localtime:ro
       # Configuration
       - ./config:/mnt/config:ro
       
@@ -399,7 +417,7 @@ services:
     
     environment:
       # Configuration de base
-      - HOST=db
+      - HOST=postgresql-$CLIENT_NAME
       - USER=odoo
       - PASSWORD=odoo
       
@@ -413,7 +431,10 @@ services:
       # - DEBUG_MODE=true
     
     depends_on:
-      - db
+      - postgresql-$CLIENT_NAME
+    
+    networks:
+      - traefik-local
     
     # Healthcheck pour vérifier que le service fonctionne
     healthcheck:
@@ -423,9 +444,9 @@ services:
       retries: 5
       start_period: 60s
 
-  db:
+  postgresql-$CLIENT_NAME:
     image: postgres:15
-    container_name: postgres-$CLIENT_NAME
+    container_name: postgresql-$CLIENT_NAME
     restart: unless-stopped
     
     environment:
@@ -433,9 +454,10 @@ services:
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=odoo
       - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_HOST_AUTH_METHOD=trust
     
     volumes:
-      - ./data/postgresql:/var/lib/postgresql/data/pgdata
+      - ./data/postgresql:/var/lib/postgresql/data
     
     # Healthcheck pour PostgreSQL
     healthcheck:
@@ -443,11 +465,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    
+    networks:
+      - traefik-local
 
-# Réseaux optionnels
+# Réseaux
 networks:
-  default:
-    name: odoo-$CLIENT_NAME-network
+  traefik-local:
+    external: true
 
 # Volumes nommés optionnels (alternative aux bind mounts)
 # volumes:

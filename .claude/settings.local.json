@@ -5,7 +5,10 @@
       "Bash(mkdir:*)",
       "Bash(mv:*)",
       "Bash(true)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(./scripts/generate_client_repo.sh:*)",
+      "Bash(docker:*)",
+      "Bash(./build.sh)"
     ],
     "deny": []
   }

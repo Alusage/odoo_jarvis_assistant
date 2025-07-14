@@ -319,6 +319,31 @@ class OdooClientMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="diagnose_client",
+                    description="Run comprehensive diagnostics on a client to identify issues",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client to diagnose"
+                            },
+                            "format": {
+                                "type": "string",
+                                "description": "Output format",
+                                "enum": ["text", "json"],
+                                "default": "text"
+                            },
+                            "verbose": {
+                                "type": "boolean",
+                                "description": "Enable verbose output with detailed information",
+                                "default": False
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
                     name="delete_client",
                     description="Delete a client repository (REQUIRES USER CONFIRMATION)",
                     inputSchema={
@@ -376,6 +401,12 @@ class OdooClientMCPServer:
                 return await self._client_status()
             elif name == "check_client":
                 return await self._check_client(arguments.get("client"))
+            elif name == "diagnose_client":
+                return await self._diagnose_client(
+                    arguments.get("client"),
+                    arguments.get("format", "text"),
+                    arguments.get("verbose", False)
+                )
             elif name == "update_requirements":
                 return await self._update_requirements(
                     arguments.get("client"),
@@ -796,6 +827,78 @@ class OdooClientMCPServer:
                          f"Error: {error_msg}\n\n" +
                          f"💡 Try manually: sudo rm -rf {client_dir}"
                 )]
+
+    async def _diagnose_client(self, client: str, format: str = "text", verbose: bool = False):
+        """Run comprehensive diagnostics on a client"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name is required"
+            )]
+        
+        # Build command arguments
+        cmd = [str(self.repo_path / "scripts" / "diagnose_client.sh"), client]
+        
+        if format == "json":
+            cmd.extend(["--format", "json"])
+        
+        if verbose:
+            cmd.append("--verbose")
+        
+        result = self._run_command(cmd)
+        
+        if result['success']:
+            if format == "json":
+                # For JSON output, parse and format nicely
+                import json
+                try:
+                    json_data = json.loads(result['stdout'])
+                    formatted_json = json.dumps(json_data, indent=2, ensure_ascii=False)
+                    return [types.TextContent(
+                        type="text",
+                        text=f"🔍 Diagnostic Results for Client '{client}':\n\n```json\n{formatted_json}\n```"
+                    )]
+                except json.JSONDecodeError:
+                    # Fallback to raw output if JSON parsing fails
+                    return [types.TextContent(
+                        type="text",
+                        text=f"🔍 Diagnostic Results for Client '{client}':\n\n{result['stdout']}"
+                    )]
+            else:
+                # Text format
+                return [types.TextContent(
+                    type="text",
+                    text=f"🔍 Diagnostic Results for Client '{client}':\n\n{result['stdout']}"
+                )]
+        else:
+            error_msg = result.get('stderr', 'Unknown error occurred')
+            return_code = result.get('return_code', -1)
+            
+            # Interpret return codes
+            status_messages = {
+                0: "✅ All systems operational",
+                1: "⚠️ Some warnings detected",
+                2: "❌ Significant errors found", 
+                3: "🚨 Critical issues detected"
+            }
+            
+            status_text = status_messages.get(return_code, f"❌ Unknown status (code: {return_code})")
+            
+            return [types.TextContent(
+                type="text",
+                text=f"🔍 Diagnostic completed with status: {status_text}\n\n" +
+                     f"Client: {client}\n" +
+                     f"Format: {format}\n" +
+                     f"Verbose: {verbose}\n\n" +
+                     f"Output:\n{result.get('stdout', 'No output')}\n\n" +
+                     f"Issues:\n{error_msg}\n\n" +
+                     f"💡 For more details, run the diagnostic with --verbose flag or check the client manually:\n" +
+                     f"```bash\n" +
+                     f"cd clients/{client}\n" +
+                     f"docker compose ps\n" +
+                     f"docker compose logs\n" +
+                     f"```"
+            )]
 
 
 async def main():
