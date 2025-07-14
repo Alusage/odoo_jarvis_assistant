@@ -37,10 +37,16 @@ except ImportError:
 
 # HTTP server dependencies
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
     from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel
     import uvicorn
+    import asyncio
+    import pty
+    import select
+    import termios
+    import struct
+    import fcntl
 except ImportError:
     logger.warning("FastAPI not found. HTTP mode will not be available. Install with: pip install fastapi uvicorn")
     FastAPI = None
@@ -389,6 +395,114 @@ class OdooClientMCPServer:
                         },
                         "required": ["client"]
                     }
+                ),
+                types.Tool(
+                    name="start_client",
+                    description="Start a client's Docker containers",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client to start"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="stop_client",
+                    description="Stop a client's Docker containers",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client to stop"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="rebuild_client",
+                    description="Rebuild a client's Docker image with updated requirements",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client to rebuild"
+                            },
+                            "no_cache": {
+                                "type": "boolean",
+                                "description": "Build without using cache",
+                                "default": False
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="get_client_status",
+                    description="Get the running status of a client's Docker containers",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client to check"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="get_client_logs",
+                    description="Get Docker logs for a client's containers",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "container": {
+                                "type": "string",
+                                "description": "Container type (odoo or postgresql)",
+                                "default": "odoo"
+                            },
+                            "lines": {
+                                "type": "integer",
+                                "description": "Number of log lines to return",
+                                "default": 100
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="execute_shell_command",
+                    description="Execute a shell command in a client's container",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "command": {
+                                "type": "string",
+                                "description": "Shell command to execute"
+                            },
+                            "container": {
+                                "type": "string",
+                                "description": "Container type (odoo or postgresql)",
+                                "default": "odoo"
+                            }
+                        },
+                        "required": ["client", "command"]
+                    }
                 )
             ]
         
@@ -456,6 +570,29 @@ class OdooClientMCPServer:
                 return await self._delete_client(
                     arguments.get("client"),
                     arguments.get("confirmed", False)
+                )
+            elif name == "start_client":
+                return await self._start_client(arguments.get("client"))
+            elif name == "stop_client":
+                return await self._stop_client(arguments.get("client"))
+            elif name == "rebuild_client":
+                return await self._rebuild_client(
+                    arguments.get("client"),
+                    arguments.get("no_cache", False)
+                )
+            elif name == "get_client_status":
+                return await self._get_client_status(arguments.get("client"))
+            elif name == "get_client_logs":
+                return await self._get_client_logs(
+                    arguments.get("client"),
+                    arguments.get("container", "odoo"),
+                    arguments.get("lines", 100)
+                )
+            elif name == "execute_shell_command":
+                return await self._execute_shell_command(
+                    arguments.get("client"),
+                    arguments.get("command"),
+                    arguments.get("container", "odoo")
                 )
             else:
                 raise ValueError(f"Unknown tool: {name}")
@@ -955,14 +1092,9 @@ class OdooClientMCPServer:
         @self.http_app.get("/tools")
         async def list_tools():
             """List available tools"""
-            tools = []
-            for tool in await self.server.list_tools()():
-                tools.append({
-                    "name": tool.name,
-                    "description": tool.description,
-                    "inputSchema": tool.inputSchema
-                })
-            return {"tools": tools}
+            # Retourner la liste des outils disponibles depuis le handler
+            tools = await handle_list_tools()
+            return [{"name": tool.name, "description": tool.description, "inputSchema": tool.inputSchema} for tool in tools]
         
         @self.http_app.post("/tools/call")
         async def call_tool(request: ToolCallRequest):
@@ -1043,6 +1175,103 @@ class OdooClientMCPServer:
             except Exception as e:
                 logger.error(f"Error getting status: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.http_app.websocket("/terminal/{client_name}")
+        async def websocket_terminal(websocket: WebSocket, client_name: str):
+            """WebSocket terminal connection to client container"""
+            await websocket.accept()
+            
+            try:
+                # Check if client exists
+                client_dir = self.repo_path / "clients" / client_name
+                if not client_dir.exists():
+                    await websocket.send_text(f"❌ Client '{client_name}' not found\r\n")
+                    await websocket.close()
+                    return
+                
+                # Container name
+                container_name = f"odoo-{client_name}"
+                
+                # Start docker exec process with pseudo-terminal
+                cmd = [
+                    "docker", "exec", "-it", container_name, 
+                    "/bin/bash", "-l"
+                ]
+                
+                # Create subprocess with pty for proper terminal behavior
+                master, slave = pty.openpty()
+                
+                # Start the docker exec process
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdin=slave,
+                    stdout=slave,
+                    stderr=slave,
+                    preexec_fn=os.setsid
+                )
+                
+                # Close slave end (parent doesn't need it)
+                os.close(slave)
+                
+                # Make master non-blocking
+                fcntl.fcntl(master, fcntl.F_SETFL, os.O_NONBLOCK)
+                
+                async def read_output():
+                    """Read output from docker exec and send to websocket"""
+                    try:
+                        while True:
+                            # Check if process is still running
+                            if process.returncode is not None:
+                                break
+                                
+                            # Use select to check if data is available
+                            ready, _, _ = select.select([master], [], [], 0.1)
+                            if ready:
+                                try:
+                                    data = os.read(master, 1024)
+                                    if data:
+                                        await websocket.send_text(data.decode('utf-8', errors='ignore'))
+                                except OSError:
+                                    break
+                            await asyncio.sleep(0.01)
+                    except WebSocketDisconnect:
+                        pass
+                    except Exception as e:
+                        logger.error(f"Error reading terminal output: {e}")
+                
+                # Start reading output task
+                read_task = asyncio.create_task(read_output())
+                
+                # Handle incoming messages from websocket
+                try:
+                    async for message in websocket.iter_text():
+                        try:
+                            # Handle special terminal sequences
+                            if message.startswith('\x1b['):  # ANSI escape sequences
+                                os.write(master, message.encode('utf-8'))
+                            else:
+                                # Regular input
+                                os.write(master, message.encode('utf-8'))
+                        except OSError:
+                            break
+                except WebSocketDisconnect:
+                    pass
+                
+                # Cleanup
+                read_task.cancel()
+                try:
+                    process.terminate()
+                    await process.wait()
+                except:
+                    pass
+                os.close(master)
+                
+            except Exception as e:
+                logger.error(f"Terminal websocket error: {e}")
+                try:
+                    await websocket.send_text(f"❌ Terminal error: {str(e)}\r\n")
+                except:
+                    pass
 
     async def _handle_tool_call(self, name: str, arguments: Dict[str, Any]):
         """Handle tool calls (shared between MCP and HTTP)"""
@@ -1075,8 +1304,333 @@ class OdooClientMCPServer:
                 arguments.get("format", "text"),
                 arguments.get("verbose", False)
             )
+        elif name == "start_client":
+            return await self._start_client(arguments.get("client"))
+        elif name == "stop_client":
+            return await self._stop_client(arguments.get("client"))
+        elif name == "rebuild_client":
+            return await self._rebuild_client(
+                arguments.get("client"),
+                arguments.get("no_cache", False)
+            )
+        elif name == "get_client_status":
+            return await self._get_client_status(arguments.get("client"))
+        elif name == "get_client_logs":
+            return await self._get_client_logs(
+                arguments.get("client"),
+                arguments.get("container", "odoo"),
+                arguments.get("lines", 100)
+            )
+        elif name == "execute_shell_command":
+            return await self._execute_shell_command(
+                arguments.get("client"),
+                arguments.get("command"),
+                arguments.get("container", "odoo")
+            )
         else:
             raise ValueError(f"Unknown tool: {name}")
+
+    async def _start_client(self, client: str):
+        """Start a client's Docker containers"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name is required"
+            )]
+        
+        # Vérifier que le client existe
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found.\n\nAvailable clients:\n" + 
+                     "\n".join([f"  - {c.name}" for c in (self.repo_path / "clients").iterdir() if c.is_dir()])
+            )]
+        
+        # Utiliser le script start.sh du client s'il existe, sinon docker compose up
+        start_script = client_dir / "scripts" / "start.sh"
+        if start_script.exists():
+            cmd = ["bash", str(start_script)]
+            result = self._run_command(cmd, cwd=client_dir)
+        else:
+            # Fallback vers docker compose up directement
+            cmd = ["docker", "compose", "up", "-d"]
+            result = self._run_command(cmd, cwd=client_dir)
+        
+        if result['success']:
+            return [types.TextContent(
+                type="text",
+                text=f"✅ Client '{client}' started successfully\n\n{result['stdout']}"
+            )]
+        else:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to start client '{client}'\n\nError: {result['stderr']}\n\nOutput: {result['stdout']}"
+            )]
+
+    async def _stop_client(self, client: str):
+        """Stop a client's Docker containers"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name is required"
+            )]
+        
+        # Vérifier que le client existe
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found.\n\nAvailable clients:\n" + 
+                     "\n".join([f"  - {c.name}" for c in (self.repo_path / "clients").iterdir() if c.is_dir()])
+            )]
+        
+        # Arrêter avec docker compose down
+        cmd = ["docker", "compose", "down"]
+        result = self._run_command(cmd, cwd=client_dir)
+        
+        if result['success']:
+            return [types.TextContent(
+                type="text",
+                text=f"✅ Client '{client}' stopped successfully\n\n{result['stdout']}"
+            )]
+        else:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to stop client '{client}'\n\nError: {result['stderr']}\n\nOutput: {result['stdout']}"
+            )]
+
+    async def _rebuild_client(self, client: str, no_cache: bool = False):
+        """Rebuild a client's Docker image with updated requirements"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name is required"
+            )]
+        
+        # Vérifier que le client existe
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found.\n\nAvailable clients:\n" + 
+                     "\n".join([f"  - {c.name}" for c in (self.repo_path / "clients").iterdir() if c.is_dir()])
+            )]
+        
+        # Vérifier si le client est en cours d'exécution
+        status_result = await self._get_client_status(client)
+        was_running = False
+        if status_result and status_result[0].text:
+            try:
+                import json
+                status_data = json.loads(status_result[0].text)
+                was_running = status_data.get("status") == "running"
+            except:
+                pass
+        
+        build_log = []
+        
+        # Arrêter le client s'il est en cours d'exécution
+        if was_running:
+            build_log.append("🛑 Stopping client before rebuild...")
+            stop_result = await self._stop_client(client)
+            if stop_result and "successfully" in stop_result[0].text:
+                build_log.append("✅ Client stopped")
+            else:
+                build_log.append("⚠️ Stop failed but continuing...")
+        
+        # Mettre à jour les requirements d'abord
+        build_log.append("📦 Updating requirements...")
+        logger.info(f"🔄 Updating requirements for client '{client}'...")
+        requirements_cmd = ["make", "update-requirements", f"CLIENT={client}"]
+        req_result = self._run_command(requirements_cmd, cwd=self.repo_path)
+        
+        if not req_result['success']:
+            logger.warning(f"⚠️ Requirements update failed for '{client}': {req_result['stderr']}")
+            build_log.append("⚠️ Requirements update had warnings")
+        else:
+            build_log.append("✅ Requirements updated")
+        
+        # Rebuild l'image Docker
+        build_log.append("🐳 Rebuilding Docker image...")
+        build_script = client_dir / "docker" / "build.sh"
+        if build_script.exists():
+            cmd = ["bash", str(build_script)]
+            if no_cache:
+                cmd.append("--no-cache")
+            result = self._run_command(cmd, cwd=client_dir / "docker")
+        else:
+            # Fallback vers docker compose build directement
+            cmd = ["docker", "compose", "build"]
+            if no_cache:
+                cmd.append("--no-cache")
+            result = self._run_command(cmd, cwd=client_dir)
+        
+        if result['success']:
+            build_log.append("✅ Docker image rebuilt")
+        else:
+            build_log.append("❌ Docker image rebuild failed")
+        
+        # Redémarrer le client s'il était en cours d'exécution
+        if was_running and result['success']:
+            build_log.append("🚀 Restarting client...")
+            start_result = await self._start_client(client)
+            if start_result and "successfully" in start_result[0].text:
+                build_log.append("✅ Client restarted")
+            else:
+                build_log.append("⚠️ Failed to restart client")
+        
+        if result['success']:
+            return [types.TextContent(
+                type="text",
+                text=f"✅ Client '{client}' rebuilt successfully\n\n" +
+                     "\n".join(build_log) + "\n\n" +
+                     f"Build output:\n{result['stdout']}"
+            )]
+        else:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to rebuild client '{client}'\n\n" +
+                     "\n".join(build_log) + "\n\n" +
+                     f"Error: {result['stderr']}\n\nOutput: {result['stdout']}"
+            )]
+
+    async def _get_client_status(self, client: str):
+        """Get the running status of a client's Docker containers"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name is required"
+            )]
+        
+        # Vérifier que le client existe
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found"
+            )]
+        
+        # Vérifier l'état des conteneurs
+        result = self._run_command([
+            "docker", "compose", "ps", "--format", "json"
+        ], cwd=client_dir)
+        
+        if result['success']:
+            try:
+                import json
+                containers = []
+                # Parse each line as JSON (docker compose ps output)
+                for line in result['stdout'].strip().split('\n'):
+                    if line.strip():
+                        container_info = json.loads(line)
+                        containers.append({
+                            "name": container_info.get("Name", ""),
+                            "status": container_info.get("State", ""),
+                            "health": container_info.get("Health", "")
+                        })
+                
+                # Déterminer l'état global
+                running_count = sum(1 for c in containers if c["status"] == "running")
+                total_count = len(containers)
+                
+                if running_count == total_count and total_count > 0:
+                    status = "running"
+                elif running_count > 0:
+                    status = "partial"
+                else:
+                    status = "stopped"
+                
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "status": status,
+                        "containers": containers,
+                        "running": running_count,
+                        "total": total_count
+                    })
+                )]
+            except Exception as e:
+                return [types.TextContent(
+                    type="text",
+                    text=f'{{ "status": "error", "error": "{str(e)}" }}'
+                )]
+        else:
+            return [types.TextContent(
+                type="text",
+                text='{ "status": "stopped", "containers": [], "running": 0, "total": 0 }'
+            )]
+
+    async def _get_client_logs(self, client: str, container: str = "odoo", lines: int = 100):
+        """Get Docker logs for a client's containers"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name is required"
+            )]
+        
+        # Vérifier que le client existe
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found"
+            )]
+        
+        # Nom du conteneur basé sur le pattern
+        container_name = f"{container}-{client}"
+        
+        # Récupérer les logs
+        result = self._run_command([
+            "docker", "logs", "--tail", str(lines), container_name
+        ], cwd=client_dir)
+        
+        if result['success']:
+            logs = result['stdout'] + result['stderr']  # Docker logs peuvent être sur stderr
+            return [types.TextContent(
+                type="text",
+                text=logs or "No logs available"
+            )]
+        else:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to get logs for {container_name}: {result['stderr']}"
+            )]
+
+    async def _execute_shell_command(self, client: str, command: str, container: str = "odoo"):
+        """Execute a shell command in a client's container"""
+        if not client or not command:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client name and command are required"
+            )]
+        
+        # Vérifier que le client existe
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found"
+            )]
+        
+        # Nom du conteneur
+        container_name = f"{container}-{client}"
+        
+        # Exécuter la commande
+        result = self._run_command([
+            "docker", "exec", container_name, "bash", "-c", command
+        ], cwd=client_dir)
+        
+        if result['success']:
+            return [types.TextContent(
+                type="text",
+                text=result['stdout'] or "(no output)"
+            )]
+        else:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Command failed: {result['stderr']}"
+            )]
 
     def _mcp_to_http_response(self, mcp_result):
         """Convert MCP response to HTTP-friendly format"""

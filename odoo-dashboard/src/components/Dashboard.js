@@ -1,6 +1,7 @@
-import { Component, useState, onMounted, xml } from "@odoo/owl";
+import { Component, useState, onMounted, onWillUnmount, xml } from "@odoo/owl";
 import { CommitHistory } from "./CommitHistory.js";
 import { BuildCard } from "./BuildCard.js";
+import { Terminal } from "./Terminal.js";
 import { dataService } from "../services/dataService.js";
 
 export class Dashboard extends Component {
@@ -31,13 +32,26 @@ export class Dashboard extends Component {
               </svg>
               Clone
             </button>
+            <button t-if="state.clientStatus.status !== 'running'" class="btn-success" t-on-click="startClient">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m-9-4h.01M12 5v.01M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/>
+              </svg>
+              Start
+            </button>
+            <button t-if="state.clientStatus.status === 'running'" class="btn-warning" t-on-click="stopClient">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/>
+              </svg>
+              Stop
+            </button>
             <button class="btn-secondary" t-on-click="rebuildClient">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
               </svg>
               Rebuild
             </button>
-            <button class="btn-primary" t-on-click="connectToClient">
+            <button t-if="state.clientStatus.status === 'running'" class="btn-primary" t-on-click="connectToClient">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
               </svg>
@@ -124,32 +138,7 @@ export class Dashboard extends Component {
 
         <!-- Shell Tab -->
         <div t-if="props.currentTab === 'SHELL'" class="h-full p-6">
-          <div class="bg-gray-900 rounded-lg h-full overflow-hidden">
-            <div class="bg-gray-800 px-4 py-2">
-              <h3 class="text-white font-medium">Interactive Shell</h3>
-            </div>
-            <div class="p-4 h-full overflow-y-auto font-mono text-sm">
-              <div t-foreach="state.shellHistory" t-as="entry" t-key="entry_index">
-                <div class="text-green-400">
-                  <span class="text-gray-500">$</span>
-                  <span t-esc="entry.command"/>
-                </div>
-                <div class="text-gray-300 mb-2" t-esc="entry.output"/>
-              </div>
-              
-              <!-- Command Input -->
-              <div class="flex items-center">
-                <span class="text-green-400 mr-2">$</span>
-                <input 
-                  type="text" 
-                  class="flex-1 bg-transparent text-green-400 outline-none"
-                  placeholder="Enter command..."
-                  t-model="state.currentCommand"
-                  t-on-keydown="handleShellInput"
-                />
-              </div>
-            </div>
-          </div>
+          <Terminal client="props.client"/>
         </div>
       </div>
 
@@ -163,7 +152,7 @@ export class Dashboard extends Component {
     </div>
   `;
   
-  static components = { CommitHistory, BuildCard };
+  static components = { CommitHistory, BuildCard, Terminal };
 
   setup() {
     this.state = useState({
@@ -176,14 +165,44 @@ export class Dashboard extends Component {
       commits: [],
       builds: [],
       logs: [],
-      shellHistory: [],
-      currentCommand: '',
-      loading: false
+      loading: false,
+      clientStatus: { status: 'unknown' }
     });
 
     onMounted(() => {
       this.loadTabData();
+      this.loadClientStatus();
+      
+      // Auto-refresh client status every 5 seconds
+      this.statusInterval = setInterval(() => {
+        this.loadClientStatus();
+      }, 5000);
     });
+    
+    onWillUnmount(() => {
+      if (this.statusInterval) {
+        clearInterval(this.statusInterval);
+      }
+    });
+  }
+
+  async loadClientStatus() {
+    if (!this.props.client) return;
+    
+    try {
+      // Extract base client name (remove environment suffix)
+      let baseName = this.props.client.name;
+      if (baseName.includes('-staging')) {
+        baseName = baseName.replace('-staging', '');
+      } else if (baseName.includes('-dev')) {
+        baseName = baseName.replace('-dev', '');
+      }
+      
+      this.state.clientStatus = await dataService.getClientStatus(baseName);
+    } catch (error) {
+      console.error('Error loading client status:', error);
+      this.state.clientStatus = { status: 'unknown' };
+    }
   }
 
   async loadTabData() {
@@ -204,7 +223,7 @@ export class Dashboard extends Component {
           await this.loadLogs();
           break;
         case 'SHELL':
-          this.initializeShell();
+          // Terminal component handles its own initialization
           break;
       }
     } catch (error) {
@@ -215,39 +234,63 @@ export class Dashboard extends Component {
   }
 
   async loadLogs() {
-    // Simulate log loading
-    this.state.logs = [
-      {
-        timestamp: new Date().toISOString(),
-        level: 'INFO',
-        message: `Starting Odoo for client ${this.props.client?.name}`
-      },
-      {
-        timestamp: new Date().toISOString(),
-        level: 'INFO', 
-        message: 'Database connection established'
-      },
-      {
-        timestamp: new Date().toISOString(),
-        level: 'INFO',
-        message: 'All modules loaded successfully'
-      },
-      {
-        timestamp: new Date().toISOString(),
-        level: 'INFO',
-        message: 'HTTP server listening on port 8069'
+    if (!this.props.client) return;
+    
+    try {
+      // Extract base client name (remove environment suffix)
+      let baseName = this.props.client.name;
+      if (baseName.includes('-staging')) {
+        baseName = baseName.replace('-staging', '');
+      } else if (baseName.includes('-dev')) {
+        baseName = baseName.replace('-dev', '');
       }
-    ];
+      
+      const rawLogs = await dataService.getClientLogs(baseName, 'odoo', 50);
+      
+      // Parse logs into structured format
+      this.state.logs = [];
+      const logLines = rawLogs.split('\n').filter(line => line.trim());
+      
+      logLines.forEach((line, index) => {
+        // Extract timestamp, level and message from Odoo logs
+        const timestamp = new Date().toISOString(); // Fallback timestamp
+        let level = 'INFO';
+        let message = line;
+        
+        // Try to parse log level from line
+        if (line.includes('ERROR')) {
+          level = 'ERROR';
+        } else if (line.includes('WARNING')) {
+          level = 'WARN';
+        } else if (line.includes('DEBUG')) {
+          level = 'DEBUG';
+        }
+        
+        this.state.logs.push({
+          timestamp: timestamp,
+          level: level,
+          message: message
+        });
+      });
+      
+      // If no logs, show default message
+      if (this.state.logs.length === 0) {
+        this.state.logs = [{
+          timestamp: new Date().toISOString(),
+          level: 'INFO',
+          message: 'No logs available or container not running'
+        }];
+      }
+    } catch (error) {
+      console.error('Error loading logs:', error);
+      this.state.logs = [{
+        timestamp: new Date().toISOString(),
+        level: 'ERROR',
+        message: `Error loading logs: ${error.message}`
+      }];
+    }
   }
 
-  initializeShell() {
-    this.state.shellHistory = [
-      {
-        command: 'docker compose ps',
-        output: 'NAME                     IMAGE                           COMMAND                  SERVICE                  CREATED        STATUS\nodoo-' + this.props.client?.name + '         odoo:18.0                   "/entrypoint.sh odoo"    odoo                     2 hours ago    Up 2 hours\npostgresql-' + this.props.client?.name + '   postgres:15                 "docker-entrypoint.s…"   postgresql               2 hours ago    Up 2 hours'
-      }
-    ];
-  }
 
   setActiveTab(tabId) {
     this.props.onTabChange(tabId);
@@ -284,15 +327,102 @@ export class Dashboard extends Component {
     console.log('Git clone command copied to clipboard');
   }
 
+  async startClient() {
+    if (!this.props.client) return;
+    
+    this.state.loading = true;
+    try {
+      console.log(`Starting client ${this.props.client.name}...`);
+      const response = await fetch('http://mcp.localhost/tools/call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'start_client',
+          arguments: {
+            client: this.props.client.name
+          }
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('Client started successfully');
+        await this.loadClientStatus();
+        await this.loadTabData();
+      } else {
+        console.error('Failed to start client:', result.error);
+      }
+    } catch (error) {
+      console.error('Error starting client:', error);
+    } finally {
+      this.state.loading = false;
+    }
+  }
+
+  async stopClient() {
+    if (!this.props.client) return;
+    
+    this.state.loading = true;
+    try {
+      console.log(`Stopping client ${this.props.client.name}...`);
+      const response = await fetch('http://mcp.localhost/tools/call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'stop_client',
+          arguments: {
+            client: this.props.client.name
+          }
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('Client stopped successfully');
+        await this.loadClientStatus();
+        await this.loadTabData();
+      } else {
+        console.error('Failed to stop client:', result.error);
+      }
+    } catch (error) {
+      console.error('Error stopping client:', error);
+    } finally {
+      this.state.loading = false;
+    }
+  }
+
   async rebuildClient() {
     if (!this.props.client) return;
     
     this.state.loading = true;
     try {
-      // Simulate rebuild process
       console.log(`Rebuilding client ${this.props.client.name}...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await this.loadTabData();
+      const response = await fetch('http://mcp.localhost/tools/call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'rebuild_client',
+          arguments: {
+            client: this.props.client.name,
+            no_cache: false
+          }
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('Client rebuilt successfully');
+        await this.loadClientStatus();
+        await this.loadTabData();
+      } else {
+        console.error('Failed to rebuild client:', result.error);
+      }
     } catch (error) {
       console.error('Error rebuilding client:', error);
     } finally {
@@ -338,33 +468,6 @@ export class Dashboard extends Component {
     console.log(`Viewing logs for build ${buildId}...`);
   }
 
-  handleShellInput(event) {
-    if (event.key === 'Enter' && this.state.currentCommand.trim()) {
-      const command = this.state.currentCommand.trim();
-      
-      // Simulate command execution
-      this.state.shellHistory.push({
-        command: command,
-        output: this.executeShellCommand(command)
-      });
-      
-      this.state.currentCommand = '';
-    }
-  }
-
-  executeShellCommand(command) {
-    // Simulate basic shell commands
-    const commands = {
-      'ls': 'addons  config  data  docker-compose.yml  extra-addons  logs  requirements.txt  scripts',
-      'pwd': `/clients/${this.props.client?.name || 'unknown'}`,
-      'docker ps': 'CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS   PORTS   NAMES',
-      'docker compose ps': this.getDockerComposeStatus(),
-      'git status': 'On branch master\nnothing to commit, working tree clean',
-      'help': 'Available commands: ls, pwd, docker ps, docker compose ps, git status, help'
-    };
-    
-    return commands[command] || `bash: ${command}: command not found`;
-  }
 
   getDockerComposeStatus() {
     if (!this.props.client) return 'No client selected';

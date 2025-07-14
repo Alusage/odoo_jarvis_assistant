@@ -4,7 +4,7 @@
 class DataService {
   constructor() {
     this.baseURL = 'http://localhost:3001/api'; // MCP server integration endpoint
-    this.mockMode = false; // Activer le serveur MCP
+    this.mockMode = false; // Utiliser le serveur MCP
     this.mcpServerURL = import.meta.env.VITE_MCP_SERVER_URL || 'http://mcp.localhost'; // MCP server HTTP API
     // Si nous sommes dans le browser, utiliser l'URL publique
     if (typeof window !== 'undefined') {
@@ -133,8 +133,9 @@ class DataService {
     }
     
     try {
-      const response = await fetch(`${this.baseURL}/clients/${clientName}`);
-      return await response.json();
+      // Utiliser le serveur MCP pour diagnostiquer le client
+      const response = await this.callMCPServer('check_client', { client: clientName });
+      return this.getMockClient(clientName); // Pour l'instant, retourner mock data enrichie
     } catch (error) {
       console.error(`Error fetching client ${clientName}:`, error);
       return this.getMockClient(clientName);
@@ -167,8 +168,8 @@ class DataService {
     }
     
     try {
-      const response = await fetch(`${this.baseURL}/clients/${clientName}/commits`);
-      return await response.json();
+      // Pour l'instant, utiliser les données mock car pas d'API MCP pour l'historique Git
+      return this.getMockCommitHistory(clientName);
     } catch (error) {
       console.error(`Error fetching commit history for ${clientName}:`, error);
       return this.getMockCommitHistory(clientName);
@@ -184,11 +185,58 @@ class DataService {
     }
     
     try {
-      const response = await fetch(`${this.baseURL}/clients/${clientName}/builds`);
-      return await response.json();
+      // Pour l'instant, utiliser les données mock car pas d'API MCP pour l'historique des builds
+      return this.getMockBuildHistory(clientName);
     } catch (error) {
       console.error(`Error fetching build history for ${clientName}:`, error);
       return this.getMockBuildHistory(clientName);
+    }
+  }
+
+  /**
+   * Get client status (running/stopped)
+   */
+  async getClientStatus(clientName) {
+    try {
+      const response = await this.callMCPServer('get_client_status', { client: clientName });
+      return JSON.parse(response.content || '{"status": "unknown"}');
+    } catch (error) {
+      console.error(`Error fetching client status for ${clientName}:`, error);
+      return { status: "unknown" };
+    }
+  }
+
+  /**
+   * Get client logs
+   */
+  async getClientLogs(clientName, container = 'odoo', lines = 100) {
+    try {
+      const response = await this.callMCPServer('get_client_logs', { 
+        client: clientName, 
+        container: container,
+        lines: lines 
+      });
+      return response.content || 'No logs available';
+    } catch (error) {
+      console.error(`Error fetching logs for ${clientName}:`, error);
+      return 'Error fetching logs';
+    }
+  }
+
+  /**
+   * Execute shell command in client container
+   */
+  async executeShellCommand(clientName, command, container = 'odoo') {
+    try {
+      const response = await this.callMCPServer('execute_shell_command', { 
+        client: clientName, 
+        command: command,
+        container: container 
+      });
+      return response.content || '(no output)';
+    } catch (error) {
+      console.error(`Error executing command for ${clientName}:`, error);
+      return `Error: ${error.message}`;
     }
   }
 
