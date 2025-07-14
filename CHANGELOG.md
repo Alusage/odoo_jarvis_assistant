@@ -4,11 +4,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
-- fix: resolve async client loading in navbar dropdown (62b8248)
-- feat: implement real MCP server integration in dashboard (348a592)
-- feat: integrate MCP server and dashboard into main docker-compose (a1331e4)
-- feat: add Docker containerization for MCP server and dashboard (2ff8959)
-- feat: enhance MCP server with HTTP API support for web dashboard (6710c7e)
+- feat: enhance MCP server with HTTP API support for web dashboard (4079bdc)
 - feat: create Odoo.sh-like dashboard with Owl.js and Tailwind CSS (cecc70c)
 - docs: update CHANGELOG.md with latest commits (ae7821f)
 - feat: integrate diagnostic system with MCP server and enhance client generation (a240a9c)
