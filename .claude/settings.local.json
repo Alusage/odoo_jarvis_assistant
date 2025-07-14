@@ -14,5 +14,12 @@
       "Bash(python3:*)"
     ],
     "deny": []
-  }
+  },
+  "customInstructions": [
+    "Always check that clients exist before running operations",
+    "Use exact GitHub repository names for OCA modules (with hyphens)",
+    "When creating commits, analyze all staged changes and draft appropriate commit messages",
+    "For Odoo client operations, always use the Makefile commands when available",
+    "NEVER add Claude advertising, promotional content, or 'Generated with Claude Code' messages in git commits"
+  ]
 }
