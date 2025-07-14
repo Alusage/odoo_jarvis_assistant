@@ -17,7 +17,7 @@ services:
 
     # Build instructions
     ports:
-      - "8090:80"     # Traefik HTTP sur port 8090
+      - "80:80"       # Traefik HTTP sur port 80 standard
       - "8080:8080"   # Dashboard Traefik
     labels:
       - traefik.enable=true
@@ -43,8 +43,63 @@ services:
     networks:
       - traefik-local
 
+  # ============================
+  # |    MCP Server            |
+  # ============================
+  mcp-server:
+    build:
+      context: .
+      dockerfile: mcp_server/Dockerfile
+    container_name: odoo-mcp-server
+    restart: unless-stopped
+    volumes:
+      - ./:/repo:ro  # Mount repository as read-only
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For Docker operations
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - traefik-local
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-local"
+      
+      # HTTP routing
+      - "traefik.http.routers.mcp-server.rule=Host(`mcp.localhost`)"
+      - "traefik.http.routers.mcp-server.entrypoints=web"
+      - "traefik.http.services.mcp-server.loadbalancer.server.port=8000"
+      
+      # CORS headers for API
+      - "traefik.http.routers.mcp-server.middlewares=cors-headers"
+      - "traefik.http.middlewares.cors-headers.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.cors-headers.headers.accesscontrolallowheaders=*"
+      - "traefik.http.middlewares.cors-headers.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-headers.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.cors-headers.headers.addvaryheader=true"
+
+  # ============================
+  # |    Dashboard             |
+  # ============================
+  dashboard:
+    build:
+      context: ./odoo-dashboard
+      dockerfile: Dockerfile.dev
+    container_name: odoo-dashboard
+    restart: unless-stopped
+    volumes:
+      - ./odoo-dashboard:/app
+      - /app/node_modules
+    environment:
+      - VITE_MCP_SERVER_URL=http://mcp-server:8000
+    networks:
+      - traefik-local
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-local"
+      - "traefik.http.routers.odoo-dashboard.rule=Host(`dashboard.localhost`)"
+      - "traefik.http.routers.odoo-dashboard.entrypoints=web"
+      - "traefik.http.services.odoo-dashboard.loadbalancer.server.port=3000"
+
 networks:
   traefik-local:
     name: traefik-local
     driver: bridge
-    external: false

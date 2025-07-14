@@ -4,8 +4,13 @@
 class DataService {
   constructor() {
     this.baseURL = 'http://localhost:3001/api'; // MCP server integration endpoint
-    this.mockMode = true; // Temporairement en mode mock pour tester
-    this.mcpServerURL = 'http://localhost:3001'; // MCP server endpoint
+    this.mockMode = false; // Activer le serveur MCP
+    this.mcpServerURL = import.meta.env.VITE_MCP_SERVER_URL || 'http://mcp.localhost'; // MCP server HTTP API
+    // Si nous sommes dans le browser, utiliser l'URL publique
+    if (typeof window !== 'undefined') {
+      this.mcpServerURL = 'http://mcp.localhost';
+    }
+    console.log('DataService initialized with MCP server at:', this.mcpServerURL);
   }
 
   /**
@@ -21,16 +26,53 @@ class DataService {
       const response = await this.callMCPServer('list_clients');
       
       if (response && response.clients) {
-        // Transformer les données pour l'interface
-        return response.clients.map(clientName => ({
-          name: clientName,
-          displayName: clientName,
-          environment: 'production', // Par défaut, à adapter selon vos besoins
-          status: 'healthy',
-          lastActivity: '2 hours ago',
-          url: `http://localhost:8069`, // URL par défaut
-          version: '18.0'
-        }));
+        // Filtrer et transformer les données pour l'interface
+        console.log('Raw clients from MCP:', response.clients);
+        const clientNames = response.clients
+          .filter(name => name && !name.startsWith('Clients') && !name.includes(':'))
+          .filter(name => name.trim().length > 0);
+        console.log('Filtered client names:', clientNames);
+        
+        // Créer des environnements pour chaque client
+        const allClients = [];
+        
+        clientNames.forEach(clientName => {
+          // Production (base name)
+          allClients.push({
+            name: clientName,
+            displayName: `${clientName} Production`,
+            environment: 'production',
+            status: 'healthy',
+            lastActivity: '2 hours ago',
+            url: `http://${clientName}.localhost`,
+            version: '18.0'
+          });
+          
+          // Staging
+          allClients.push({
+            name: `${clientName}-staging`,
+            displayName: `${clientName} Staging`,
+            environment: 'staging',
+            status: 'healthy',
+            lastActivity: '4 hours ago',
+            url: `http://staging.${clientName}.localhost`,
+            version: '18.0'
+          });
+          
+          // Development
+          allClients.push({
+            name: `${clientName}-dev`,
+            displayName: `${clientName} Development`,
+            environment: 'development',
+            status: 'healthy',
+            lastActivity: '1 hour ago',
+            url: `http://dev.${clientName}.localhost`,
+            version: '18.0'
+          });
+        });
+        
+        console.log('Generated clients for dashboard:', allClients);
+        return allClients;
       }
       
       return this.getMockClients();
@@ -45,20 +87,29 @@ class DataService {
    */
   async callMCPServer(command, params = {}) {
     try {
-      const mcpCommand = {
-        method: 'tools/call',
-        params: {
-          name: command,
-          arguments: params
+      // Use direct endpoints when available
+      if (command === 'list_clients') {
+        console.log('Calling MCP server at:', `${this.mcpServerURL}/clients`);
+        const response = await fetch(`${this.mcpServerURL}/clients`);
+        console.log('MCP server response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`MCP Server error: ${response.status}`);
         }
-      };
-
-      const response = await fetch(`${this.mcpServerURL}/mcp`, {
+        const data = await response.json();
+        console.log('MCP server response data:', data);
+        return data;
+      }
+      
+      // Use generic tool call endpoint
+      const response = await fetch(`${this.mcpServerURL}/tools/call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(mcpCommand)
+        body: JSON.stringify({
+          name: command,
+          arguments: params
+        })
       });
 
       if (!response.ok) {
@@ -66,7 +117,7 @@ class DataService {
       }
 
       const result = await response.json();
-      return result.content || result;
+      return result.result || result;
     } catch (error) {
       console.error('MCP Server call failed:', error);
       throw error;
@@ -232,22 +283,40 @@ class DataService {
   /**
    * Get unique client names for dropdown (without environments)
    */
-  getUniqueClientNames() {
-    const clients = this.getMockClients();
-    const uniqueNames = new Set();
-    
-    clients.forEach(client => {
-      // Extraire le nom de base du client (sans -staging, -dev, etc.)
-      let baseName = client.name;
-      if (baseName.includes('-staging')) {
-        baseName = baseName.replace('-staging', '');
-      } else if (baseName.includes('-dev')) {
-        baseName = baseName.replace('-dev', '');
+  async getUniqueClientNames() {
+    try {
+      if (!this.mockMode) {
+        // Utiliser le serveur MCP
+        const response = await this.callMCPServer('list_clients');
+        
+        if (response && response.clients) {
+          // Filtrer et retourner les noms de clients uniques
+          return response.clients
+            .filter(name => name && !name.startsWith('Clients') && !name.includes(':'))
+            .filter(name => name.trim().length > 0);
+        }
       }
-      uniqueNames.add(baseName);
-    });
-    
-    return Array.from(uniqueNames);
+      
+      // Fallback mode mock
+      const clients = this.getMockClients();
+      const uniqueNames = new Set();
+      
+      clients.forEach(client => {
+        // Extraire le nom de base du client (sans -staging, -dev, etc.)
+        let baseName = client.name;
+        if (baseName.includes('-staging')) {
+          baseName = baseName.replace('-staging', '');
+        } else if (baseName.includes('-dev')) {
+          baseName = baseName.replace('-dev', '');
+        }
+        uniqueNames.add(baseName);
+      });
+      
+      return Array.from(uniqueNames);
+    } catch (error) {
+      console.error('Error getting unique client names:', error);
+      return ['bousbotsbar', 'sudokeys', 'testclient'];
+    }
   }
 
   getMockClient(clientName) {

@@ -1,0 +1,9 @@
+clients/*/data
+clients/*/logs
+.git
+.cache
+docker/volumes
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache

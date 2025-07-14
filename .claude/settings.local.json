@@ -8,7 +8,10 @@
       "Bash(git add:*)",
       "Bash(./scripts/generate_client_repo.sh:*)",
       "Bash(docker:*)",
-      "Bash(./build.sh)"
+      "Bash(./build.sh)",
+      "Bash(chmod:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

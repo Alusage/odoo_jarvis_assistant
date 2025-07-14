@@ -88,7 +88,8 @@ export class Navbar extends Component {
   async loadClients() {
     try {
       // Récupérer la liste unique des noms de clients pour la dropdown
-      this.state.clients = dataService.getUniqueClientNames();
+      this.state.clients = await dataService.getUniqueClientNames();
+      console.log('Clients loaded in Navbar:', this.state.clients);
     } catch (error) {
       console.error('Error loading clients:', error);
       // Fallback avec des clients par défaut

@@ -2,7 +2,9 @@
 """
 MCP Server for Odoo Client Repository Generator
 
-This server exposes all Odoo client management tools via the MCP protocol.
+This server exposes all Odoo client management tools via both:
+- MCP protocol over stdio (for Claude Desktop)
+- HTTP API (for web dashboard)
 """
 
 import asyncio
@@ -10,8 +12,11 @@ import subprocess
 import os
 import sys
 import logging
+import json
+import argparse
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +35,26 @@ except ImportError:
     logger.error("MCP library not found. Install with: pip install mcp")
     sys.exit(1)
 
+# HTTP server dependencies
+try:
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from pydantic import BaseModel
+    import uvicorn
+except ImportError:
+    logger.warning("FastAPI not found. HTTP mode will not be available. Install with: pip install fastapi uvicorn")
+    FastAPI = None
+
+# HTTP API Models
+if FastAPI:
+    class ToolCallRequest(BaseModel):
+        name: str
+        arguments: Dict[str, Any] = {}
+    
+    class ToolCallResponse(BaseModel):
+        success: bool
+        result: Any
+        error: Optional[str] = None
 
 class OdooClientMCPServer:
     """MCP Server for Odoo Client Repository Generator"""
@@ -37,6 +62,7 @@ class OdooClientMCPServer:
     def __init__(self, repo_path: str):
         self.repo_path = Path(repo_path).resolve()
         self.server = Server("odoo-client-generator")
+        self.http_app = None
         
         if not self.repo_path.exists():
             raise ValueError(f"Repository path '{repo_path}' does not exist")
@@ -45,6 +71,8 @@ class OdooClientMCPServer:
             raise ValueError(f"Makefile not found in '{repo_path}'. Not a valid repository.")
         
         self._setup_handlers()
+        if FastAPI:
+            self._setup_http_app()
     
     def _run_command(self, command: List[str], cwd: Optional[Path] = None) -> Dict[str, Any]:
         """Execute a shell command and return the result"""
@@ -900,30 +928,248 @@ class OdooClientMCPServer:
                      f"```"
             )]
 
+    def _setup_http_app(self):
+        """Setup FastAPI HTTP server"""
+        if not FastAPI:
+            return
+            
+        self.http_app = FastAPI(
+            title="Odoo Client MCP Server",
+            description="HTTP API for Odoo Client Repository Generator",
+            version="1.0.0"
+        )
+        
+        # Add CORS middleware
+        self.http_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # Configure appropriately for production
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        
+        @self.http_app.get("/")
+        async def root():
+            return {"message": "Odoo Client MCP Server", "version": "1.0.0", "status": "running"}
+        
+        @self.http_app.get("/tools")
+        async def list_tools():
+            """List available tools"""
+            tools = []
+            for tool in await self.server.list_tools()():
+                tools.append({
+                    "name": tool.name,
+                    "description": tool.description,
+                    "inputSchema": tool.inputSchema
+                })
+            return {"tools": tools}
+        
+        @self.http_app.post("/tools/call")
+        async def call_tool(request: ToolCallRequest):
+            """Call a tool with given arguments"""
+            try:
+                # Call the MCP tool handler directly
+                result = await self._handle_tool_call(request.name, request.arguments)
+                
+                # Convert MCP response to HTTP response
+                return ToolCallResponse(
+                    success=True,
+                    result=self._mcp_to_http_response(result)
+                )
+                
+            except Exception as e:
+                logger.error(f"Error calling tool {request.name}: {e}")
+                return ToolCallResponse(
+                    success=False,
+                    error=str(e)
+                )
+        
+        @self.http_app.get("/clients")
+        async def get_clients():
+            """Get list of clients"""
+            try:
+                result = await self._list_clients()
+                clients_text = result[0].text if result else ""
+                
+                # Parse the make output to extract client names
+                clients = []
+                for line in clients_text.split('\n'):
+                    line = line.strip()
+                    if line and not line.startswith('make') and not line.startswith('==') and line != "Clients disponibles:":
+                        if line.startswith('- '):
+                            clients.append(line[2:])
+                        elif line and not line.startswith('aucun') and not line.startswith('Aucun'):
+                            clients.append(line)
+                
+                return {"clients": clients}
+                
+            except Exception as e:
+                logger.error(f"Error listing clients: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.http_app.get("/clients/{client_name}/status")
+        async def get_client_status(client_name: str):
+            """Get status of a specific client"""
+            try:
+                result = await self._check_client(client_name)
+                status_text = result[0].text if result else ""
+                
+                # Parse status and determine health
+                status = "unknown"
+                if "✅" in status_text or "healthy" in status_text.lower():
+                    status = "healthy"
+                elif "⚠️" in status_text or "warning" in status_text.lower():
+                    status = "warning"
+                elif "❌" in status_text or "error" in status_text.lower():
+                    status = "error"
+                
+                return {
+                    "client": client_name,
+                    "status": status,
+                    "details": status_text
+                }
+                
+            except Exception as e:
+                logger.error(f"Error checking client {client_name}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.http_app.get("/status")
+        async def get_all_status():
+            """Get status of all clients"""
+            try:
+                result = await self._client_status()
+                return {"status": result[0].text if result else "No status available"}
+                
+            except Exception as e:
+                logger.error(f"Error getting status: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+    async def _handle_tool_call(self, name: str, arguments: Dict[str, Any]):
+        """Handle tool calls (shared between MCP and HTTP)"""
+        # This is the same logic as in the MCP handler
+        if name == "create_client":
+            return await self._create_client(
+                arguments.get("name"),
+                arguments.get("template", "basic"),
+                arguments.get("version", "18.0"),
+                arguments.get("has_enterprise", False)
+            )
+        elif name == "list_clients":
+            return await self._list_clients()
+        elif name == "update_client":
+            return await self._update_client(arguments.get("client"))
+        elif name == "add_module":
+            return await self._add_module(
+                arguments.get("client"), 
+                arguments.get("module"),
+                arguments.get("link_all", False),
+                arguments.get("link_modules", "")
+            )
+        elif name == "client_status":
+            return await self._client_status()
+        elif name == "check_client":
+            return await self._check_client(arguments.get("client"))
+        elif name == "diagnose_client":
+            return await self._diagnose_client(
+                arguments.get("client"),
+                arguments.get("format", "text"),
+                arguments.get("verbose", False)
+            )
+        else:
+            raise ValueError(f"Unknown tool: {name}")
+
+    def _mcp_to_http_response(self, mcp_result):
+        """Convert MCP response to HTTP-friendly format"""
+        if isinstance(mcp_result, list):
+            # Multiple TextContent objects
+            return {
+                "type": "text",
+                "content": "\n".join([item.text for item in mcp_result if hasattr(item, 'text')])
+            }
+        elif hasattr(mcp_result, 'text'):
+            # Single TextContent object
+            return {
+                "type": "text", 
+                "content": mcp_result.text
+            }
+        else:
+            # Raw data
+            return mcp_result
+
 
 async def main():
     """Main entry point"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Corrected MCP Server for Odoo Client Generator")
+    parser = argparse.ArgumentParser(description="Dual-mode MCP Server for Odoo Client Generator")
     parser.add_argument("repo_path", nargs="?", default=os.getcwd(), 
                        help="Path to the Odoo client generator repository")
+    parser.add_argument("--mode", choices=["stdio", "http", "both"], default="stdio",
+                       help="Server mode: stdio (for Claude), http (for web dashboard), or both")
+    parser.add_argument("--host", default="0.0.0.0", help="HTTP server host")
+    parser.add_argument("--port", type=int, default=8000, help="HTTP server port")
     
     args = parser.parse_args()
     
-    logger.info(f"🚀 Starting corrected MCP server for {args.repo_path}")
+    logger.info(f"🚀 Starting MCP server for {args.repo_path} in {args.mode} mode")
     
     try:
         server = OdooClientMCPServer(args.repo_path)
         
-        logger.info("🔌 Starting MCP server with stdio...")
+        if args.mode == "stdio":
+            logger.info("🔌 Starting MCP server with stdio...")
+            # Run the MCP server using stdio
+            async with stdio_server() as (read_stream, write_stream):
+                await server.server.run(
+                    read_stream,
+                    write_stream,
+                    server.server.create_initialization_options()
+                )
         
-        # Run the MCP server using stdio
-        async with stdio_server() as (read_stream, write_stream):
-            await server.server.run(
-                read_stream,
-                write_stream,
-                server.server.create_initialization_options()
+        elif args.mode == "http":
+            if not FastAPI:
+                logger.error("❌ FastAPI not available. Install with: pip install fastapi uvicorn")
+                sys.exit(1)
+            
+            logger.info(f"🌐 Starting HTTP server on {args.host}:{args.port}...")
+            config = uvicorn.Config(
+                app=server.http_app,
+                host=args.host,
+                port=args.port,
+                log_level="info"
+            )
+            http_server = uvicorn.Server(config)
+            await http_server.serve()
+        
+        elif args.mode == "both":
+            if not FastAPI:
+                logger.error("❌ FastAPI not available for HTTP mode. Install with: pip install fastapi uvicorn")
+                sys.exit(1)
+            
+            logger.info(f"🔌🌐 Starting both stdio and HTTP server on {args.host}:{args.port}...")
+            
+            # Start HTTP server in background
+            config = uvicorn.Config(
+                app=server.http_app,
+                host=args.host,
+                port=args.port,
+                log_level="info"
+            )
+            http_server = uvicorn.Server(config)
+            
+            # Run both concurrently
+            async def run_stdio():
+                async with stdio_server() as (read_stream, write_stream):
+                    await server.server.run(
+                        read_stream,
+                        write_stream,
+                        server.server.create_initialization_options()
+                    )
+            
+            # Run both servers concurrently
+            await asyncio.gather(
+                http_server.serve(),
+                run_stdio()
             )
             
     except Exception as e:
