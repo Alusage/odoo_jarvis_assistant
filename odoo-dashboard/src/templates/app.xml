@@ -1,0 +1,33 @@
+<templates>
+  <t t-name="App">
+    <div class="min-h-screen bg-gray-50">
+      <!-- Top Navigation -->
+      <Navbar 
+        currentProject="state.currentProject"
+        user="state.user"
+        onProjectChange="onProjectChange"
+      />
+      
+      <!-- Main Layout -->
+      <div class="flex h-screen pt-16">
+        <!-- Sidebar -->
+        <Sidebar 
+          clients="state.clients"
+          selectedClient="state.selectedClient"
+          sidebarCollapsed="state.sidebarCollapsed"
+          onClientSelect="onClientSelect"
+          onToggleSidebar="onToggleSidebar"
+        />
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden">
+          <Dashboard 
+            client="state.selectedClientData"
+            currentTab="state.currentTab"
+            onTabChange="onTabChange"
+          />
+        </main>
+      </div>
+    </div>
+  </t>
+</templates>

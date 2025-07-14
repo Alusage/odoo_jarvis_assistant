@@ -1,0 +1,131 @@
+<templates>
+  <t t-name="Navbar">
+    <nav class="fixed top-0 left-0 right-0 z-50 h-16 gradient-primary shadow-lg">
+      <div class="flex items-center justify-between h-full px-4">
+        <!-- Left Section: Logo and Navigation -->
+        <div class="flex items-center space-x-6">
+          <!-- Logo -->
+          <div class="flex items-center space-x-2">
+            <div class="text-white font-bold text-xl">odoo.sh</div>
+            <span class="px-2 py-1 text-xs font-medium bg-white/20 text-white rounded-full">BETA</span>
+          </div>
+          
+          <!-- Navigation Links -->
+          <div class="hidden md:flex items-center space-x-4">
+            <button 
+              class="px-3 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+              t-att-class="{ 'text-white border-b-2 border-white': state.activeNav === 'branches' }"
+              t-on-click="() => this.setActiveNav('branches')"
+            >
+              Branches
+            </button>
+            <button 
+              class="px-3 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+              t-att-class="{ 'text-white border-b-2 border-white': state.activeNav === 'builds' }"
+              t-on-click="() => this.setActiveNav('builds')"
+            >
+              Builds
+            </button>
+            <button 
+              class="px-3 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+              t-att-class="{ 'text-white border-b-2 border-white': state.activeNav === 'settings' }"
+              t-on-click="() => this.setActiveNav('settings')"
+            >
+              Settings
+            </button>
+          </div>
+        </div>
+
+        <!-- Center Section: Project Selector -->
+        <div class="flex-1 max-w-md mx-4">
+          <div class="relative">
+            <button 
+              class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-left text-white hover:bg-white/20 transition-colors"
+              t-on-click="toggleProjectDropdown"
+            >
+              <div class="flex items-center justify-between">
+                <span class="font-medium" t-esc="props.currentProject"/>
+                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </button>
+            
+            <!-- Project Dropdown -->
+            <div 
+              t-if="state.projectDropdownOpen"
+              class="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-modal border border-gray-200 py-1 z-50"
+            >
+              <button 
+                class="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors"
+                t-foreach="state.projects"
+                t-as="project"
+                t-key="project"
+                t-on-click="() => this.selectProject(project)"
+              >
+                <t t-esc="project"/>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Section: User Menu -->
+        <div class="flex items-center space-x-4">
+          <!-- Notifications -->
+          <button class="p-2 text-white/80 hover:text-white transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-3.5-5.5-1.5 2-1 1.5zm-8 0l3.5-5.5L12 14l-1 1.5-1.5 2.5z"/>
+            </svg>
+          </button>
+
+          <!-- User Menu -->
+          <div class="relative">
+            <button 
+              class="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 transition-colors"
+              t-on-click="toggleUserDropdown"
+            >
+              <img 
+                class="w-8 h-8 rounded-full border-2 border-white/20"
+                t-att-src="props.user.avatar"
+                t-att-alt="props.user.name"
+              />
+              <span class="text-white font-medium hidden sm:block" t-esc="props.user.name"/>
+              <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <!-- User Dropdown -->
+            <div 
+              t-if="state.userDropdownOpen"
+              class="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-modal border border-gray-200 py-1 z-50"
+            >
+              <div class="px-3 py-2 border-b border-gray-100">
+                <div class="font-medium text-gray-900" t-esc="props.user.name"/>
+                <div class="text-sm text-gray-500" t-esc="props.user.email"/>
+              </div>
+              <button class="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors">
+                Profile Settings
+              </button>
+              <button class="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors">
+                Documentation
+              </button>
+              <div class="border-t border-gray-100 mt-1">
+                <button class="w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 transition-colors">
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div 
+      t-if="state.mobileMenuOpen"
+      class="fixed inset-0 z-40 bg-black/50 md:hidden"
+      t-on-click="closeMobileMenu"
+    />
+  </t>
+</templates>

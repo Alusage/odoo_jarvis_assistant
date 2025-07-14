@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-500 text-white hover:bg-primary-600 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  }
+  
+  .btn-success {
+    @apply btn bg-green-500 text-white hover:bg-green-600 hover:scale-105;
+  }
+  
+  .btn-danger {
+    @apply btn bg-red-500 text-white hover:bg-red-600 hover:scale-105;
+  }
+  
+  .btn-warning {
+    @apply btn bg-orange-500 text-white hover:bg-orange-600 hover:scale-105;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-card border border-gray-200;
+  }
+  
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply badge bg-green-100 text-green-800;
+  }
+  
+  .badge-error {
+    @apply badge bg-red-100 text-red-800;
+  }
+  
+  .badge-warning {
+    @apply badge bg-orange-100 text-orange-800;
+  }
+  
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+  
+  .input {
+    @apply block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+  
+  .status-indicator {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+  
+  .status-success {
+    @apply status-indicator bg-green-500;
+  }
+  
+  .status-error {
+    @apply status-indicator bg-red-500;
+  }
+  
+  .status-warning {
+    @apply status-indicator bg-orange-500;
+  }
+  
+  .status-info {
+    @apply status-indicator bg-blue-500;
+  }
+  
+  .sidebar-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .fade-in {
+    @apply animate-fade-in;
+  }
+  
+  .slide-in-right {
+    @apply animate-slide-in-right;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+  
+  .gradient-primary {
+    background: linear-gradient(135deg, #7D6CA8 0%, #5a4b7c 100%);
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.8);
+  }
+}

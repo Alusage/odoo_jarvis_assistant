@@ -1,0 +1,174 @@
+<templates>
+  <t t-name="Dashboard">
+    <div class="flex flex-col h-full">
+      <!-- Tab Navigation -->
+      <div class="border-b border-gray-200 bg-white">
+        <div class="flex items-center justify-between p-4">
+          <!-- Tabs -->
+          <div class="flex space-x-6">
+            <button 
+              t-foreach="state.tabs" 
+              t-as="tab" 
+              t-key="tab.id"
+              class="tab-button"
+              t-att-class="getTabClass(tab.id)"
+              t-on-click="() => this.setActiveTab(tab.id)"
+            >
+              <t t-esc="tab.label"/>
+            </button>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center space-x-2">
+            <button class="btn-secondary" t-on-click="cloneRepository">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              Clone
+            </button>
+            <button class="btn-secondary" t-on-click="rebuildClient">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              Rebuild
+            </button>
+            <button class="btn-primary" t-on-click="connectToClient">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
+              Connect
+            </button>
+          </div>
+        </div>
+
+        <!-- Git Command Display -->
+        <div t-if="props.client" class="px-4 pb-4">
+          <div class="bg-gray-50 rounded-lg p-3 font-mono text-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-600">git clone</span>
+              <button class="btn-secondary btn-sm" t-on-click="copyGitCommand">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+              </button>
+            </div>
+            <div class="text-primary-600 mt-1" t-esc="getGitCloneCommand()"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="flex-1 overflow-hidden">
+        <!-- History Tab -->
+        <div t-if="props.currentTab === 'HISTORY'" class="h-full">
+          <CommitHistory 
+            client="props.client"
+            commits="state.commits"
+            loading="state.loading"
+          />
+        </div>
+
+        <!-- Builds Tab -->
+        <div t-if="props.currentTab === 'BUILDS'" class="h-full p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <BuildCard 
+              t-foreach="state.builds" 
+              t-as="build" 
+              t-key="build.id"
+              build="build"
+              onConnect="() => this.connectToBuild(build.id)"
+              onViewLogs="() => this.viewBuildLogs(build.id)"
+            />
+          </div>
+          
+          <div t-if="state.builds.length === 0 && !state.loading" class="text-center py-12">
+            <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <p class="text-gray-500">No builds available</p>
+          </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div t-if="props.currentTab === 'LOGS'" class="h-full p-6">
+          <div class="bg-gray-900 rounded-lg h-full overflow-hidden">
+            <div class="bg-gray-800 px-4 py-2 flex items-center justify-between">
+              <h3 class="text-white font-medium">Application Logs</h3>
+              <div class="flex items-center space-x-2">
+                <button class="btn-secondary btn-sm" t-on-click="refreshLogs">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                </button>
+                <button class="btn-secondary btn-sm" t-on-click="downloadLogs">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="p-4 h-full overflow-y-auto font-mono text-sm text-green-400">
+              <div t-foreach="state.logs" t-as="logLine" t-key="logLine_index">
+                <span class="text-gray-500" t-esc="logLine.timestamp"/>
+                <span t-att-class="getLogLevelClass(logLine.level)" t-esc="logLine.level"/>
+                <span class="text-gray-300" t-esc="logLine.message"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shell Tab -->
+        <div t-if="props.currentTab === 'SHELL'" class="h-full p-6">
+          <div class="bg-gray-900 rounded-lg h-full overflow-hidden">
+            <div class="bg-gray-800 px-4 py-2">
+              <h3 class="text-white font-medium">Interactive Shell</h3>
+            </div>
+            <div class="p-4 h-full overflow-y-auto font-mono text-sm">
+              <div t-foreach="state.shellHistory" t-as="entry" t-key="entry_index">
+                <div class="text-green-400">
+                  <span class="text-gray-500">$</span>
+                  <span t-esc="entry.command"/>
+                </div>
+                <div class="text-gray-300 mb-2" t-esc="entry.output"/>
+              </div>
+              
+              <!-- Command Input -->
+              <div class="flex items-center">
+                <span class="text-green-400 mr-2">$</span>
+                <input 
+                  type="text" 
+                  class="flex-1 bg-transparent text-green-400 outline-none"
+                  placeholder="Enter command..."
+                  t-model="state.currentCommand"
+                  t-on-keydown="handleShellInput"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div t-if="state.loading" class="absolute inset-0 bg-white/80 flex items-center justify-center">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"/>
+          <p class="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    </div>
+  </t>
+</templates>
+
+<style>
+  .tab-button {
+    @apply px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 transition-colors;
+  }
+  
+  .tab-button.active {
+    @apply text-primary-600 border-primary-500;
+  }
+  
+  .btn-sm {
+    @apply px-2 py-1 text-xs;
+  }
+</style>

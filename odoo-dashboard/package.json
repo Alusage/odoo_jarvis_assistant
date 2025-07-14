@@ -1,0 +1,38 @@
+{
+  "name": "odoo-dashboard",
+  "version": "1.0.0",
+  "description": "Odoo.sh-like Dashboard Application for Client Management",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\""
+  },
+  "dependencies": {
+    "@odoo/owl": "^2.2.3",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "postcss": "^8.4.32",
+    "prettier": "^3.1.0",
+    "tailwindcss": "^3.3.6",
+    "vite": "^5.0.8"
+  },
+  "keywords": [
+    "odoo",
+    "dashboard",
+    "owl.js",
+    "tailwind",
+    "client-management"
+  ],
+  "author": "Odoo Alusage",
+  "license": "MIT"
+}
