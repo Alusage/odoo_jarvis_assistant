@@ -1,0 +1,50 @@
+# Docker Compose principal pour Traefik et réseau partagé
+# Ce fichier configure l'infrastructure commune pour tous les clients Odoo
+
+version: '3.8'
+
+services:
+
+  # ============================
+  # |    Traefik               |
+  # ============================
+  traefik:
+    # Build information
+    container_name: traefik
+    image: traefik:2.10
+    restart: unless-stopped
+    shm_size: 128m
+
+    # Build instructions
+    ports:
+      - "8090:80"     # Traefik HTTP sur port 8090
+      - "8080:8080"   # Dashboard Traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.entrypoints=web
+      - traefik.http.routers.traefik.rule=Host(`traefik.localhost`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard/`))
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.services.traefik.loadbalancer.server.port=8080
+      # Odoo compress
+      - traefik.http.middlewares.odoo-compress.compress=True
+      # Odoo headers
+      - traefik.http.middlewares.odoo-headers.headers.customRequestHeaders.Upgrade=websocket
+      - traefik.http.middlewares.odoo-headers.headers.customRequestHeaders.Connection=Upgrade
+      - traefik.http.middlewares.odoo-headers.headers.hostsproxyheaders=websocket,Upgrade
+      # Odoo forward
+      - traefik.http.middlewares.odoo-forward.headers.customrequestheaders.X-Forwarded-Proto=http
+    volumes:
+      # Container localtime
+      - /etc/localtime:/etc/localtime:ro
+      # Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Traefik conf
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - traefik-local
+
+networks:
+  traefik-local:
+    name: traefik-local
+    driver: bridge
+    external: false

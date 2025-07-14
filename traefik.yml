@@ -1,0 +1,36 @@
+# Configuration Traefik pour Odoo Client Generator
+# Ce fichier configure Traefik pour router les clients Odoo automatiquement
+
+# API et Dashboard
+api:
+  dashboard: true
+  insecure: true  # Pour dev/test - désactiver en production
+
+# Points d'entrée
+entryPoints:
+  web:
+    address: ":80"
+
+# Fournisseurs de configuration
+providers:
+  # Docker provider pour découverte automatique des services
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: "traefik-local"
+
+# Logging
+log:
+  level: INFO
+
+# Access logs (optionnel)
+accessLog: {}
+
+# Certificats (pour HTTPS en production)
+# certificatesResolvers:
+#   letsencrypt:
+#     acme:
+#       email: your-email@domain.com
+#       storage: /acme/acme.json
+#       httpChallenge:
+#         entryPoint: web

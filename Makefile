@@ -1,6 +1,6 @@
 # Makefile pour la gestion des clients Odoo
 
-.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status
+.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status diagnose-client
 
 # Variables
 CLIENTS_DIR = clients
@@ -206,6 +206,13 @@ check-client: ## Vérifier un client spécifique (usage: make check-client CLIEN
 		exit 1; \
 	fi
 	@./diagnostics.sh $(CLIENT)
+
+diagnose-client: ## Diagnostic complet d'un client (usage: make diagnose-client CLIENT=nom_client)
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make diagnose-client CLIENT=nom_client"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/diagnose_client.sh $(CLIENT)
 
 cache-status: ## Afficher le statut du cache des dépôts OCA
 	@$(SCRIPTS_DIR)/repository_optimizer.sh cache-status
