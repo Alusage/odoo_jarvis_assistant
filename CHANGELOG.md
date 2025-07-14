@@ -4,6 +4,7 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
+- feat: integrate diagnostic system with MCP server and enhance client generation (a240a9c)
 - feat: add comprehensive client diagnostic system with Traefik support (f83374e)
 - feat: enhance MCP server with comprehensive module linking capabilities (0bfa856)
 - feat: add Enterprise support to MCP server (244d5e8)
