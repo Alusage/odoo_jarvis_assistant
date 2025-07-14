@@ -4,6 +4,9 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
+- feat: implement interactive terminal with xterm.js and WebSocket (794bed5)
+- config: add instruction to prevent Claude advertising in commits (c738624)
+- docs: update CHANGELOG with MCP server HTTP enhancement (090ca70)
 - feat: enhance MCP server with HTTP API support for web dashboard (4079bdc)
 - feat: create Odoo.sh-like dashboard with Owl.js and Tailwind CSS (cecc70c)
 - docs: update CHANGELOG.md with latest commits (ae7821f)

@@ -1,9 +1,21 @@
 FROM python:3.11-slim
 
-# Install system dependencies
+# Install system dependencies including Docker CLI
 RUN apt-get update && apt-get install -y \
     git \
     make \
+    curl \
+    ca-certificates \
+    lsb-release \
+    gnupg \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CLI for Docker-in-Docker operations
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -22,8 +34,24 @@ COPY scripts /repo/scripts
 COPY Makefile /repo/Makefile
 COPY create_client.sh /repo/create_client.sh
 
+# Create user with same UID/GID as host user to avoid permission issues
+RUN groupadd -g 1000 mcpuser && \
+    groupadd -g 999 docker && \
+    useradd -u 1000 -g 1000 -G docker -m -s /bin/bash mcpuser
+
+# Configure Git for the user
+RUN git config --global user.email "mcp-server@alusage.com" && \
+    git config --global user.name "MCP Server" && \
+    git config --global init.defaultBranch main
+
+# Change ownership of working directories
+RUN chown -R mcpuser:mcpuser /app /repo
+
 # Set the working directory to the repo
 WORKDIR /repo
+
+# Switch to non-root user
+USER mcpuser
 
 # Expose HTTP port
 EXPOSE 8000

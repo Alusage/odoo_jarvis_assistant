@@ -10,6 +10,9 @@ CONFIG_DIR="$SCRIPT_DIR/config"
 TEMPLATES_DIR="$SCRIPT_DIR/templates"
 CLIENTS_DIR="$SCRIPT_DIR/clients"
 
+# Source des fonctions GitHub
+source "$SCRIPT_DIR/scripts/github_operations.sh"
+
 # Couleurs pour l'affichage
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -107,6 +110,37 @@ main() {
         HAS_ENTERPRISE=false
     fi
 
+    # Demander l'intégration GitHub
+    echo
+    USE_GITHUB=false
+    read -p "🐙 Intégrer avec GitHub ? (y/N): " GITHUB_CHOICE
+    if [[ "$GITHUB_CHOICE" =~ ^[Yy]$ ]]; then
+        USE_GITHUB=true
+        
+        # Vérifier si la configuration GitHub existe
+        if ! verify_github_config; then
+            echo_warning "Configuration GitHub manquante"
+            read -p "📝 Voulez-vous configurer GitHub maintenant ? (y/N): " SETUP_GITHUB
+            if [[ "$SETUP_GITHUB" =~ ^[Yy]$ ]]; then
+                "$SCRIPT_DIR/scripts/setup_github.sh"
+                if ! verify_github_config; then
+                    echo_error "Configuration GitHub échouée"
+                    USE_GITHUB=false
+                fi
+            else
+                echo_info "Le client sera créé sans intégration GitHub"
+                USE_GITHUB=false
+            fi
+        fi
+        
+        if [ "$USE_GITHUB" = true ]; then
+            GITHUB_ORG=$(get_github_org)
+            echo_info "🔍 Vérification du dépôt GitHub: $GITHUB_ORG/$CLIENT_NAME"
+            echo_info "   URL sera: git@github.com:$GITHUB_ORG/$CLIENT_NAME.git"
+            echo_info "   Branche: $ODOO_VERSION"
+        fi
+    fi
+
     # Récapitulatif
     echo
     echo_info "📋 Récapitulatif de la configuration :"
@@ -114,6 +148,7 @@ main() {
     echo "   Version Odoo: $ODOO_VERSION"
     echo "   Template: $TEMPLATE"
     echo "   Enterprise: $([ "$HAS_ENTERPRISE" = true ] && echo "Oui" || echo "Non")"
+    echo "   GitHub: $([ "$USE_GITHUB" = true ] && echo "Oui ($GITHUB_ORG/$CLIENT_NAME)" || echo "Non")"
     echo
 
     read -p "⚡ Continuer avec cette configuration ? (y/N): " CONFIRM
@@ -122,20 +157,64 @@ main() {
         exit 0
     fi
 
-    # Créer le dépôt client
+    # Gestion GitHub et création du client
     echo
-    echo_info "🏗️  Création du dépôt client..."
+    GITHUB_CLONED=false
     
-    "$SCRIPT_DIR/scripts/generate_client_repo.sh" \
-        "$CLIENT_NAME" \
-        "$ODOO_VERSION" \
-        "$TEMPLATE" \
-        "$HAS_ENTERPRISE"
+    if [ "$USE_GITHUB" = true ]; then
+        echo_info "🐙 Gestion GitHub..."
+        
+        case $(manage_client_with_github "$CLIENT_NAME" "$ODOO_VERSION" "$TEMPLATE" "$CLIENTS_DIR") in
+            0)
+                echo_success "Client cloné depuis GitHub avec succès !"
+                GITHUB_CLONED=true
+                ;;
+            2)
+                echo_info "Dépôt GitHub n'existe pas, création locale puis push..."
+                ;;
+            *)
+                echo_error "Erreur lors de la gestion GitHub"
+                echo_info "Création locale sans GitHub..."
+                USE_GITHUB=false
+                ;;
+        esac
+    fi
+    
+    # Créer le client localement si pas cloné depuis GitHub
+    if [ "$GITHUB_CLONED" = false ]; then
+        echo_info "🏗️  Création du dépôt client..."
+        
+        "$SCRIPT_DIR/scripts/generate_client_repo.sh" \
+            "$CLIENT_NAME" \
+            "$ODOO_VERSION" \
+            "$TEMPLATE" \
+            "$HAS_ENTERPRISE"
+        
+        # Configuration GitHub post-création si demandée
+        if [ "$USE_GITHUB" = true ]; then
+            echo
+            echo_info "🐙 Configuration GitHub post-création..."
+            
+            if post_create_github_setup "$CLIENT_NAME" "$ODOO_VERSION" "$CLIENTS_DIR/$CLIENT_NAME"; then
+                echo_success "Client configuré avec GitHub !"
+                echo_info "📤 Pour pousser sur GitHub:"
+                echo_info "   cd $CLIENTS_DIR/$CLIENT_NAME"
+                echo_info "   git push -u origin $ODOO_VERSION"
+            else
+                echo_warning "Configuration GitHub échouée, client créé en local uniquement"
+            fi
+        fi
+    fi
 
     echo
     echo_success "🎉 Dépôt client '$CLIENT_NAME' créé avec succès !"
     echo_info "📁 Emplacement: $CLIENTS_DIR/$CLIENT_NAME"
     echo_info "📝 Consultez le README.md du client pour les instructions d'utilisation"
+    
+    if [ "$USE_GITHUB" = true ] && [ "$GITHUB_CLONED" = false ]; then
+        echo_info "🐙 Dépôt GitHub: git@github.com:$GITHUB_ORG/$CLIENT_NAME.git"
+        echo_info "🌿 Branche: $ODOO_VERSION"
+    fi
 }
 
 # Vérifier les dépendances

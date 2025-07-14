@@ -11,7 +11,8 @@
       "Bash(./build.sh)",
       "Bash(chmod:*)",
       "Bash(pip install:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   },

@@ -2,6 +2,8 @@ import { Component, useState, onMounted, xml } from "@odoo/owl";
 import { Navbar } from "./Navbar.js";
 import { Sidebar } from "./Sidebar.js";
 import { Dashboard } from "./Dashboard.js";
+import { Settings } from "./Settings.js";
+import { CreateClientModal } from "./CreateClientModal.js";
 import { dataService } from "../services/dataService.js";
 
 export class App extends Component {
@@ -12,6 +14,8 @@ export class App extends Component {
         currentClient="state.selectedClient"
         user="state.user"
         onClientChange="(client) => this.onClientChange(client)"
+        onSettingsClick="() => this.openSettings()"
+        onCreateClientClick="() => this.openCreateClientModal()"
       />
       
       <!-- Main Layout -->
@@ -32,6 +36,7 @@ export class App extends Component {
               client="state.selectedClientData"
               currentTab="state.currentTab"
               onTabChange="(tab) => this.onTabChange(tab)"
+              onClientCreated="() => this.loadClients()"
             />
           </div>
           
@@ -59,10 +64,23 @@ export class App extends Component {
           </div>
         </div>
       </div>
+      
+      <!-- Settings Modal -->
+      <Settings 
+        isOpen="state.settingsOpen"
+        onClose="() => this.closeSettings()"
+      />
+      
+      <!-- Create Client Modal -->
+      <CreateClientModal 
+        isOpen="state.createClientModalOpen"
+        onClose="() => this.closeCreateClientModal()"
+        onClientCreated="() => this.loadClients()"
+      />
     </div>
   `;
   
-  static components = { Navbar, Sidebar, Dashboard };
+  static components = { Navbar, Sidebar, Dashboard, Settings, CreateClientModal };
 
   setup() {
     this.state = useState({
@@ -77,7 +95,9 @@ export class App extends Component {
       selectedClientData: null,
       sidebarCollapsed: false,
       currentTab: 'HISTORY',
-      loading: true
+      loading: true,
+      settingsOpen: false,
+      createClientModalOpen: false
     });
 
     onMounted(async () => {
@@ -144,5 +164,21 @@ export class App extends Component {
 
   onTabChange(tabName) {
     this.state.currentTab = tabName;
+  }
+
+  openSettings() {
+    this.state.settingsOpen = true;
+  }
+
+  closeSettings() {
+    this.state.settingsOpen = false;
+  }
+
+  openCreateClientModal() {
+    this.state.createClientModalOpen = true;
+  }
+
+  closeCreateClientModal() {
+    this.state.createClientModalOpen = false;
   }
 }

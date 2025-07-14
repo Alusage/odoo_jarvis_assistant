@@ -150,6 +150,54 @@ class OdooClientMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="create_client_github",
+                    description="Create a new Odoo client repository with GitHub integration",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Client name (will be used as directory and repository name)"
+                            },
+                            "template": {
+                                "type": "string",
+                                "description": "Template type",
+                                "enum": ["basic", "ecommerce", "manufacturing", "services", "custom"],
+                                "default": "basic"
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "Odoo version",
+                                "enum": ["16.0", "17.0", "18.0"],
+                                "default": "18.0"
+                            },
+                            "has_enterprise": {
+                                "type": "boolean",
+                                "description": "Include Odoo Enterprise modules and repositories",
+                                "default": False
+                            },
+                            "github_token": {
+                                "type": "string",
+                                "description": "GitHub personal access token"
+                            },
+                            "github_org": {
+                                "type": "string",
+                                "description": "GitHub organization name",
+                                "default": "Alusage"
+                            },
+                            "git_user_name": {
+                                "type": "string",
+                                "description": "Git user name for commits"
+                            },
+                            "git_user_email": {
+                                "type": "string",
+                                "description": "Git user email for commits"
+                            }
+                        },
+                        "required": ["name", "github_token", "git_user_name", "git_user_email"]
+                    }
+                ),
+                types.Tool(
                     name="list_clients",
                     description="List all existing client repositories",
                     inputSchema={
@@ -503,6 +551,61 @@ class OdooClientMCPServer:
                         },
                         "required": ["client", "command"]
                     }
+                ),
+                types.Tool(
+                    name="get_github_config",
+                    description="Get current GitHub configuration",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    }
+                ),
+                types.Tool(
+                    name="save_github_config",
+                    description="Save GitHub configuration for repository management",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "token": {
+                                "type": "string",
+                                "description": "GitHub Personal Access Token"
+                            },
+                            "organization": {
+                                "type": "string",
+                                "description": "GitHub Organization name",
+                                "default": "Alusage"
+                            },
+                            "gitUserName": {
+                                "type": "string",
+                                "description": "Git user name for commits"
+                            },
+                            "gitUserEmail": {
+                                "type": "string",
+                                "description": "Git user email for commits"
+                            }
+                        },
+                        "required": ["token", "organization", "gitUserName", "gitUserEmail"]
+                    }
+                ),
+                types.Tool(
+                    name="test_github_connection",
+                    description="Test GitHub connection with provided credentials",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "token": {
+                                "type": "string",
+                                "description": "GitHub Personal Access Token"
+                            },
+                            "organization": {
+                                "type": "string",
+                                "description": "GitHub Organization name",
+                                "default": "Alusage"
+                            }
+                        },
+                        "required": ["token", "organization"]
+                    }
                 )
             ]
         
@@ -516,6 +619,17 @@ class OdooClientMCPServer:
                     arguments.get("template", "basic"),
                     arguments.get("version", "18.0"),
                     arguments.get("has_enterprise", False)
+                )
+            elif name == "create_client_github":
+                return await self._create_client_github(
+                    arguments.get("name"),
+                    arguments.get("template", "basic"),
+                    arguments.get("version", "18.0"),
+                    arguments.get("has_enterprise", False),
+                    arguments.get("github_token"),
+                    arguments.get("github_org", "Alusage"),
+                    arguments.get("git_user_name"),
+                    arguments.get("git_user_email")
                 )
             elif name == "list_clients":
                 return await self._list_clients()
@@ -594,10 +708,135 @@ class OdooClientMCPServer:
                     arguments.get("command"),
                     arguments.get("container", "odoo")
                 )
+            elif name == "get_github_config":
+                return await self._get_github_config()
+            elif name == "save_github_config":
+                return await self._save_github_config(
+                    arguments.get("token"),
+                    arguments.get("organization"),
+                    arguments.get("gitUserName"),
+                    arguments.get("gitUserEmail")
+                )
+            elif name == "test_github_connection":
+                return await self._test_github_connection(
+                    arguments.get("token"),
+                    arguments.get("organization")
+                )
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
         logger.info("✅ MCP handlers configured")
+    
+    async def _handle_tool_call(self, name: str, arguments: dict):
+        """Handle tool calls for HTTP API"""
+        if name == "create_client":
+            return await self._create_client(
+                arguments.get("name"),
+                arguments.get("template", "basic"),
+                arguments.get("version", "18.0"),
+                arguments.get("has_enterprise", False)
+            )
+        elif name == "create_client_github":
+            return await self._create_client_github(
+                arguments.get("name"),
+                arguments.get("template", "basic"),
+                arguments.get("version", "18.0"),
+                arguments.get("has_enterprise", False),
+                arguments.get("github_url", "")
+            )
+        elif name == "list_clients":
+            return await self._list_clients()
+        elif name == "update_client":
+            return await self._update_client(arguments.get("client"))
+        elif name == "add_module":
+            return await self._add_module(
+                arguments.get("client"), 
+                arguments.get("module"),
+                arguments.get("link_all", False),
+                arguments.get("link_modules", "")
+            )
+        elif name == "link_modules":
+            return await self._link_modules(
+                arguments.get("client"),
+                arguments.get("repository"),
+                arguments.get("link_all", False),
+                arguments.get("modules", "")
+            )
+        elif name == "list_modules":
+            return await self._list_modules(arguments.get("client"))
+        elif name == "list_oca_modules":
+            return await self._list_oca_modules(arguments.get("pattern", ""))
+        elif name == "client_status":
+            return await self._client_status()
+        elif name == "check_client":
+            return await self._check_client(arguments.get("client"))
+        elif name == "diagnose_client":
+            return await self._diagnose_client(
+                arguments.get("client"),
+                arguments.get("format", "text"),
+                arguments.get("verbose", False)
+            )
+        elif name == "update_requirements":
+            return await self._update_requirements(
+                arguments.get("client"),
+                arguments.get("clean", False)
+            )
+        elif name == "update_oca_repos":
+            return await self._update_oca_repos(
+                arguments.get("language", "fr"),
+                arguments.get("fast", False)
+            )
+        elif name == "build_docker_image":
+            return await self._build_docker_image(
+                arguments.get("version", "18.0"),
+                arguments.get("tag", "")
+            )
+        elif name == "backup_client":
+            return await self._backup_client(arguments.get("client"))
+        elif name == "delete_client":
+            return await self._delete_client(
+                arguments.get("client"),
+                arguments.get("confirmed", False)
+            )
+        elif name == "start_client":
+            return await self._start_client(arguments.get("client"))
+        elif name == "stop_client":
+            return await self._stop_client(arguments.get("client"))
+        elif name == "rebuild_client":
+            return await self._rebuild_client(
+                arguments.get("client"),
+                arguments.get("no_cache", False)
+            )
+        elif name == "get_client_status":
+            return await self._get_client_status(arguments.get("client"))
+        elif name == "get_client_logs":
+            return await self._get_client_logs(
+                arguments.get("client"),
+                arguments.get("container", "odoo"),
+                arguments.get("lines", 100)
+            )
+        elif name == "execute_shell_command":
+            return await self._execute_shell_command(
+                arguments.get("client"),
+                arguments.get("command"),
+                arguments.get("container", "odoo")
+            )
+        elif name == "get_github_config":
+            return await self._get_github_config()
+        elif name == "save_github_config":
+            return await self._save_github_config(
+                arguments.get("token"),
+                arguments.get("organization"),
+                arguments.get("gitUserName"),
+                arguments.get("gitUserEmail")
+            )
+        elif name == "test_github_connection":
+            return await self._test_github_connection(
+                arguments.get("token"),
+                arguments.get("organization")
+            )
+        else:
+            raise ValueError(f"Unknown tool: {name}")
     
     # Tool implementation methods
     
@@ -624,6 +863,74 @@ class OdooClientMCPServer:
                 type="text", 
                 text=f"❌ Failed to create client '{name}'\n\nError: {result['stderr']}\n\nOutput: {result['stdout']}"
             )]
+    
+    async def _create_client_github(self, name: str, template: str = "basic", version: str = "18.0", has_enterprise: bool = False, github_url: str = ""):
+        """Create a new Odoo client repository with GitHub integration"""
+        # Check if GitHub is configured
+        github_config_path = self.repo_path / "config" / "github_config.json"
+        github_configured = False
+        
+        if github_config_path.exists():
+            try:
+                with open(github_config_path, 'r') as f:
+                    config = json.load(f)
+                    github_configured = bool(config.get('github_token') and config.get('github_organization'))
+            except Exception:
+                github_configured = False
+        
+        if github_configured:
+            # Use the interactive create_client.sh script with GitHub integration
+            script_path = self.repo_path / "create_client.sh"
+            
+            # Prepare the input for the interactive script
+            inputs = [
+                name,                                    # Client name
+                "1" if version == "16.0" else "2" if version == "17.0" else "3",  # Version choice
+                "1" if template == "basic" else "2" if template == "ecommerce" else "3" if template == "manufacturing" else "4" if template == "services" else "5",  # Template choice
+                "y" if has_enterprise else "n",         # Enterprise
+                "y",                                     # GitHub integration
+                "y"                                      # Confirm
+            ]
+            
+            # Create input string
+            input_string = "\n".join(inputs) + "\n"
+            
+            try:
+                # Run the interactive script with pre-configured inputs
+                result = subprocess.run(
+                    [str(script_path)],
+                    cwd=self.repo_path,
+                    input=input_string,
+                    capture_output=True,
+                    text=True,
+                    timeout=600  # 10 minute timeout for GitHub operations
+                )
+                
+                if result.returncode == 0:
+                    enterprise_msg = " (with Enterprise)" if has_enterprise else ""
+                    return [types.TextContent(
+                        type="text",
+                        text=f"✅ Client '{name}' created successfully with template '{template}' for Odoo {version}{enterprise_msg} with GitHub integration\n\n{result.stdout}"
+                    )]
+                else:
+                    return [types.TextContent(
+                        type="text", 
+                        text=f"❌ Failed to create client '{name}' with GitHub integration\n\nError: {result.stderr}\n\nOutput: {result.stdout}"
+                    )]
+                    
+            except subprocess.TimeoutExpired:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Timeout creating client '{name}' with GitHub integration (operation took too long)"
+                )]
+            except Exception as e:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Error creating client '{name}' with GitHub integration: {str(e)}"
+                )]
+        else:
+            # GitHub not configured, fall back to normal client creation
+            return await self._create_client(name, template, version, has_enterprise)
     
     async def _list_clients(self):
         """List all existing client repositories"""
@@ -1092,8 +1399,8 @@ class OdooClientMCPServer:
         @self.http_app.get("/tools")
         async def list_tools():
             """List available tools"""
-            # Retourner la liste des outils disponibles depuis le handler
-            tools = await handle_list_tools()
+            # Retourner la liste des outils disponibles
+            tools = self._get_tools_list()
             return [{"name": tool.name, "description": tool.description, "inputSchema": tool.inputSchema} for tool in tools]
         
         @self.http_app.post("/tools/call")
@@ -1113,6 +1420,7 @@ class OdooClientMCPServer:
                 logger.error(f"Error calling tool {request.name}: {e}")
                 return ToolCallResponse(
                     success=False,
+                    result=None,
                     error=str(e)
                 )
         
@@ -1273,62 +1581,6 @@ class OdooClientMCPServer:
                 except:
                     pass
 
-    async def _handle_tool_call(self, name: str, arguments: Dict[str, Any]):
-        """Handle tool calls (shared between MCP and HTTP)"""
-        # This is the same logic as in the MCP handler
-        if name == "create_client":
-            return await self._create_client(
-                arguments.get("name"),
-                arguments.get("template", "basic"),
-                arguments.get("version", "18.0"),
-                arguments.get("has_enterprise", False)
-            )
-        elif name == "list_clients":
-            return await self._list_clients()
-        elif name == "update_client":
-            return await self._update_client(arguments.get("client"))
-        elif name == "add_module":
-            return await self._add_module(
-                arguments.get("client"), 
-                arguments.get("module"),
-                arguments.get("link_all", False),
-                arguments.get("link_modules", "")
-            )
-        elif name == "client_status":
-            return await self._client_status()
-        elif name == "check_client":
-            return await self._check_client(arguments.get("client"))
-        elif name == "diagnose_client":
-            return await self._diagnose_client(
-                arguments.get("client"),
-                arguments.get("format", "text"),
-                arguments.get("verbose", False)
-            )
-        elif name == "start_client":
-            return await self._start_client(arguments.get("client"))
-        elif name == "stop_client":
-            return await self._stop_client(arguments.get("client"))
-        elif name == "rebuild_client":
-            return await self._rebuild_client(
-                arguments.get("client"),
-                arguments.get("no_cache", False)
-            )
-        elif name == "get_client_status":
-            return await self._get_client_status(arguments.get("client"))
-        elif name == "get_client_logs":
-            return await self._get_client_logs(
-                arguments.get("client"),
-                arguments.get("container", "odoo"),
-                arguments.get("lines", 100)
-            )
-        elif name == "execute_shell_command":
-            return await self._execute_shell_command(
-                arguments.get("client"),
-                arguments.get("command"),
-                arguments.get("container", "odoo")
-            )
-        else:
-            raise ValueError(f"Unknown tool: {name}")
 
     async def _start_client(self, client: str):
         """Start a client's Docker containers"""
@@ -1631,6 +1883,287 @@ class OdooClientMCPServer:
                 type="text",
                 text=f"❌ Command failed: {result['stderr']}"
             )]
+
+    async def _get_github_config(self):
+        """Get current GitHub configuration"""
+        try:
+            logger.info("Getting GitHub config...")
+            config_file = self.repo_path / "config" / "github_config.json"
+            logger.info(f"Config file path: {config_file}")
+            
+            if config_file.exists():
+                logger.info("Config file exists, reading...")
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                    logger.info("Config loaded successfully")
+                    # Remove sensitive token from response for security
+                    safe_config = config.copy()
+                    if 'github_token' in safe_config and safe_config['github_token']:
+                        safe_config['github_token'] = '***configured***'
+                    
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps(safe_config, indent=2)
+                    )]
+            else:
+                logger.info("Config file does not exist, returning default")
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "github_token": "",
+                        "github_organization": "Alusage",
+                        "git_user_name": "",
+                        "git_user_email": ""
+                    }, indent=2)
+                )]
+        except Exception as e:
+            logger.error(f"Error in _get_github_config: {e}")
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error reading GitHub config: {str(e)}"
+            )]
+
+    async def _save_github_config(self, token: str, organization: str, git_user_name: str, git_user_email: str):
+        """Save GitHub configuration"""
+        try:
+            config_file = self.repo_path / "config" / "github_config.json"
+            
+            # Create config directory if it doesn't exist
+            config_file.parent.mkdir(exist_ok=True)
+            
+            config = {
+                "github_token": token,
+                "github_organization": organization,
+                "github_base_url": "https://api.github.com",
+                "git_user_name": git_user_name,
+                "git_user_email": git_user_email
+            }
+            
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            return [types.TextContent(
+                type="text",
+                text="✅ GitHub configuration saved successfully"
+            )]
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error saving GitHub config: {str(e)}"
+            )]
+
+    async def _test_github_connection(self, token: str, organization: str):
+        """Test GitHub connection with provided credentials"""
+        try:
+            import requests
+            
+            # Test user authentication
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+            
+            response = requests.get('https://api.github.com/user', headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                username = user_data.get('login', 'unknown')
+                
+                # Test organization access
+                org_response = requests.get(f'https://api.github.com/orgs/{organization}', headers=headers, timeout=10)
+                
+                if org_response.status_code == 200:
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": True,
+                            "username": username,
+                            "organization": organization,
+                            "message": f"✅ Connected as {username} with access to {organization}"
+                        }, indent=2)
+                    )]
+                elif org_response.status_code == 404:
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": False,
+                            "username": username,
+                            "error": f"Organization '{organization}' not found or no access"
+                        }, indent=2)
+                    )]
+                else:
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": False,
+                            "username": username,
+                            "error": f"Cannot access organization '{organization}' (HTTP {org_response.status_code})"
+                        }, indent=2)
+                    )]
+            elif response.status_code == 401:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": "Invalid token or insufficient permissions"
+                    }, indent=2)
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"GitHub API error (HTTP {response.status_code})"
+                    }, indent=2)
+                )]
+                
+        except requests.RequestException as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": f"Network error: {str(e)}"
+                }, indent=2)
+            )]
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": f"Unexpected error: {str(e)}"
+                }, indent=2)
+            )]
+
+    def _get_tools_list(self):
+        """Get the list of available tools"""
+        return [
+            types.Tool(
+                name="create_client",
+                description="Create a new Odoo client repository",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Client name (will be used as directory name)"
+                        },
+                        "template": {
+                            "type": "string",
+                            "description": "Template type",
+                            "enum": ["basic", "ecommerce", "manufacturing", "services", "custom"],
+                            "default": "basic"
+                        },
+                        "version": {
+                            "type": "string",
+                            "description": "Odoo version",
+                            "enum": ["16.0", "17.0", "18.0"],
+                            "default": "18.0"
+                        },
+                        "has_enterprise": {
+                            "type": "boolean",
+                            "description": "Include Odoo Enterprise modules and repositories",
+                            "default": False
+                        }
+                    },
+                    "required": ["name"]
+                }
+            ),
+            types.Tool(
+                name="create_client_github",
+                description="Create a new Odoo client repository with GitHub integration",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Client name (will be used as directory and repository name)"
+                        },
+                        "template": {
+                            "type": "string",
+                            "description": "Template type",
+                            "enum": ["basic", "ecommerce", "manufacturing", "services", "custom"],
+                            "default": "basic"
+                        },
+                        "version": {
+                            "type": "string",
+                            "description": "Odoo version",
+                            "enum": ["16.0", "17.0", "18.0"],
+                            "default": "18.0"
+                        },
+                        "has_enterprise": {
+                            "type": "boolean",
+                            "description": "Include Odoo Enterprise modules and repositories",
+                            "default": False
+                        }
+                    },
+                    "required": ["name"]
+                }
+            ),
+            types.Tool(
+                name="list_clients",
+                description="List all existing client repositories",
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            ),
+            types.Tool(
+                name="get_github_config",
+                description="Get current GitHub configuration",
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            ),
+            types.Tool(
+                name="save_github_config",
+                description="Save GitHub configuration for repository management",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "token": {
+                            "type": "string",
+                            "description": "GitHub Personal Access Token"
+                        },
+                        "organization": {
+                            "type": "string",
+                            "description": "GitHub Organization name",
+                            "default": "Alusage"
+                        },
+                        "gitUserName": {
+                            "type": "string",
+                            "description": "Git user name for commits"
+                        },
+                        "gitUserEmail": {
+                            "type": "string",
+                            "description": "Git user email for commits"
+                        }
+                    },
+                    "required": ["token", "organization", "gitUserName", "gitUserEmail"]
+                }
+            ),
+            types.Tool(
+                name="test_github_connection",
+                description="Test GitHub connection with provided credentials",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "token": {
+                            "type": "string",
+                            "description": "GitHub Personal Access Token"
+                        },
+                        "organization": {
+                            "type": "string",
+                            "description": "GitHub Organization name",
+                            "default": "Alusage"
+                        }
+                    },
+                    "required": ["token", "organization"]
+                }
+            )
+        ]
 
     def _mcp_to_http_response(self, mcp_result):
         """Convert MCP response to HTTP-friendly format"""

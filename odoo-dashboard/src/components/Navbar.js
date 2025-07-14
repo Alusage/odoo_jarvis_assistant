@@ -18,29 +18,42 @@ export class Navbar extends Component {
               <span class="text-xl font-bold text-gray-900">Odoo Dashboard</span>
             </div>
 
-            <!-- Client Selector -->
-            <div class="relative">
-              <button 
-                class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                t-on-click="toggleClientDropdown"
-              >
-                <span t-esc="props.currentClient || 'Select Client'"/>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-              
-              <div t-if="state.clientDropdownOpen" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+            <!-- Client Selector and Create Button -->
+            <div class="flex items-center space-x-3">
+              <div class="relative">
                 <button 
-                  t-foreach="state.clients" 
-                  t-as="client" 
-                  t-key="client"
-                  class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                  t-on-click="() => this.selectClient(client)"
+                  class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  t-on-click="toggleClientDropdown"
                 >
-                  <t t-esc="client"/>
+                  <span t-esc="props.currentClient || 'Select Client'"/>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
                 </button>
+                
+                <div t-if="state.clientDropdownOpen" class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  <button 
+                    t-foreach="state.clients" 
+                    t-as="client" 
+                    t-key="client"
+                    class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    t-on-click="() => this.selectClient(client)"
+                  >
+                    <t t-esc="client"/>
+                  </button>
+                </div>
               </div>
+              
+              <!-- Create Client Button -->
+              <button 
+                class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-colors"
+                t-on-click="openCreateClientModal"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span>New Client</span>
+              </button>
             </div>
           </div>
 
@@ -60,7 +73,12 @@ export class Navbar extends Component {
               
               <div t-if="state.userDropdownOpen" class="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile</a>
-                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Settings</a>
+                <button 
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  t-on-click="openSettings"
+                >
+                  Settings
+                </button>
                 <hr class="my-1"/>
                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Sign out</a>
               </div>
@@ -122,5 +140,19 @@ export class Navbar extends Component {
 
   closeMobileMenu() {
     this.state.mobileMenuOpen = false;
+  }
+
+  openSettings() {
+    this.state.userDropdownOpen = false;
+    if (this.props.onSettingsClick) {
+      this.props.onSettingsClick();
+    }
+  }
+
+  openCreateClientModal() {
+    this.state.clientDropdownOpen = false;
+    if (this.props.onCreateClientClick) {
+      this.props.onCreateClientClick();
+    }
   }
 }

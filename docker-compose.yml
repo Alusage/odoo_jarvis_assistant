@@ -53,10 +53,11 @@ services:
     container_name: odoo-mcp-server
     restart: unless-stopped
     volumes:
-      - ./:/repo:ro  # Mount repository as read-only
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # For Docker operations
+      - ./:/repo  # Mount repository with write access for Docker operations
+      - /var/run/docker.sock:/var/run/docker.sock  # For Docker operations (read-write)
     environment:
       - PYTHONUNBUFFERED=1
+      - DOCKER_HOST=unix:///var/run/docker.sock  # Explicitly set Docker host
     networks:
       - traefik-local
     labels:

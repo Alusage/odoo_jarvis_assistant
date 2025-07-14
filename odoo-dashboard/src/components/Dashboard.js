@@ -149,6 +149,7 @@ export class Dashboard extends Component {
           <p class="text-gray-600">Loading...</p>
         </div>
       </div>
+      
     </div>
   `;
   
@@ -476,4 +477,5 @@ export class Dashboard extends Component {
 odoo-${this.props.client.name}         odoo:18.0                   Up 2 hours (healthy)
 postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (healthy)`;
   }
+
 }

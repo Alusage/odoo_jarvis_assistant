@@ -240,6 +240,84 @@ class DataService {
     }
   }
 
+  /**
+   * Get GitHub configuration
+   */
+  async getGitHubConfig() {
+    try {
+      // For now, return default config since the GitHub tools are not stable yet
+      return {
+        github_token: "",
+        github_organization: "Alusage",
+        git_user_name: "",
+        git_user_email: ""
+      };
+    } catch (error) {
+      console.error('Error fetching GitHub config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Save GitHub configuration
+   */
+  async saveGitHubConfig(config) {
+    try {
+      // For now, simulate success since the GitHub tools are not stable yet
+      console.log('Simulating GitHub config save:', config);
+      return {
+        success: true,
+        message: 'Configuration saved successfully (simulated)'
+      };
+    } catch (error) {
+      console.error('Error saving GitHub config:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Test GitHub connection
+   */
+  async testGitHubConnection(config) {
+    try {
+      // For now, simulate connection test since the GitHub tools are not stable yet
+      console.log('Simulating GitHub connection test:', config);
+      return {
+        success: true,
+        username: 'test-user',
+        error: ''
+      };
+    } catch (error) {
+      console.error('Error testing GitHub connection:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Create client with GitHub integration
+   */
+  async createClientWithGitHub(clientConfig) {
+    try {
+      const response = await this.callMCPServer('create_client_github', clientConfig);
+      return {
+        success: true,
+        message: response.content || 'Client created with GitHub integration'
+      };
+    } catch (error) {
+      console.error('Error creating client with GitHub:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
   // Mock data methods
   getMockClients() {
     return [
