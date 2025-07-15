@@ -78,8 +78,8 @@ create_client_structure() {
     mkdir -p "$CLIENT_DIR"
     cd "$CLIENT_DIR"
     
-    # Initialiser le dépôt Git
-    git init
+    # Initialiser le dépôt Git avec la branche nommée selon la version Odoo
+    git init --initial-branch="$ODOO_VERSION"
     
     # Créer les dossiers principaux
     mkdir -p addons extra-addons config scripts data logs
