@@ -168,8 +168,18 @@ class DataService {
     }
     
     try {
-      // Pour l'instant, utiliser les données mock car pas d'API MCP pour l'historique Git
-      return this.getMockCommitHistory(clientName);
+      const response = await this.callMCPServer('get_client_git_log', {
+        client: clientName,
+        limit: 20,
+        format: 'json'
+      });
+      
+      if (response.success && response.commits) {
+        return response.commits;
+      } else {
+        console.warn(`No git history found for client ${clientName}, using mock data`);
+        return this.getMockCommitHistory(clientName);
+      }
     } catch (error) {
       console.error(`Error fetching commit history for ${clientName}:`, error);
       return this.getMockCommitHistory(clientName);

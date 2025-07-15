@@ -606,6 +606,31 @@ class OdooClientMCPServer:
                         },
                         "required": ["token", "organization"]
                     }
+                ),
+                types.Tool(
+                    name="get_client_git_log",
+                    description="Get Git commit history for a client repository",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of commits to return",
+                                "default": 20
+                            },
+                            "format": {
+                                "type": "string",
+                                "description": "Output format",
+                                "enum": ["json", "text"],
+                                "default": "json"
+                            }
+                        },
+                        "required": ["client"]
+                    }
                 )
             ]
         
@@ -722,6 +747,12 @@ class OdooClientMCPServer:
                     arguments.get("token"),
                     arguments.get("organization")
                 )
+            elif name == "get_client_git_log":
+                return await self._get_client_git_log(
+                    arguments.get("client"),
+                    arguments.get("limit", 20),
+                    arguments.get("format", "json")
+                )
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
@@ -834,6 +865,12 @@ class OdooClientMCPServer:
             return await self._test_github_connection(
                 arguments.get("token"),
                 arguments.get("organization")
+            )
+        elif name == "get_client_git_log":
+            return await self._get_client_git_log(
+                arguments.get("client"),
+                arguments.get("limit", 20),
+                arguments.get("format", "json")
             )
         else:
             raise ValueError(f"Unknown tool: {name}")
@@ -2031,6 +2068,93 @@ class OdooClientMCPServer:
                 text=json.dumps({
                     "success": False,
                     "error": f"Unexpected error: {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _get_client_git_log(self, client_name: str, limit: int = 20, format: str = "json"):
+        """Get Git commit history for a client repository"""
+        if not client_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Get git log with detailed information
+            git_log_cmd = [
+                "git", "log", f"--max-count={limit}",
+                "--pretty=format:%H|%an|%ae|%ad|%s",
+                "--date=iso"
+            ]
+            
+            result = self._run_command(git_log_cmd, cwd=client_path)
+            
+            if not result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to get git log for client '{client_name}'",
+                        "details": result["stderr"]
+                    }, indent=2)
+                )]
+            
+            if format == "text":
+                return [types.TextContent(
+                    type="text",
+                    text=result["stdout"]
+                )]
+            
+            # Parse commits into JSON format
+            commits = []
+            if result["stdout"].strip():
+                for line in result["stdout"].strip().split('\n'):
+                    try:
+                        parts = line.split('|')
+                        if len(parts) >= 5:
+                            commit_hash = parts[0]
+                            author_name = parts[1]
+                            author_email = parts[2]
+                            date = parts[3]
+                            message = '|'.join(parts[4:])  # Handle message with | characters
+                            
+                            commits.append({
+                                "id": commit_hash[:8],  # Short hash
+                                "hash": commit_hash,
+                                "author": {
+                                    "name": author_name,
+                                    "email": author_email,
+                                    "avatar": f"https://ui-avatars.com/api/?name={author_name.replace(' ', '+')}&background=7D6CA8&color=fff"
+                                },
+                                "message": message,
+                                "timestamp": date,
+                                "branch": "current"  # We could enhance this later
+                            })
+                    except Exception as e:
+                        logger.warning(f"Failed to parse commit line: {line}, error: {e}")
+                        continue
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "commits": commits,
+                    "total": len(commits)
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error getting git log for client '{client_name}': {str(e)}"
                 }, indent=2)
             )]
 

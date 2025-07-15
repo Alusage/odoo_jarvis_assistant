@@ -23,24 +23,17 @@ export class CommitHistory extends Component {
               
               <div class="flex items-center space-x-2">
                 <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded" t-esc="commit.id"/>
-                <div t-att-class="getCommitStatusClass(commit.status.build)">
-                  <t t-esc="commit.status.build"/>
-                </div>
               </div>
             </div>
 
-            <!-- Branch Flow -->
+            <!-- Branch Info -->
             <div class="flex items-center space-x-4 mb-4">
               <div class="flex items-center space-x-2">
-                <div t-att-class="getBranchClass(commit.branch.from)">
-                  <t t-esc="commit.branch.from"/>
+                <div t-att-class="getBranchClass(commit.branch)">
+                  <t t-esc="commit.branch"/>
                 </div>
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                </svg>
-                <div t-att-class="getBranchClass(commit.branch.to)">
-                  <t t-esc="commit.branch.to"/>
-                </div>
+                <span class="text-sm text-gray-500">•</span>
+                <span class="text-sm text-gray-500 font-mono" t-esc="commit.hash"/>
               </div>
             </div>
 
@@ -49,26 +42,18 @@ export class CommitHistory extends Component {
               <p class="text-gray-700 leading-relaxed" t-esc="commit.message"/>
             </div>
 
-            <!-- Status and Testing -->
+            <!-- Actions -->
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-4">
-                <div class="flex items-center space-x-2">
-                  <span class="text-sm text-gray-500">Testing:</span>
-                  <div t-att-class="getTestingStatusClass(commit.status.testing)">
-                    <t t-esc="commit.status.testing"/>
-                  </div>
-                </div>
+                <span class="text-sm text-gray-500">Commit from Git history</span>
               </div>
 
               <div class="flex items-center space-x-2">
-                <button class="btn-secondary btn-sm" t-on-click="() => this.connectToCommit(commit.id)">
-                  Connect
+                <button class="btn-secondary btn-sm" t-on-click="() => this.viewCommitDetails(commit.hash)">
+                  View Details
                 </button>
-                <button class="btn-secondary btn-sm" t-on-click="() => this.rebuildCommit(commit.id)">
-                  Rebuild
-                </button>
-                <button class="btn-secondary btn-sm" t-on-click="() => this.viewCommitLogs(commit.id)">
-                  Logs
+                <button class="btn-secondary btn-sm" t-on-click="() => this.checkoutCommit(commit.hash)">
+                  Checkout
                 </button>
               </div>
             </div>
@@ -114,23 +99,24 @@ export class CommitHistory extends Component {
 
   getBranchClass(branch) {
     const branchClasses = {
-      'master': 'bg-green-100 text-green-800',
-      'main': 'bg-green-100 text-green-800',
-      'staging': 'bg-yellow-100 text-yellow-800',
-      'development': 'bg-blue-100 text-blue-800'
+      'master': 'bg-green-100 text-green-800 px-2 py-1 rounded text-sm',
+      'main': 'bg-green-100 text-green-800 px-2 py-1 rounded text-sm',
+      '18.0': 'bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm',
+      '17.0': 'bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm',
+      '16.0': 'bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm',
+      'staging': 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm',
+      'development': 'bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm'
     };
-    return branchClasses[branch] || 'bg-gray-100 text-gray-800';
+    return branchClasses[branch] || 'bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm';
   }
 
-  connectToCommit(commitId) {
-    console.log(`Connecting to commit ${commitId}...`);
+  viewCommitDetails(commitHash) {
+    console.log(`Viewing details for commit ${commitHash}...`);
+    // TODO: Implement commit details modal
   }
 
-  rebuildCommit(commitId) {
-    console.log(`Rebuilding commit ${commitId}...`);
-  }
-
-  viewCommitLogs(commitId) {
-    console.log(`Viewing logs for commit ${commitId}...`);
+  checkoutCommit(commitHash) {
+    console.log(`Checking out commit ${commitHash}...`);
+    // TODO: Implement checkout functionality via MCP
   }
 }
