@@ -155,4 +155,9 @@ export class Navbar extends Component {
       this.props.onCreateClientClick();
     }
   }
+
+  // Public method to refresh clients list
+  async refreshClients() {
+    await this.loadClients();
+  }
 }

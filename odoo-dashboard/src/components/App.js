@@ -16,6 +16,7 @@ export class App extends Component {
         onClientChange="(client) => this.onClientChange(client)"
         onSettingsClick="() => this.openSettings()"
         onCreateClientClick="() => this.openCreateClientModal()"
+        onNavbarReady="(navbarComponent) => this.setNavbarRef(navbarComponent)"
       />
       
       <!-- Main Layout -->
@@ -83,6 +84,7 @@ export class App extends Component {
   static components = { Navbar, Sidebar, Dashboard, Settings, CreateClientModal };
 
   setup() {
+    this.navbarRef = null;
     this.state = useState({
       currentProject: 'odoo-alusage',
       user: {
@@ -110,6 +112,11 @@ export class App extends Component {
       this.state.loading = true;
       const clients = await dataService.getClients();
       this.state.clients = clients;
+      
+      // Rafraîchir aussi la liste des clients dans le Navbar
+      if (this.navbarRef && this.navbarRef.refreshClients) {
+        await this.navbarRef.refreshClients();
+      }
       
       // Ne pas sélectionner automatiquement un client
       // L'utilisateur devra choisir depuis la dropdown
@@ -180,5 +187,9 @@ export class App extends Component {
 
   closeCreateClientModal() {
     this.state.createClientModalOpen = false;
+  }
+
+  setNavbarRef(navbarComponent) {
+    this.navbarRef = navbarComponent;
   }
 }

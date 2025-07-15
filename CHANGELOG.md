@@ -4,6 +4,8 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 ### Changed
+- feat: set client git branch to Odoo version name (770fe0c)
+- feat: implement comprehensive GitHub integration with dashboard settings and smart client creation (1759281)
 - feat: implement interactive terminal with xterm.js and WebSocket (794bed5)
 - config: add instruction to prevent Claude advertising in commits (c738624)
 - docs: update CHANGELOG with MCP server HTTP enhancement (090ca70)
