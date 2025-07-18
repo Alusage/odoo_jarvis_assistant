@@ -34,10 +34,14 @@ COPY scripts /repo/scripts
 COPY Makefile /repo/Makefile
 COPY create_client.sh /repo/create_client.sh
 
+# Accept build arguments for dynamic user/group creation
+ARG DOCKER_GID=997
+ARG USER_ID=1000
+
 # Create user with same UID/GID as host user to avoid permission issues
-RUN groupadd -g 1000 mcpuser && \
-    groupadd -g 999 docker && \
-    useradd -u 1000 -g 1000 -G docker -m -s /bin/bash mcpuser
+RUN groupadd -g ${USER_ID} mcpuser && \
+    groupadd -g ${DOCKER_GID} docker && \
+    useradd -u ${USER_ID} -g ${USER_ID} -G docker -m -s /bin/bash mcpuser
 
 # Configure Git for the user
 RUN git config --global user.email "mcp-server@alusage.com" && \

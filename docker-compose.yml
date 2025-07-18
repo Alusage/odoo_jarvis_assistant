@@ -50,6 +50,9 @@ services:
     build:
       context: .
       dockerfile: mcp_server/Dockerfile
+      args:
+        - DOCKER_GID=${DOCKER_GID:-997}
+        - USER_ID=${USER_ID:-1000}
     container_name: odoo-mcp-server
     restart: unless-stopped
     volumes:
