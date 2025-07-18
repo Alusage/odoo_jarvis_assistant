@@ -1,4 +1,5 @@
-import { Component, xml } from "@odoo/owl";
+import { Component, useState, xml } from "@odoo/owl";
+import { CommitDetailsModal } from "./CommitDetailsModal.js";
 
 export class CommitHistory extends Component {
   static template = xml`
@@ -74,8 +75,24 @@ export class CommitHistory extends Component {
           <p class="text-gray-600">Loading commit history...</p>
         </div>
       </div>
+      
+      <!-- Commit Details Modal -->
+      <CommitDetailsModal 
+        t-if="state.selectedCommit" 
+        commit="state.selectedCommit" 
+        client="props.client"
+        onClose="() => this.closeModal()"
+      />
     </div>
   `;
+
+  static components = { CommitDetailsModal };
+
+  setup() {
+    this.state = useState({
+      selectedCommit: null
+    });
+  }
 
   getCommitStatusClass(status) {
     const statusClasses = {
@@ -112,7 +129,16 @@ export class CommitHistory extends Component {
 
   viewCommitDetails(commitHash) {
     console.log(`Viewing details for commit ${commitHash}...`);
-    // TODO: Implement commit details modal
+    
+    // Find the commit by hash
+    const commit = this.props.commits.find(c => c.hash === commitHash);
+    if (commit) {
+      this.state.selectedCommit = commit;
+    }
+  }
+
+  closeModal() {
+    this.state.selectedCommit = null;
   }
 
   checkoutCommit(commitHash) {

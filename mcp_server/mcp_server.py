@@ -631,6 +631,30 @@ class OdooClientMCPServer:
                         },
                         "required": ["client"]
                     }
+                ),
+                types.Tool(
+                    name="get_commit_details",
+                    description="Get detailed information about a specific commit including diff",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "commit": {
+                                "type": "string",
+                                "description": "Commit hash"
+                            },
+                            "format": {
+                                "type": "string",
+                                "description": "Output format",
+                                "enum": ["json", "text"],
+                                "default": "json"
+                            }
+                        },
+                        "required": ["client", "commit"]
+                    }
                 )
             ]
         
@@ -753,6 +777,12 @@ class OdooClientMCPServer:
                     arguments.get("limit", 20),
                     arguments.get("format", "json")
                 )
+            elif name == "get_commit_details":
+                return await self._get_commit_details(
+                    arguments.get("client"),
+                    arguments.get("commit"),
+                    arguments.get("format", "json")
+                )
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
@@ -870,6 +900,12 @@ class OdooClientMCPServer:
             return await self._get_client_git_log(
                 arguments.get("client"),
                 arguments.get("limit", 20),
+                arguments.get("format", "json")
+            )
+        elif name == "get_commit_details":
+            return await self._get_commit_details(
+                arguments.get("client"),
+                arguments.get("commit"),
                 arguments.get("format", "json")
             )
         else:
@@ -2155,6 +2191,168 @@ class OdooClientMCPServer:
                 type="text",
                 text=json.dumps({
                     "error": f"Error getting git log for client '{client_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _get_commit_details(self, client_name: str, commit_hash: str, format: str = "json"):
+        """Get detailed information about a specific commit including diff"""
+        if not client_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        if not commit_hash:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Commit hash is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Get commit details with diff
+            cmd = [
+                "git", "show", "--format=fuller", "--stat", "--patch", commit_hash
+            ]
+            
+            result = self._run_command(cmd, cwd=client_path)
+            
+            if result["return_code"] != 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Git command failed: {result['stderr']}"
+                    }, indent=2)
+                )]
+            
+            # Parse the git show output
+            output = result["stdout"]
+            
+            # Extract commit info (first part before diff)
+            lines = output.split('\n')
+            diff_started = False
+            commit_info = []
+            diff_lines = []
+            
+            for line in lines:
+                if line.startswith('diff --git'):
+                    diff_started = True
+                
+                if not diff_started:
+                    commit_info.append(line)
+                else:
+                    diff_lines.append(line)
+            
+            # Parse commit info
+            commit_data = '\n'.join(commit_info)
+            
+            # Parse diff into structured format
+            files = []
+            current_file = None
+            current_hunk = None
+            in_file_content = False
+            
+            for line in diff_lines:
+                if line.startswith('diff --git'):
+                    # New file
+                    if current_file:
+                        if current_hunk:
+                            current_file["hunks"].append(current_hunk)
+                        files.append(current_file)
+                    
+                    # Extract filename from diff --git a/file b/file
+                    filename = line.split(' b/')[-1] if ' b/' in line else line.split(' ')[-1]
+                    current_file = {
+                        "filename": filename,
+                        "additions": 0,
+                        "deletions": 0,
+                        "hunks": []
+                    }
+                    current_hunk = None
+                    in_file_content = False
+                
+                elif line.startswith('@@'):
+                    # Hunk header
+                    if current_hunk:
+                        current_file["hunks"].append(current_hunk)
+                    
+                    current_hunk = {
+                        "header": line,
+                        "lines": []
+                    }
+                    in_file_content = True
+                
+                elif line.startswith('index ') or line.startswith('new file mode') or line.startswith('deleted file mode') or line.startswith('--- ') or line.startswith('+++ '):
+                    # File metadata - skip
+                    continue
+                
+                elif in_file_content or current_hunk is not None:
+                    # Hunk content or new file content
+                    line_type = 'context'
+                    if line.startswith('+'):
+                        line_type = 'added'
+                        current_file["additions"] += 1
+                    elif line.startswith('-'):
+                        line_type = 'removed'
+                        current_file["deletions"] += 1
+                    elif line.startswith(' '):
+                        line_type = 'context'
+                    
+                    # Create hunk if we don't have one (for new files)
+                    if current_hunk is None:
+                        current_hunk = {
+                            "header": "@@ -0,0 +1,{} @@".format(current_file["additions"]),
+                            "lines": []
+                        }
+                    
+                    current_hunk["lines"].append({
+                        "type": line_type,
+                        "content": line[1:] if line.startswith(('+', '-', ' ')) else line,
+                        "lineNumber": len(current_hunk["lines"]) + 1
+                    })
+            
+            # Add the last file
+            if current_file:
+                if current_hunk:
+                    current_file["hunks"].append(current_hunk)
+                files.append(current_file)
+            
+            # Calculate stats
+            total_additions = sum(f["additions"] for f in files)
+            total_deletions = sum(f["deletions"] for f in files)
+            
+            details = {
+                "diff": True,
+                "stats": {
+                    "files": len(files),
+                    "insertions": total_additions,
+                    "deletions": total_deletions
+                },
+                "files": files,
+                "raw_output": output if format == "text" else None
+            }
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "commit": commit_hash,
+                    "details": details
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error getting commit details for '{commit_hash}': {str(e)}"
                 }, indent=2)
             )]
 
