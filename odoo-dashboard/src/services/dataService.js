@@ -174,8 +174,22 @@ class DataService {
         format: 'json'
       });
       
-      if (response.success && response.commits) {
-        return response.commits;
+      console.log('Raw MCP response for git log:', response);
+      
+      // Parse JSON content if it's returned as text
+      let parsedResponse = response;
+      if (response.type === 'text' && response.content) {
+        try {
+          parsedResponse = JSON.parse(response.content);
+          console.log('Parsed git log response:', parsedResponse);
+        } catch (parseError) {
+          console.error('Error parsing JSON content:', parseError);
+        }
+      }
+      
+      if (parsedResponse.success && parsedResponse.commits) {
+        console.log('Returning real commits:', parsedResponse.commits);
+        return parsedResponse.commits;
       } else {
         console.warn(`No git history found for client ${clientName}, using mock data`);
         return this.getMockCommitHistory(clientName);
@@ -183,6 +197,45 @@ class DataService {
     } catch (error) {
       console.error(`Error fetching commit history for ${clientName}:`, error);
       return this.getMockCommitHistory(clientName);
+    }
+  }
+
+  /**
+   * Get commit details including diff
+   */
+  async getCommitDetails(clientName, commitHash) {
+    if (this.mockMode) {
+      return this.getMockCommitDetails(clientName, commitHash);
+    }
+    
+    try {
+      const response = await this.callMCPServer('get_commit_details', {
+        client: clientName,
+        commit: commitHash
+      });
+      
+      console.log('Raw MCP response for commit details:', response);
+      
+      // Parse JSON content if it's returned as text
+      let parsedResponse = response;
+      if (response.type === 'text' && response.content) {
+        try {
+          parsedResponse = JSON.parse(response.content);
+          console.log('Parsed commit details response:', parsedResponse);
+        } catch (parseError) {
+          console.error('Error parsing JSON content:', parseError);
+        }
+      }
+      
+      if (parsedResponse.success) {
+        return parsedResponse.details;
+      } else {
+        console.warn(`No commit details found for ${commitHash}, using mock data`);
+        return this.getMockCommitDetails(clientName, commitHash);
+      }
+    } catch (error) {
+      console.error(`Error fetching commit details for ${commitHash}:`, error);
+      return this.getMockCommitDetails(clientName, commitHash);
     }
   }
 
@@ -565,6 +618,58 @@ class DataService {
         }
       }
     ];
+  }
+
+  getMockCommitDetails(clientName, commitHash) {
+    return {
+      diff: true,
+      stats: {
+        files: 5,
+        insertions: 245,
+        deletions: 78
+      },
+      files: [
+        {
+          filename: 'clients/testclient/config/odoo.conf',
+          additions: 12,
+          deletions: 3,
+          hunks: [
+            {
+              header: '@@ -1,10 +1,15 @@',
+              lines: [
+                { lineNumber: 1, type: 'context', content: '[options]' },
+                { lineNumber: 2, type: 'context', content: 'admin_passwd = admin' },
+                { lineNumber: 3, type: 'added', content: 'db_name = testclient' },
+                { lineNumber: 4, type: 'added', content: 'db_user = odoo' },
+                { lineNumber: 5, type: 'context', content: 'addons_path = /mnt/extra-addons' },
+                { lineNumber: 6, type: 'removed', content: 'log_level = info' },
+                { lineNumber: 7, type: 'added', content: 'log_level = debug' },
+                { lineNumber: 8, type: 'context', content: 'xmlrpc_port = 8069' }
+              ]
+            }
+          ]
+        },
+        {
+          filename: 'clients/testclient/requirements.txt',
+          additions: 8,
+          deletions: 2,
+          hunks: [
+            {
+              header: '@@ -1,5 +1,10 @@',
+              lines: [
+                { lineNumber: 1, type: 'added', content: '# OCA Dependencies' },
+                { lineNumber: 2, type: 'context', content: 'requests>=2.25.1' },
+                { lineNumber: 3, type: 'added', content: 'python-dateutil>=2.8.2' },
+                { lineNumber: 4, type: 'added', content: 'lxml>=4.6.3' },
+                { lineNumber: 5, type: 'context', content: 'psycopg2-binary>=2.8.6' },
+                { lineNumber: 6, type: 'removed', content: 'pillow==8.2.0' },
+                { lineNumber: 7, type: 'added', content: 'pillow>=8.3.0' }
+              ]
+            }
+          ]
+        }
+      ]
+    };
   }
 
   getMockBuildHistory(clientName) {
