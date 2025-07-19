@@ -36,6 +36,10 @@
     @apply btn bg-orange-500 text-white hover:bg-orange-600 hover:scale-105;
   }
   
+  .btn-sm {
+    @apply px-3 py-1 text-xs;
+  }
+  
   .card {
     @apply bg-white rounded-lg shadow-card border border-gray-200;
   }
@@ -143,5 +147,24 @@
   .glass-effect {
     backdrop-filter: blur(10px);
     background: rgba(255, 255, 255, 0.8);
+  }
+  
+  /* Sidebar client item styles */
+  .client-item {
+    @apply relative w-full text-left p-3 rounded-lg transition-all duration-200 hover:bg-gray-50 border border-transparent;
+  }
+  
+  .client-item.selected.active-branch {
+    @apply bg-primary-50 border-primary-200 text-primary-700;
+    box-shadow: 0 0 0 2px rgba(125, 108, 168, 0.1) !important;
+  }
+  
+  .client-item.selected:not(.active-branch) {
+    @apply bg-blue-50 border-blue-200 text-blue-700;
+  }
+  
+  .client-item.active-branch::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1 bg-primary-500 rounded-r;
   }
 }

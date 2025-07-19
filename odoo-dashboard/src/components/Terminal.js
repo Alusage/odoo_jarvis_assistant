@@ -141,19 +141,19 @@ export class Terminal extends Component {
       return;
     }
 
-    // Extract base client name (remove environment suffix)
-    let baseName = this.props.client.name;
-    if (baseName.includes('-staging')) {
-      baseName = baseName.replace('-staging', '');
-    } else if (baseName.includes('-dev')) {
-      baseName = baseName.replace('-dev', '');
-    }
+    const { baseName, branchName } = this.parseClientInfo();
 
     this.state.connecting = true;
     this.state.connected = false;
 
-    // Create WebSocket connection
-    const wsUrl = `ws://mcp.localhost/terminal/${baseName}`;
+    // Create WebSocket connection - use branch-specific endpoint if available
+    let wsUrl;
+    if (branchName && branchName !== '18.0') {
+      wsUrl = `ws://mcp.localhost/terminal/${baseName}/${branchName}`;
+    } else {
+      wsUrl = `ws://mcp.localhost/terminal/${baseName}`;
+    }
+    
     console.log(`🔌 Connecting to WebSocket: ${wsUrl}`);
     
     this.websocket = new WebSocket(wsUrl);
@@ -211,6 +211,27 @@ export class Terminal extends Component {
       this.terminal.writeln('\\x1b[36m🔄 Reconnecting...\\x1b[0m');
       this.connectWebSocket();
     }, 500);
+  }
+
+  parseClientInfo() {
+    if (!this.props.client) return { baseName: '', branchName: null };
+    
+    let baseName = this.props.client.name;
+    let branchName = this.props.client.branch;
+    
+    // If client name contains branch info, extract base name
+    if (baseName.includes('-') && !branchName) {
+      const parts = baseName.split('-');
+      baseName = parts[0];
+      branchName = parts.slice(1).join('-');
+    }
+    
+    // Use actual branch name from client data if available
+    if (this.props.client.branch && this.props.client.branch !== '18.0') {
+      branchName = this.props.client.branch;
+    }
+    
+    return { baseName, branchName };
   }
 
   cleanup() {
