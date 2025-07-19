@@ -111,6 +111,297 @@ class OdooClientMCPServer:
                 "return_code": -1
             }
     
+    def _save_linked_modules(self, client_dir: Path, branch: str) -> int:
+        """Save the current linked modules configuration for a branch"""
+        import json
+        import os
+        
+        project_config_path = client_dir / "project_config.json"
+        extra_addons_dir = client_dir / "extra-addons"
+        
+        # Read or create project configuration
+        if project_config_path.exists():
+            with open(project_config_path, 'r') as f:
+                config = json.load(f)
+        else:
+            config = {
+                "version": "1.0",
+                "project_name": client_dir.name,
+                "odoo_version": "18.0",
+                "linked_modules": {},
+                "branch_configs": {},
+                "settings": {
+                    "auto_restore_modules": True,
+                    "backup_before_switch": True
+                },
+                "metadata": {
+                    "created": "",
+                    "last_updated": "",
+                    "updated_by": "mcp_server"
+                }
+            }
+        
+        # Scan extra-addons directory for symbolic links
+        linked_modules = {}
+        modules_count = 0
+        
+        if extra_addons_dir.exists():
+            for item in extra_addons_dir.iterdir():
+                if item.is_symlink():
+                    # Get the target path and extract repository name and module name
+                    target = item.resolve()
+                    addons_dir = client_dir / "addons"
+                    
+                    # Find which repository this module belongs to
+                    for repo_dir in addons_dir.iterdir():
+                        if repo_dir.is_dir() and target.is_relative_to(repo_dir):
+                            repo_name = repo_dir.name
+                            module_name = target.name
+                            
+                            if repo_name not in linked_modules:
+                                linked_modules[repo_name] = []
+                            
+                            if module_name not in linked_modules[repo_name]:
+                                linked_modules[repo_name].append(module_name)
+                                modules_count += 1
+                            break
+        
+        # Check if configuration has actually changed
+        old_branch_config = config.get("branch_configs", {}).get(branch, {}).get("linked_modules", {})
+        old_global_config = config.get("linked_modules", {})
+        
+        config_changed = (old_branch_config != linked_modules or old_global_config != linked_modules)
+        
+        # Only update if there are actual changes
+        if config_changed:
+            # Save to branch configuration
+            if branch not in config["branch_configs"]:
+                config["branch_configs"][branch] = {}
+            
+            config["branch_configs"][branch]["linked_modules"] = linked_modules
+            
+            # Update global linked_modules for current state
+            config["linked_modules"] = linked_modules
+            
+            # Update metadata only when content changes
+            from datetime import datetime
+            now = datetime.utcnow().isoformat() + "Z"
+            if not config["metadata"]["created"]:
+                config["metadata"]["created"] = now
+            config["metadata"]["last_updated"] = now
+            
+            # Write back to file
+            with open(project_config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+        
+        return modules_count
+    
+    def _restore_linked_modules(self, client_dir: Path, branch: str) -> int:
+        """Restore linked modules configuration for a branch"""
+        import json
+        import os
+        
+        project_config_path = client_dir / "project_config.json"
+        extra_addons_dir = client_dir / "extra-addons"
+        
+        # Ensure extra-addons directory exists
+        extra_addons_dir.mkdir(exist_ok=True)
+        
+        # Read project configuration
+        if not project_config_path.exists():
+            return 0
+        
+        with open(project_config_path, 'r') as f:
+            config = json.load(f)
+        
+        # Get linked modules for this branch
+        branch_config = config.get("branch_configs", {}).get(branch, {})
+        linked_modules = branch_config.get("linked_modules", {})
+        
+        modules_count = 0
+        addons_dir = client_dir / "addons"
+        
+        # Create symbolic links for each module
+        for repo_name, modules in linked_modules.items():
+            repo_dir = addons_dir / repo_name
+            if not repo_dir.exists():
+                continue
+                
+            for module_name in modules:
+                module_path = repo_dir / module_name
+                if module_path.exists() and module_path.is_dir():
+                    link_path = extra_addons_dir / module_name
+                    
+                    # Create symbolic link if it doesn't exist
+                    if not link_path.exists():
+                        try:
+                            link_path.symlink_to(module_path)
+                            modules_count += 1
+                        except OSError as e:
+                            # Link creation failed, continue with others
+                            pass
+        
+        # Check if global linked_modules state has changed
+        old_global_config = config.get("linked_modules", {})
+        config_changed = (old_global_config != linked_modules)
+        
+        # Only update if there are actual changes
+        if config_changed:
+            # Update global linked_modules state
+            config["linked_modules"] = linked_modules
+            
+            # Update metadata only when content changes
+            from datetime import datetime
+            config["metadata"]["last_updated"] = datetime.utcnow().isoformat() + "Z"
+            
+            # Write back to file
+            with open(project_config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+        
+        return modules_count
+    
+    def _update_project_config_add_module(self, client_dir: Path, repository: str, module: str) -> bool:
+        """Add a module to the project configuration for the current branch"""
+        import json
+        import os
+        
+        try:
+            project_config_path = client_dir / "project_config.json"
+            
+            # Get current branch
+            current_branch_result = self._run_command(["git", "branch", "--show-current"], cwd=client_dir)
+            current_branch = current_branch_result["stdout"].strip() if current_branch_result["success"] else "unknown"
+            
+            # Read or create project configuration
+            if project_config_path.exists():
+                with open(project_config_path, 'r') as f:
+                    config = json.load(f)
+            else:
+                config = {
+                    "version": "1.0",
+                    "project_name": client_dir.name,
+                    "odoo_version": "18.0",
+                    "linked_modules": {},
+                    "branch_configs": {},
+                    "settings": {
+                        "auto_restore_modules": True,
+                        "backup_before_switch": True
+                    },
+                    "metadata": {
+                        "created": "",
+                        "last_updated": "",
+                        "updated_by": "mcp_server"
+                    }
+                }
+            
+            # Initialize branch config if needed
+            if current_branch not in config["branch_configs"]:
+                config["branch_configs"][current_branch] = {"linked_modules": {}}
+            
+            branch_config = config["branch_configs"][current_branch]
+            if "linked_modules" not in branch_config:
+                branch_config["linked_modules"] = {}
+            
+            # Add module to repository
+            if repository not in branch_config["linked_modules"]:
+                branch_config["linked_modules"][repository] = []
+            
+            # Check if module is already linked
+            module_already_linked = module in branch_config["linked_modules"][repository]
+            
+            if not module_already_linked:
+                branch_config["linked_modules"][repository].append(module)
+            
+            # Check if global config would change
+            old_global_config = config.get("linked_modules", {})
+            config_changed = (old_global_config != branch_config["linked_modules"]) or not module_already_linked
+            
+            # Only update if there are actual changes
+            if config_changed:
+                # Update global linked_modules for current state
+                config["linked_modules"] = branch_config["linked_modules"]
+                
+                # Update metadata only when content changes
+                from datetime import datetime
+                now = datetime.utcnow().isoformat() + "Z"
+                if not config["metadata"]["created"]:
+                    config["metadata"]["created"] = now
+                config["metadata"]["last_updated"] = now
+                
+                # Write back to file
+                with open(project_config_path, 'w') as f:
+                    json.dump(config, f, indent=2)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error updating project config: {e}")
+            return False
+    
+    def _update_project_config_remove_module(self, client_dir: Path, repository: str, module: str) -> bool:
+        """Remove a module from the project configuration for the current branch"""
+        import json
+        import os
+        
+        try:
+            project_config_path = client_dir / "project_config.json"
+            
+            # Return True if no config file (nothing to remove)
+            if not project_config_path.exists():
+                return True
+            
+            # Get current branch
+            current_branch_result = self._run_command(["git", "branch", "--show-current"], cwd=client_dir)
+            current_branch = current_branch_result["stdout"].strip() if current_branch_result["success"] else "unknown"
+            
+            # Read project configuration
+            with open(project_config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Check if branch config exists
+            if current_branch not in config["branch_configs"]:
+                return True  # Nothing to remove
+            
+            branch_config = config["branch_configs"][current_branch]
+            if "linked_modules" not in branch_config:
+                return True  # Nothing to remove
+            
+            # Check if module exists and would be removed
+            module_removed = False
+            old_global_config = config.get("linked_modules", {}).copy()
+            
+            # Remove module from repository
+            if repository in branch_config["linked_modules"]:
+                if module in branch_config["linked_modules"][repository]:
+                    branch_config["linked_modules"][repository].remove(module)
+                    module_removed = True
+                    
+                    # Remove repository entry if empty
+                    if not branch_config["linked_modules"][repository]:
+                        del branch_config["linked_modules"][repository]
+            
+            # Check if global config would change
+            config_changed = (old_global_config != branch_config["linked_modules"]) or module_removed
+            
+            # Only update if there are actual changes
+            if config_changed:
+                # Update global linked_modules for current state
+                config["linked_modules"] = branch_config["linked_modules"]
+                
+                # Update metadata only when content changes
+                from datetime import datetime
+                config["metadata"]["last_updated"] = datetime.utcnow().isoformat() + "Z"
+                
+                # Write back to file
+                with open(project_config_path, 'w') as f:
+                    json.dump(config, f, indent=2)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error updating project config: {e}")
+            return False
+    
     def _setup_handlers(self):
         """Setup MCP handlers"""
         
@@ -301,6 +592,34 @@ class OdooClientMCPServer:
                             }
                         },
                         "required": []
+                    }
+                ),
+                types.Tool(
+                    name="list_submodules",
+                    description="List Git submodules (addon repositories) for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="list_linked_modules",
+                    description="List modules currently linked in extra-addons for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
                     }
                 ),
                 types.Tool(
@@ -655,6 +974,309 @@ class OdooClientMCPServer:
                         },
                         "required": ["client", "commit"]
                     }
+                ),
+                types.Tool(
+                    name="get_client_branches",
+                    description="Get Git branches for a client repository",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="create_client_branch",
+                    description="Create a new Git branch for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name (e.g., 'staging-v2', 'dev-feature')"
+                            },
+                            "source": {
+                                "type": "string",
+                                "description": "Source branch to create from",
+                                "default": "18.0"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="switch_client_branch",
+                    description="Switch to a different Git branch for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name to switch to"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="start_client_branch",
+                    description="Start Docker containers for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name to start"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="stop_client_branch",
+                    description="Stop Docker containers for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name to stop"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="restart_client_branch",
+                    description="Restart Docker containers for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name to restart"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="get_branch_logs",
+                    description="Get Docker logs for a specific client branch deployment",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name"
+                            },
+                            "lines": {
+                                "type": "integer",
+                                "description": "Number of log lines to return",
+                                "default": 100
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="open_branch_shell",
+                    description="Open an interactive shell in a client branch container",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="get_branch_status",
+                    description="Get deployment status for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="list_deployments",
+                    description="List all active branch deployments across all clients",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Optional: filter by specific client name"
+                            }
+                        }
+                    }
+                ),
+                types.Tool(
+                    name="commit_client_changes",
+                    description="Commit current changes in client repository (modules linked/unlinked)",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "Commit message",
+                                "default": "Update module links"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="switch_client_branch",
+                    description="Switch client repository to a specific Git branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Git branch name to switch to"
+                            },
+                            "create": {
+                                "type": "boolean",
+                                "description": "Create the branch if it doesn't exist",
+                                "default": False
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="get_client_git_status",
+                    description="Get Git status of client repository including sync status with remote",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="link_module_with_config",
+                    description="Link a module and update project configuration",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "repository": {
+                                "type": "string",
+                                "description": "Repository name (e.g. 'sale-workflow', 'account-analytic')"
+                            },
+                            "module": {
+                                "type": "string",
+                                "description": "Module name to link"
+                            }
+                        },
+                        "required": ["client", "repository", "module"]
+                    }
+                ),
+                types.Tool(
+                    name="unlink_module_with_config",
+                    description="Unlink a module and update project configuration",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "repository": {
+                                "type": "string",
+                                "description": "Repository name (e.g. 'sale-workflow', 'account-analytic')"
+                            },
+                            "module": {
+                                "type": "string",
+                                "description": "Module name to unlink"
+                            }
+                        },
+                        "required": ["client", "repository", "module"]
+                    }
+                ),
+                types.Tool(
+                    name="rename_client_branch",
+                    description="Rename a Git branch for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "old_branch": {
+                                "type": "string",
+                                "description": "Current branch name to rename"
+                            },
+                            "new_branch": {
+                                "type": "string",
+                                "description": "New branch name"
+                            }
+                        },
+                        "required": ["client", "old_branch", "new_branch"]
+                    }
                 )
             ]
         
@@ -702,6 +1324,23 @@ class OdooClientMCPServer:
                 return await self._list_modules(arguments.get("client"))
             elif name == "list_oca_modules":
                 return await self._list_oca_modules(arguments.get("pattern", ""))
+            elif name == "list_submodules":
+                return await self._list_submodules(arguments.get("client"))
+            elif name == "list_linked_modules":
+                return await self._list_linked_modules(arguments.get("client"))
+            elif name == "commit_client_changes":
+                return await self._commit_client_changes(
+                    arguments.get("client"),
+                    arguments.get("message", "Update module links")
+                )
+            elif name == "switch_client_branch":
+                return await self._switch_client_branch(
+                    arguments.get("client"),
+                    arguments.get("branch"),
+                    arguments.get("create", False)
+                )
+            elif name == "get_client_git_status":
+                return await self._get_client_git_status(arguments.get("client"))
             elif name == "client_status":
                 return await self._client_status()
             elif name == "check_client":
@@ -783,6 +1422,56 @@ class OdooClientMCPServer:
                     arguments.get("commit"),
                     arguments.get("format", "json")
                 )
+            elif name == "get_client_branches":
+                return await self._get_client_branches(
+                    arguments.get("client")
+                )
+            elif name == "create_client_branch":
+                return await self._create_client_branch(
+                    arguments.get("client"),
+                    arguments.get("branch"),
+                    arguments.get("source", "18.0")
+                )
+            elif name == "switch_client_branch":
+                return await self._switch_client_branch(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "start_client_branch":
+                return await self._start_client_branch(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "stop_client_branch":
+                return await self._stop_client_branch(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "restart_client_branch":
+                return await self._restart_client_branch(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "get_branch_logs":
+                return await self._get_branch_logs(
+                    arguments.get("client"),
+                    arguments.get("branch"),
+                    arguments.get("lines", 100)
+                )
+            elif name == "open_branch_shell":
+                return await self._open_branch_shell(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "get_branch_status":
+                return await self._get_branch_status(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "list_deployments":
+                return await self._list_deployments(
+                    arguments.get("client")
+                )
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
@@ -827,6 +1516,29 @@ class OdooClientMCPServer:
             return await self._list_modules(arguments.get("client"))
         elif name == "list_oca_modules":
             return await self._list_oca_modules(arguments.get("pattern", ""))
+        elif name == "list_submodules":
+            return await self._list_submodules(arguments.get("client"))
+        elif name == "list_linked_modules":
+            return await self._list_linked_modules(arguments.get("client"))
+        elif name == "commit_client_changes":
+            return await self._commit_client_changes(
+                arguments.get("client"),
+                arguments.get("message", "Update module links")
+            )
+        elif name == "switch_client_branch":
+            return await self._switch_client_branch(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("create", False)
+            )
+        elif name == "switch_client_branch_with_progress":
+            return await self._switch_client_branch_with_progress(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("create", False)
+            )
+        elif name == "get_client_git_status":
+            return await self._get_client_git_status(arguments.get("client"))
         elif name == "client_status":
             return await self._client_status()
         elif name == "check_client":
@@ -908,10 +1620,76 @@ class OdooClientMCPServer:
                 arguments.get("commit"),
                 arguments.get("format", "json")
             )
+        elif name == "get_client_branches":
+            return await self._get_client_branches(
+                arguments.get("client")
+            )
+        elif name == "create_client_branch":
+            return await self._create_client_branch(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("source", "18.0")
+            )
+        elif name == "switch_client_branch":
+            return await self._switch_client_branch(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "start_client_branch":
+            return await self._start_client_branch(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "stop_client_branch":
+            return await self._stop_client_branch(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "restart_client_branch":
+            return await self._restart_client_branch(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "get_branch_logs":
+            return await self._get_branch_logs(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("lines", 100)
+            )
+        elif name == "open_branch_shell":
+            return await self._open_branch_shell(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "get_branch_status":
+            return await self._get_branch_status(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "list_deployments":
+            return await self._list_deployments(
+                arguments.get("client")
+            )
+        elif name == "link_module_with_config":
+            return await self._link_module_with_config(
+                arguments.get("client"),
+                arguments.get("repository"),
+                arguments.get("module")
+            )
+        elif name == "unlink_module_with_config":
+            return await self._unlink_module_with_config(
+                arguments.get("client"),
+                arguments.get("repository"),
+                arguments.get("module")
+            )
+        elif name == "rename_client_branch":
+            return await self._rename_client_branch(
+                arguments.get("client"),
+                arguments.get("old_branch"),
+                arguments.get("new_branch")
+            )
         else:
             raise ValueError(f"Unknown tool: {name}")
-    
-    # Tool implementation methods
     
     async def _create_client(self, name: str, template: str = "basic", version: str = "18.0", has_enterprise: bool = False):
         """Create a new Odoo client repository"""
@@ -961,7 +1739,7 @@ class OdooClientMCPServer:
                 "1" if version == "16.0" else "2" if version == "17.0" else "3",  # Version choice
                 "1" if template == "basic" else "2" if template == "ecommerce" else "3" if template == "manufacturing" else "4" if template == "services" else "5",  # Template choice
                 "y" if has_enterprise else "n",         # Enterprise
-                "y",                                     # GitHub integration
+                "y" if github_url else "n",         # GitHub integration
                 "y"                                      # Confirm
             ]
             
@@ -1176,6 +1954,239 @@ class OdooClientMCPServer:
             text="\n".join(result_parts)
         )]
     
+    async def _link_module_with_config(self, client: str, repository: str, module: str):
+        """Link a single module and update project configuration"""
+        import json
+        import os
+        
+        if not client or not repository or not module:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client, repository, and module are required"
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        repo_path = client_path / "addons" / repository
+        extra_addons_path = client_path / "extra-addons"
+        module_path = repo_path / module
+        
+        # Check if client, repository, and module exist
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found"
+            )]
+            
+        if not repo_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Repository '{repository}' not found in client '{client}'"
+            )]
+            
+        if not module_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Module '{module}' not found in repository '{repository}'"
+            )]
+            
+        # Check if module has __manifest__.py
+        manifest_path = module_path / "__manifest__.py"
+        if not manifest_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Module '{module}' does not have a valid __manifest__.py file"
+            )]
+        
+        # Create extra-addons directory if it doesn't exist
+        extra_addons_path.mkdir(exist_ok=True)
+        
+        # Create symbolic link
+        module_link = extra_addons_path / module
+        try:
+            # Remove existing link if it exists
+            if module_link.exists() or module_link.is_symlink():
+                module_link.unlink()
+            
+            # Create new link
+            relative_path = f"../addons/{repository}/{module}"
+            module_link.symlink_to(relative_path)
+            
+            # Update project configuration
+            success = self._update_project_config_add_module(client_path, repository, module)
+            
+            if success:
+                return [types.TextContent(
+                    type="text",
+                    text=f"✅ Successfully linked module '{module}' from '{repository}' and updated configuration"
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=f"⚠️ Module '{module}' linked but failed to update configuration"
+                )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to link module '{module}': {str(e)}"
+            )]
+    
+    async def _unlink_module_with_config(self, client: str, repository: str, module: str):
+        """Unlink a single module and update project configuration"""
+        import json
+        import os
+        
+        if not client or not repository or not module:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client, repository, and module are required"
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        extra_addons_path = client_path / "extra-addons"
+        module_link = extra_addons_path / module
+        
+        # Check if client exists
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found"
+            )]
+        
+        # Remove symbolic link if it exists
+        try:
+            if module_link.exists() or module_link.is_symlink():
+                module_link.unlink()
+                link_removed = True
+            else:
+                link_removed = False
+            
+            # Update project configuration
+            success = self._update_project_config_remove_module(client_path, repository, module)
+            
+            if link_removed and success:
+                return [types.TextContent(
+                    type="text",
+                    text=f"✅ Successfully unlinked module '{module}' from '{repository}' and updated configuration"
+                )]
+            elif link_removed:
+                return [types.TextContent(
+                    type="text",
+                    text=f"⚠️ Module '{module}' unlinked but failed to update configuration"
+                )]
+            elif success:
+                return [types.TextContent(
+                    type="text",
+                    text=f"✅ Module '{module}' was not linked, but configuration updated"
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=f"⚠️ Module '{module}' was not linked and configuration unchanged"
+                )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to unlink module '{module}': {str(e)}"
+            )]
+    
+    async def _rename_client_branch(self, client: str, old_branch: str, new_branch: str):
+        """Rename a Git branch for a client"""
+        import json
+        
+        if not client or not old_branch or not new_branch:
+            return [types.TextContent(
+                type="text",
+                text="❌ Client, old_branch, and new_branch are required"
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        
+        # Check if client exists
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Client '{client}' not found"
+            )]
+        
+        try:
+            # Validate branch names
+            if old_branch == new_branch:
+                return [types.TextContent(
+                    type="text",
+                    text="❌ Old and new branch names cannot be the same"
+                )]
+            
+            # Check if old branch exists locally
+            check_result = self._run_command(["git", "branch", "--list", old_branch], cwd=client_path)
+            if not check_result["success"] or not check_result["stdout"].strip():
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Branch '{old_branch}' not found in client '{client}'"
+                )]
+            
+            # Check if new branch already exists
+            check_result = self._run_command(["git", "branch", "--list", new_branch], cwd=client_path)
+            if check_result["success"] and check_result["stdout"].strip():
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Branch '{new_branch}' already exists in client '{client}'"
+                )]
+            
+            # Get current branch
+            current_result = self._run_command(["git", "branch", "--show-current"], cwd=client_path)
+            current_branch = current_result["stdout"].strip() if current_result["success"] else ""
+            
+            # Rename the branch
+            rename_result = self._run_command(["git", "branch", "-m", old_branch, new_branch], cwd=client_path)
+            
+            if not rename_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Failed to rename branch from '{old_branch}' to '{new_branch}': {rename_result['stderr']}"
+                )]
+            
+            # If we were on the renamed branch, update the current branch tracking
+            if current_branch == old_branch:
+                # Update upstream tracking if it exists
+                upstream_result = self._run_command(["git", "branch", "--unset-upstream"], cwd=client_path)
+                # Try to set new upstream (if remote exists)
+                self._run_command(["git", "push", "--set-upstream", "origin", new_branch], cwd=client_path)
+            
+            # Update project configuration if it references the old branch
+            try:
+                project_config_path = client_path / "project_config.json"
+                if project_config_path.exists():
+                    with open(project_config_path, 'r') as f:
+                        config = json.load(f)
+                    
+                    # Update branch_configs if the old branch exists
+                    if old_branch in config.get("branch_configs", {}):
+                        branch_config = config["branch_configs"].pop(old_branch)
+                        config["branch_configs"][new_branch] = branch_config
+                        
+                        # Update metadata
+                        from datetime import datetime
+                        config["metadata"]["last_updated"] = datetime.utcnow().isoformat() + "Z"
+                        
+                        with open(project_config_path, 'w') as f:
+                            json.dump(config, f, indent=2)
+            except Exception as config_error:
+                # Branch rename succeeded, but config update failed
+                print(f"Warning: Failed to update project config: {config_error}")
+            
+            return [types.TextContent(
+                type="text",
+                text=f"✅ Successfully renamed branch from '{old_branch}' to '{new_branch}' in client '{client}'"
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Failed to rename branch: {str(e)}"
+            )]
+    
     async def _list_modules(self, client: str):
         """List available modules for a specific client"""
         result = self._run_command(["make", "list-modules", f"CLIENT={client}"])
@@ -1197,6 +2208,200 @@ class OdooClientMCPServer:
             type="text",
             text=result["stdout"] if result["success"] else f"Error: {result['stderr']}"
         )]
+    
+    async def _list_submodules(self, client: str):
+        """List Git submodules (addon repositories) for a client"""
+        import os
+        import json
+        import subprocess
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            submodules = []
+            
+            # Read .gitmodules to get the actual submodules defined for this branch
+            gitmodules_file = client_dir / ".gitmodules"
+            if gitmodules_file.exists():
+                # Parse .gitmodules file
+                gitmodules_content = gitmodules_file.read_text()
+                import re
+                
+                # Find all submodule definitions
+                submodule_pattern = r'\[submodule "([^"]+)"\]'
+                path_pattern = r'path = (.+)'
+                url_pattern = r'url = (.+)'
+                branch_pattern = r'branch = (.+)'
+                
+                current_submodule = None
+                current_info = {}
+                
+                for line in gitmodules_content.split('\n'):
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    # Check for submodule definition
+                    submodule_match = re.match(submodule_pattern, line)
+                    if submodule_match:
+                        # Save previous submodule if exists
+                        if current_submodule and current_info.get('path'):
+                            submodules.append({
+                                "name": current_submodule.split('/')[-1],  # Get last part of path as name
+                                "path": current_info['path'],
+                                "url": current_info.get('url', 'unknown'),
+                                "branch": current_info.get('branch', ''),
+                                "commit": "unknown",
+                                "modules": []
+                            })
+                        
+                        current_submodule = submodule_match.group(1)
+                        current_info = {}
+                        continue
+                    
+                    # Parse properties
+                    if current_submodule:
+                        if line.startswith('path = '):
+                            current_info['path'] = line[7:].strip()
+                        elif line.startswith('url = '):
+                            current_info['url'] = line[6:].strip()
+                        elif line.startswith('branch = '):
+                            current_info['branch'] = line[9:].strip()
+                
+                # Save last submodule
+                if current_submodule and current_info.get('path'):
+                    submodules.append({
+                        "name": current_submodule.split('/')[-1],
+                        "path": current_info['path'],
+                        "url": current_info.get('url', 'unknown'),
+                        "branch": current_info.get('branch', ''),
+                        "commit": "unknown",
+                        "modules": []
+                    })
+            
+            # Now get additional info for each submodule that actually exists
+            for submodule_info in submodules:
+                submodule_path = client_dir / submodule_info["path"]
+                if submodule_path.exists() and submodule_path.is_dir():
+                    # Try to get git info if it's a git repository
+                    git_dir = submodule_path / ".git"
+                    if git_dir.exists():
+                        try:
+                            # Get remote URL
+                            result = subprocess.run(
+                                ["git", "remote", "get-url", "origin"],
+                                cwd=submodule_path,
+                                capture_output=True,
+                                text=True,
+                                timeout=5
+                            )
+                            if result.returncode == 0:
+                                submodule_info["url"] = result.stdout.strip()
+                            
+                            # Get current branch
+                            result = subprocess.run(
+                                ["git", "branch", "--show-current"],
+                                cwd=submodule_path,
+                                capture_output=True,
+                                text=True,
+                                timeout=5
+                            )
+                            if result.returncode == 0:
+                                submodule_info["branch"] = result.stdout.strip()
+                            
+                            # Get current commit hash
+                            result = subprocess.run(
+                                ["git", "rev-parse", "--short", "HEAD"],
+                                cwd=submodule_path,
+                                capture_output=True,
+                                text=True,
+                                timeout=5
+                            )
+                            if result.returncode == 0:
+                                submodule_info["commit"] = result.stdout.strip()
+                                
+                        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+                            pass  # Keep default values
+                    
+                    # List modules (directories with __manifest__.py or __openerp__.py)
+                    for module_dir in submodule_path.iterdir():
+                        if module_dir.is_dir() and not module_dir.name.startswith('.'):
+                            manifest_files = ["__manifest__.py", "__openerp__.py"]
+                            if any((module_dir / manifest).exists() for manifest in manifest_files):
+                                submodule_info["modules"].append(module_dir.name)
+            
+            result = {
+                "success": True,
+                "client": client,
+                "submodules": submodules
+            }
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps(result, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+    
+    async def _list_linked_modules(self, client: str):
+        """List modules currently linked in extra-addons for a client"""
+        import os
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            linked_modules = []
+            extra_addons_dir = client_dir / "extra-addons"
+            
+            if extra_addons_dir.exists():
+                # List all symbolic links in extra-addons/
+                for item in extra_addons_dir.iterdir():
+                    if item.is_symlink():
+                        linked_modules.append(item.name)
+            
+            result = {
+                "success": True,
+                "client": client,
+                "modules": sorted(linked_modules)
+            }
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps(result, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
     
     async def _client_status(self):
         """Show status of all clients"""
@@ -1488,78 +2693,17 @@ class OdooClientMCPServer:
                     success=True,
                     result=self._mcp_to_http_response(result)
                 )
-                
             except Exception as e:
-                logger.error(f"Error calling tool {request.name}: {e}")
                 return ToolCallResponse(
                     success=False,
-                    result=None,
-                    error=str(e)
+                    result={
+                        "type": "error",
+                        "content": f"Error calling tool {request.name}: {str(e)}"
+                    }
                 )
-        
-        @self.http_app.get("/clients")
-        async def get_clients():
-            """Get list of clients"""
-            try:
-                result = await self._list_clients()
-                clients_text = result[0].text if result else ""
-                
-                # Parse the make output to extract client names
-                clients = []
-                for line in clients_text.split('\n'):
-                    line = line.strip()
-                    if line and not line.startswith('make') and not line.startswith('==') and line != "Clients disponibles:":
-                        if line.startswith('- '):
-                            clients.append(line[2:])
-                        elif line and not line.startswith('aucun') and not line.startswith('Aucun'):
-                            clients.append(line)
-                
-                return {"clients": clients}
-                
-            except Exception as e:
-                logger.error(f"Error listing clients: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-        
-        @self.http_app.get("/clients/{client_name}/status")
-        async def get_client_status(client_name: str):
-            """Get status of a specific client"""
-            try:
-                result = await self._check_client(client_name)
-                status_text = result[0].text if result else ""
-                
-                # Parse status and determine health
-                status = "unknown"
-                if "✅" in status_text or "healthy" in status_text.lower():
-                    status = "healthy"
-                elif "⚠️" in status_text or "warning" in status_text.lower():
-                    status = "warning"
-                elif "❌" in status_text or "error" in status_text.lower():
-                    status = "error"
-                
-                return {
-                    "client": client_name,
-                    "status": status,
-                    "details": status_text
-                }
-                
-            except Exception as e:
-                logger.error(f"Error checking client {client_name}: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-        
-        @self.http_app.get("/status")
-        async def get_all_status():
-            """Get status of all clients"""
-            try:
-                result = await self._client_status()
-                return {"status": result[0].text if result else "No status available"}
-                
-            except Exception as e:
-                logger.error(f"Error getting status: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-        
+
         @self.http_app.websocket("/terminal/{client_name}")
-        async def websocket_terminal(websocket: WebSocket, client_name: str):
-            """WebSocket terminal connection to client container"""
+        async def terminal_websocket(websocket: WebSocket, client_name: str):
             await websocket.accept()
             
             try:
@@ -1651,6 +2795,43 @@ class OdooClientMCPServer:
                 logger.error(f"Terminal websocket error: {e}")
                 try:
                     await websocket.send_text(f"❌ Terminal error: {str(e)}\r\n")
+                except:
+                    pass
+
+        @self.http_app.websocket("/branch-switch/{client_name}")
+        async def branch_switch_websocket(websocket: WebSocket, client_name: str):
+            await websocket.accept()
+            logger.info(f"Branch switch WebSocket connection opened for client: {client_name}")
+            
+            try:
+                # Wait for branch switch request
+                message = await websocket.receive_text()
+                request = json.loads(message)
+                target_branch = request.get('branch')
+                create = request.get('create', False)
+                
+                if not target_branch:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": "Branch name is required"
+                    }))
+                    await websocket.close()
+                    return
+                
+                # Start branch switch with real-time progress
+                await self._switch_client_branch_with_progress_websocket(
+                    websocket, client_name, target_branch, create
+                )
+                
+            except WebSocketDisconnect:
+                logger.info(f"Branch switch WebSocket disconnected for client: {client_name}")
+            except Exception as e:
+                logger.error(f"Branch switch WebSocket error: {e}")
+                try:
+                    await websocket.send_text(json.dumps({
+                        "type": "error", 
+                        "message": str(e)
+                    }))
                 except:
                     pass
 
@@ -2356,6 +3537,151 @@ class OdooClientMCPServer:
                 }, indent=2)
             )]
 
+    async def _get_client_branches(self, client_name: str):
+        """Get Git branches for a client repository"""
+        if not client_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Get all branches
+            cmd = ["git", "branch", "-a", "--format=%(refname:short)|%(upstream:short)|%(HEAD)"]
+            result = self._run_command(cmd, cwd=client_path)
+            
+            if result["return_code"] != 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Git command failed: {result['stderr']}"
+                    }, indent=2)
+                )]
+            
+            branches = []
+            current_branch = None
+            
+            # Parse branch information
+            for line in result["stdout"].strip().split('\n'):
+                if not line.strip():
+                    continue
+                    
+                parts = line.split('|')
+                if len(parts) >= 3:
+                    branch_name = parts[0].strip()
+                    upstream = parts[1].strip() if parts[1].strip() else None
+                    is_current = parts[2].strip() == '*'
+                    
+                    # Skip remote branches that are already tracked locally
+                    if branch_name.startswith('origin/'):
+                        continue
+                    
+                    if is_current:
+                        current_branch = branch_name
+                    
+                    # Determine branch type based on name
+                    branch_type = "production"
+                    if branch_name.startswith('staging-'):
+                        branch_type = "staging"
+                    elif branch_name.startswith('dev-'):
+                        branch_type = "development"
+                    elif branch_name in ['master', 'main']:
+                        branch_type = "production"
+                    elif branch_name.startswith(('18.0', '17.0', '16.0')):
+                        branch_type = "production"
+                    
+                    branches.append({
+                        "name": branch_name,
+                        "type": branch_type,
+                        "current": is_current,
+                        "upstream": upstream
+                    })
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "current_branch": current_branch,
+                    "branches": branches
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error getting branches for client '{client_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _create_client_branch(self, client_name: str, branch_name: str, source_branch: str = "18.0"):
+        """Create a new Git branch for a client"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Check if branch already exists
+            check_cmd = ["git", "rev-parse", "--verify", branch_name]
+            check_result = self._run_command(check_cmd, cwd=client_path)
+            
+            if check_result["return_code"] == 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Branch '{branch_name}' already exists"
+                    }, indent=2)
+                )]
+            
+            # Create new branch from source
+            cmd = ["git", "checkout", "-b", branch_name, source_branch]
+            result = self._run_command(cmd, cwd=client_path)
+            
+            if result["return_code"] != 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to create branch: {result['stderr']}"
+                    }, indent=2)
+                )]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "branch": branch_name,
+                    "source": source_branch,
+                    "message": f"Branch '{branch_name}' created successfully from '{source_branch}'"
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error creating branch '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+
     def _get_tools_list(self):
         """Get the list of available tools"""
         return [
@@ -2484,6 +3810,210 @@ class OdooClientMCPServer:
                     },
                     "required": ["token", "organization"]
                 }
+            ),
+            types.Tool(
+                name="get_client_branches",
+                description="Get Git branches for a client repository",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        }
+                    },
+                    "required": ["client"]
+                }
+            ),
+            types.Tool(
+                name="create_client_branch",
+                description="Create a new Git branch for a client",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name to create"
+                        },
+                        "source": {
+                            "type": "string",
+                            "description": "Source branch to create from",
+                            "default": "18.0"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="switch_client_branch",
+                description="Switch to a different Git branch for a client",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name to switch to"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="switch_client_branch_with_progress",
+                description="Switch to a different Git branch for a client with detailed progress steps",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name to switch to"
+                        },
+                        "create": {
+                            "type": "boolean",
+                            "description": "Create branch if it doesn't exist",
+                            "default": False
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="start_client_branch",
+                description="Start Docker containers for a specific client branch",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name to start"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="stop_client_branch",
+                description="Stop Docker containers for a specific client branch",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name to stop"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="restart_client_branch",
+                description="Restart Docker containers for a specific client branch",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name to restart"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="get_branch_logs",
+                description="Get Docker logs for a specific client branch deployment",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name"
+                        },
+                        "lines": {
+                            "type": "integer",
+                            "description": "Number of log lines to return",
+                            "default": 100
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="open_branch_shell",
+                description="Open an interactive shell in a client branch container",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="get_branch_status",
+                description="Get deployment status for a specific client branch",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Name of the client"
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "Branch name"
+                        }
+                    },
+                    "required": ["client", "branch"]
+                }
+            ),
+            types.Tool(
+                name="list_deployments",
+                description="List all active branch deployments across all clients",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Optional: filter by specific client name"
+                        }
+                    }
+                }
             )
         ]
 
@@ -2504,6 +4034,1505 @@ class OdooClientMCPServer:
         else:
             # Raw data
             return mcp_result
+
+    async def _start_client_branch(self, client_name: str, branch_name: str):
+        """Start Docker containers for a specific client branch using V2 architecture"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Use V2 deployment script
+            script_path = self.repo_path / "scripts" / "deploy_branch_v2.sh"
+            cmd = [str(script_path), client_name, branch_name, "up"]
+            result = self._run_command(cmd, cwd=client_path)
+            
+            if result["return_code"] != 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to start branch deployment: {result['stderr']}"
+                    }, indent=2)
+                )]
+            
+            # Parse container information from output
+            clean_branch = branch_name.replace("/", "-").replace("_", "-")
+            container_name = f"{clean_branch}-odoo-{client_name}"
+            traefik_url = f"http://{clean_branch}.{client_name}.localhost"
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "branch": branch_name,
+                    "container": container_name,
+                    "traefik_url": traefik_url,
+                    "message": f"Started branch deployment for '{branch_name}'"
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error starting branch deployment for '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _stop_client_branch(self, client_name: str, branch_name: str):
+        """Stop Docker containers for a specific client branch using V2 architecture"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Use V2 deployment script
+            script_path = self.repo_path / "scripts" / "deploy_branch_v2.sh"
+            cmd = [str(script_path), client_name, branch_name, "down"]
+            result = self._run_command(cmd, cwd=client_path)
+            
+            if result["return_code"] != 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to stop branch deployment: {result['stderr']}"
+                    }, indent=2)
+                )]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "branch": branch_name,
+                    "message": f"Stopped branch deployment for '{branch_name}'"
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error stopping branch deployment for '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _restart_client_branch(self, client_name: str, branch_name: str):
+        """Restart Docker containers for a specific client branch using V2 architecture"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client_name
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client_name}' not found"}, indent=2)
+            )]
+        
+        try:
+            # Use V2 deployment script
+            script_path = self.repo_path / "scripts" / "deploy_branch_v2.sh"
+            cmd = [str(script_path), client_name, branch_name, "restart"]
+            result = self._run_command(cmd, cwd=client_path)
+            
+            if result["return_code"] != 0:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to restart branch deployment: {result['stderr']}"
+                    }, indent=2)
+                )]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client_name,
+                    "branch": branch_name,
+                    "message": f"Restarted branch deployment for '{branch_name}'"
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error restarting branch deployment for '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _get_branch_logs(self, client_name: str, branch_name: str, lines: int = 100):
+        """Get Docker logs for a specific client branch deployment using V2 architecture"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        try:
+            # Use V2 deployment script to get logs
+            script_path = self.repo_path / "scripts" / "deploy_branch_v2.sh"
+            
+            result = self._run_command([
+                str(script_path), client_name, branch_name, "logs"
+            ])
+            
+            if result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "message": f"Logs for branch '{branch_name}'",
+                        "logs": result["stdout"]
+                    }, indent=2)
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to get branch logs: {result['stderr']}"
+                    }, indent=2)
+                )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error getting logs for branch '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _open_branch_shell(self, client_name: str, branch_name: str):
+        """Open an interactive shell in a client branch container using V2 architecture"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        try:
+            # Use V2 deployment script to open shell
+            script_path = self.repo_path / "scripts" / "deploy_branch_v2.sh"
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"To open shell for branch '{branch_name}', run:",
+                    "command": f"{script_path} {client_name} {branch_name} shell",
+                    "note": "This command must be run in a terminal as it requires interactive mode"
+                }, indent=2)
+            )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error preparing shell command for branch '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _get_branch_status(self, client_name: str, branch_name: str):
+        """Get deployment status for a specific client branch using V2 architecture"""
+        if not client_name or not branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name and branch name are required"}, indent=2)
+            )]
+        
+        try:
+            # Use V2 deployment script to get status
+            script_path = self.repo_path / "scripts" / "deploy_branch_v2.sh"
+            
+            result = self._run_command([
+                str(script_path), client_name, branch_name, "status"
+            ])
+            
+            if result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "client": client_name,
+                        "branch": branch_name,
+                        "status": result["stdout"]
+                    }, indent=2)
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to get branch status: {result['stderr']}"
+                    }, indent=2)
+                )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error getting status for branch '{branch_name}': {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _list_deployments(self, client_name: Optional[str] = None):
+        """List all active branch deployments across all clients or for a specific client"""
+        try:
+            # Get list of running containers with deployment labels
+            result = self._run_command([
+                "docker", "ps", "--format", 
+                "{{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}\t{{.Labels}}",
+                "--filter", "label=deployment.client"
+            ])
+            
+            deployments = []
+            if result["success"] and result["stdout"]:
+                lines = result["stdout"].strip().split('\n')
+                for line in lines:
+                    parts = line.split('\t')
+                    if len(parts) >= 5:
+                        container_name = parts[0]
+                        image = parts[1]
+                        ports = parts[2]
+                        status = parts[3]
+                        labels = parts[4]
+                        
+                        # Parse labels to extract deployment info
+                        deployment_info = {
+                            "container_name": container_name,
+                            "image": image,
+                            "ports": ports,
+                            "status": status
+                        }
+                        
+                        # Extract deployment labels
+                        for label in labels.split(','):
+                            if '=' in label:
+                                key, value = label.split('=', 1)
+                                if key.startswith('deployment.'):
+                                    field = key.replace('deployment.', '')
+                                    deployment_info[field] = value
+                        
+                        # Filter by client if specified
+                        if client_name is None or deployment_info.get('client') == client_name:
+                            deployments.append(deployment_info)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "deployments": deployments,
+                    "total": len(deployments),
+                    "filter": f"client={client_name}" if client_name else "all"
+                }, indent=2)
+            )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Error listing deployments: {str(e)}"
+                }, indent=2)
+            )]
+
+    async def _commit_client_changes(self, client: str, message: str = "Update module links"):
+        """Commit current changes in client repository"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            # Configure Git if not already configured
+            config_check = self._run_command(["git", "config", "user.email"], cwd=client_dir)
+            if not config_check["success"] or not config_check["stdout"].strip():
+                self._run_command(["git", "config", "user.email", "mcp@odoo-client.local"], cwd=client_dir)
+                self._run_command(["git", "config", "user.name", "MCP Server"], cwd=client_dir)
+            
+            # Check if there are changes to commit
+            status_result = self._run_command(["git", "status", "--porcelain"], cwd=client_dir)
+            
+            if not status_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to check git status: {status_result['stderr']}"})
+                )]
+            
+            if not status_result["stdout"].strip():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": True, "message": "No changes to commit", "committed": False})
+                )]
+            
+            # Add all changes
+            add_result = self._run_command(["git", "add", "."], cwd=client_dir)
+            if not add_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to add changes: {add_result['stderr']}"})
+                )]
+            
+            # Commit changes
+            commit_result = self._run_command(["git", "commit", "-m", message], cwd=client_dir)
+            if not commit_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to commit: {commit_result['stderr']}"})
+                )]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True, 
+                    "message": f"Changes committed successfully: {message}",
+                    "committed": True,
+                    "commit_hash": commit_result["stdout"].strip()
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+    
+    async def _switch_client_branch(self, client: str, branch: str, create: bool = False):
+        """Switch client repository to a specific Git branch"""
+        import json
+        
+        if not client or not branch:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name and branch are required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            # Check current branch
+            current_branch_result = self._run_command(["git", "branch", "--show-current"], cwd=client_dir)
+            current_branch = current_branch_result["stdout"].strip() if current_branch_result["success"] else "unknown"
+            
+            # Clean extra-addons directory (symbolic links) before switch
+            extra_addons_dir = client_dir / "extra-addons"
+            if extra_addons_dir.exists():
+                import os
+                for item in extra_addons_dir.iterdir():
+                    if item.is_symlink():
+                        item.unlink()
+                        logger.info(f"Removed symlink: {item}")
+            
+            # Also check for untracked submodule directories that might conflict
+            addons_dir = client_dir / "addons"
+            if addons_dir.exists():
+                # Get list of untracked files/directories in addons/
+                status_result = self._run_command(["git", "status", "--porcelain", "addons/"], cwd=client_dir)
+                if status_result["success"]:
+                    untracked_lines = [line for line in status_result["stdout"].split('\n') if line.startswith('??')]
+                    for line in untracked_lines:
+                        untracked_path = line[3:].strip()  # Remove '?? ' prefix
+                        full_path = client_dir / untracked_path
+                        if full_path.exists() and full_path.is_dir():
+                            import shutil
+                            shutil.rmtree(full_path)
+                            logger.info(f"Removed untracked directory: {full_path}")
+            
+            # Reset any changes in tracked files
+            reset_result = self._run_command(["git", "reset", "--hard"], cwd=client_dir)
+            if not reset_result["success"]:
+                logger.warning(f"Failed to reset working directory: {reset_result['stderr']}")
+            
+            # Check if branch exists
+            branch_exists_result = self._run_command(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=client_dir)
+            branch_exists = branch_exists_result["return_code"] == 0
+            
+            # If branch doesn't exist and create=True, create it
+            if not branch_exists and create:
+                create_result = self._run_command(["git", "checkout", "-b", branch], cwd=client_dir)
+                if not create_result["success"]:
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({"success": False, "error": f"Failed to create branch '{branch}': {create_result['stderr']}"})
+                    )]
+                
+                # Clean addons directory completely before reinitializing submodules
+                addons_dir = client_dir / "addons"
+                if addons_dir.exists():
+                    import shutil
+                    shutil.rmtree(addons_dir)
+                    logger.info(f"Cleaned addons directory for new branch: {addons_dir}")
+                
+                # Update submodules for new branch
+                submodule_result = self._run_command(["git", "submodule", "update", "--init", "--recursive"], cwd=client_dir)
+                if not submodule_result["success"]:
+                    logger.warning(f"Failed to update submodules: {submodule_result['stderr']}")
+                
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "message": f"Created and switched to new branch '{branch}' with clean submodules",
+                        "previous_branch": current_branch,
+                        "current_branch": branch,
+                        "created": True,
+                        "submodules_updated": submodule_result["success"]
+                    })
+                )]
+            
+            elif not branch_exists:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Branch '{branch}' does not exist. Use create=true to create it."})
+                )]
+            
+            # Switch to existing branch
+            checkout_result = self._run_command(["git", "checkout", branch], cwd=client_dir)
+            if not checkout_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to switch to branch '{branch}': {checkout_result['stderr']}"})
+                )]
+            
+            # Clean submodule cache from .git/modules first to prevent stale submodules
+            git_modules_dir = client_dir / ".git" / "modules" / "addons"
+            if git_modules_dir.exists():
+                import shutil
+                shutil.rmtree(git_modules_dir)
+                logger.info(f"Cleaned submodule cache: {git_modules_dir}")
+            
+            # Clean addons directory completely before reinitializing submodules
+            addons_dir = client_dir / "addons"
+            if addons_dir.exists():
+                import shutil
+                shutil.rmtree(addons_dir)
+                logger.info(f"Cleaned addons directory: {addons_dir}")
+            
+            # Deinitialize all submodules to clean cache
+            deinit_result = self._run_command(["git", "submodule", "deinit", "--all", "--force"], cwd=client_dir)
+            if not deinit_result["success"]:
+                logger.warning(f"Failed to deinitialize submodules: {deinit_result['stderr']}")
+            
+            # Sync submodules with .gitmodules to ensure only current branch submodules are active
+            sync_result = self._run_command(["git", "submodule", "sync"], cwd=client_dir)
+            if not sync_result["success"]:
+                logger.warning(f"Failed to sync submodules: {sync_result['stderr']}")
+            
+            # Update submodules to match the branch - this will recreate only the ones defined in .gitmodules
+            submodule_result = self._run_command(["git", "submodule", "update", "--init", "--recursive"], cwd=client_dir)
+            if not submodule_result["success"]:
+                logger.warning(f"Failed to update submodules: {submodule_result['stderr']}")
+            
+            # Clean up any stale submodule directories not in current .gitmodules
+            gitmodules_file = client_dir / ".gitmodules"
+            addons_dir = client_dir / "addons"  # Redefine since we deleted it earlier
+            if gitmodules_file.exists() and addons_dir.exists():
+                # Read defined submodules from .gitmodules
+                defined_submodules = set()
+                gitmodules_content = gitmodules_file.read_text()
+                import re
+                for line in gitmodules_content.split('\n'):
+                    if line.strip().startswith('path = addons/'):
+                        submodule_name = line.strip()[len('path = addons/'):].strip()
+                        defined_submodules.add(submodule_name)
+                
+                # Remove any addons directory not in .gitmodules
+                for item in addons_dir.iterdir():
+                    if item.is_dir() and item.name not in defined_submodules:
+                        import shutil
+                        shutil.rmtree(item)
+                        logger.info(f"Removed stale submodule directory: {item}")
+                        
+                        # Also clean the cache for this specific submodule
+                        cache_dir = client_dir / ".git" / "modules" / "addons" / item.name
+                        if cache_dir.exists():
+                            shutil.rmtree(cache_dir)
+                            logger.info(f"Removed stale submodule cache: {cache_dir}")
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"Switched to branch '{branch}' and updated submodules",
+                    "previous_branch": current_branch,
+                    "current_branch": branch,
+                    "created": False,
+                    "submodules_updated": submodule_result["success"]
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+    
+    async def _switch_client_branch_with_progress(self, client: str, branch: str, create: bool = False):
+        """Switch client repository to a specific Git branch with detailed progress steps"""
+        import json
+        
+        if not client or not branch:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False, 
+                    "error": "Client name and branch are required",
+                    "steps": []
+                })
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False, 
+                    "error": f"Client '{client}' not found",
+                    "steps": []
+                })
+            )]
+        
+        steps = []
+        current_step = 0
+        
+        try:
+            # Step 1: Check current branch
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Checking current branch",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            current_branch_result = self._run_command(["git", "branch", "--show-current"], cwd=client_dir)
+            current_branch = current_branch_result["stdout"].strip() if current_branch_result["success"] else "unknown"
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Current branch: {current_branch}"
+            })
+            
+            # Step 2: Save current linked modules
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Saving current linked modules",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            saved_modules = self._save_linked_modules(client_dir, current_branch)
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Saved {saved_modules} linked modules for branch '{current_branch}'"
+            })
+            
+            # Step 3: Clean symbolic links
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Cleaning symbolic links",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            extra_addons_dir = client_dir / "extra-addons"
+            symlinks_removed = 0
+            if extra_addons_dir.exists():
+                import os
+                for item in extra_addons_dir.iterdir():
+                    if item.is_symlink():
+                        item.unlink()
+                        symlinks_removed += 1
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Removed {symlinks_removed} symbolic links"
+            })
+            
+            # Step 4: Check if branch exists
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Checking branch existence",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            branch_exists_result = self._run_command(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=client_dir)
+            branch_exists = branch_exists_result["return_code"] == 0
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Branch '{branch}' {'exists' if branch_exists else 'does not exist'}"
+            })
+            
+            # Step 5: Create branch if needed
+            if not branch_exists and create:
+                current_step += 1
+                steps.append({
+                    "step": current_step,
+                    "action": f"Creating branch '{branch}'",
+                    "status": "in_progress",
+                    "details": ""
+                })
+                
+                create_result = self._run_command(["git", "checkout", "-b", branch], cwd=client_dir)
+                if not create_result["success"]:
+                    steps[-1].update({
+                        "status": "failed",
+                        "details": f"Failed to create branch: {create_result['stderr']}"
+                    })
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": False, 
+                            "error": f"Failed to create branch '{branch}': {create_result['stderr']}",
+                            "steps": steps
+                        })
+                    )]
+                
+                steps[-1].update({
+                    "status": "completed",
+                    "details": f"Branch '{branch}' created successfully"
+                })
+            elif not branch_exists:
+                current_step += 1
+                steps.append({
+                    "step": current_step,
+                    "action": "Branch validation",
+                    "status": "failed",
+                    "details": f"Branch '{branch}' does not exist. Use create=true to create it."
+                })
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False, 
+                        "error": f"Branch '{branch}' does not exist. Use create=true to create it.",
+                        "steps": steps
+                    })
+                )]
+            
+            # Step 5: Handle uncommitted and untracked files
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Managing uncommitted changes",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            # Check if there are any changes or untracked files
+            status_result = self._run_command(["git", "status", "--porcelain"], cwd=client_dir)
+            status_lines = status_result["stdout"].strip().split('\n') if status_result["success"] and status_result["stdout"].strip() else []
+            
+            untracked_files = []
+            modified_files = []
+            
+            for line in status_lines:
+                if line.startswith('??'):  # Untracked files
+                    untracked_files.append(line[3:])
+                elif line.strip():  # Modified files
+                    modified_files.append(line[3:])
+            
+            # Add untracked files to Git (especially project_config.json)
+            if untracked_files:
+                for file in untracked_files:
+                    if file == "project_config.json":  # Always add project config
+                        add_result = self._run_command(["git", "add", file], cwd=client_dir)
+                        
+            # Now stash all changes (including previously untracked files)
+            status_result2 = self._run_command(["git", "status", "--porcelain"], cwd=client_dir)
+            has_changes = bool(status_result2["stdout"].strip()) if status_result2["success"] else False
+            
+            if has_changes:
+                stash_result = self._run_command(["git", "stash", "push", "-m", f"Auto-stash before switching to {branch}"], cwd=client_dir)
+                details = f"Added {len(untracked_files)} untracked files and stashed all changes"
+                if not stash_result["success"]:
+                    details = f"Stash failed: {stash_result['stderr']}"
+            else:
+                details = f"Added {len(untracked_files)} untracked files, no changes to stash"
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": details
+            })
+            
+            # Step 6: Switch to branch
+            if branch_exists:
+                current_step += 1
+                steps.append({
+                    "step": current_step,
+                    "action": f"Switching to branch '{branch}'",
+                    "status": "in_progress",
+                    "details": ""
+                })
+                
+                checkout_result = self._run_command(["git", "checkout", branch], cwd=client_dir)
+                if not checkout_result["success"]:
+                    steps[-1].update({
+                        "status": "failed",
+                        "details": f"Failed to switch: {checkout_result['stderr']}"
+                    })
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": False, 
+                            "error": f"Failed to switch to branch '{branch}': {checkout_result['stderr']}",
+                            "steps": steps
+                        })
+                    )]
+                
+                steps[-1].update({
+                    "status": "completed",
+                    "details": f"Successfully switched to branch '{branch}'"
+                })
+            
+            # Step 7: Clean submodule cache
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Cleaning submodule cache",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            git_modules_dir = client_dir / ".git" / "modules" / "addons"
+            cache_cleaned = False
+            if git_modules_dir.exists():
+                import shutil
+                shutil.rmtree(git_modules_dir)
+                cache_cleaned = True
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Submodule cache {'cleaned' if cache_cleaned else 'already clean'}"
+            })
+            
+            # Step 7: Clean addons directory
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Cleaning addons directory",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            addons_dir = client_dir / "addons"
+            addons_cleaned = False
+            if addons_dir.exists():
+                import shutil
+                shutil.rmtree(addons_dir)
+                addons_cleaned = True
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Addons directory {'cleaned' if addons_cleaned else 'already clean'}"
+            })
+            
+            # Step 8: Deinitialize submodules
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Deinitializing submodules",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            deinit_result = self._run_command(["git", "submodule", "deinit", "--all", "--force"], cwd=client_dir)
+            
+            steps[-1].update({
+                "status": "completed" if deinit_result["success"] else "completed_with_warnings",
+                "details": "Submodules deinitialized" if deinit_result["success"] else f"Submodules deinitialized with warnings: {deinit_result['stderr']}"
+            })
+            
+            # Step 9: Sync submodules
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Syncing submodules with .gitmodules",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            sync_result = self._run_command(["git", "submodule", "sync"], cwd=client_dir)
+            
+            steps[-1].update({
+                "status": "completed" if sync_result["success"] else "completed_with_warnings",
+                "details": "Submodules synced" if sync_result["success"] else f"Submodules synced with warnings: {sync_result['stderr']}"
+            })
+            
+            # Step 10: Initialize and update submodules
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Initializing and updating submodules",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            submodule_result = self._run_command(["git", "submodule", "update", "--init", "--recursive"], cwd=client_dir)
+            
+            # Parse submodule output to show which ones were cloned
+            submodule_details = "Submodules updated"
+            if submodule_result["success"] and submodule_result["stdout"]:
+                cloned_count = submodule_result["stdout"].count("Submodule path")
+                if cloned_count > 0:
+                    submodule_details = f"Updated {cloned_count} submodules"
+            
+            steps[-1].update({
+                "status": "completed" if submodule_result["success"] else "failed",
+                "details": submodule_details if submodule_result["success"] else f"Failed to update submodules: {submodule_result['stderr']}"
+            })
+            
+            # Step 11: Clean stale submodule directories
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Cleaning stale submodule directories",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            gitmodules_file = client_dir / ".gitmodules"
+            addons_dir = client_dir / "addons"  # Redefine since we deleted it earlier
+            removed_count = 0
+            
+            if gitmodules_file.exists() and addons_dir.exists():
+                # Read defined submodules from .gitmodules
+                defined_submodules = set()
+                gitmodules_content = gitmodules_file.read_text()
+                for line in gitmodules_content.split('\n'):
+                    if line.strip().startswith('path = addons/'):
+                        submodule_name = line.strip()[len('path = addons/'):].strip()
+                        defined_submodules.add(submodule_name)
+                
+                # Remove any addons directory not in .gitmodules
+                for item in addons_dir.iterdir():
+                    if item.is_dir() and item.name not in defined_submodules:
+                        import shutil
+                        shutil.rmtree(item)
+                        removed_count += 1
+                        
+                        # Also clean the cache for this specific submodule
+                        cache_dir = client_dir / ".git" / "modules" / "addons" / item.name
+                        if cache_dir.exists():
+                            shutil.rmtree(cache_dir)
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Removed {removed_count} stale submodule directories"
+            })
+            
+            # Step 12: Restore linked modules for the target branch
+            current_step += 1
+            steps.append({
+                "step": current_step,
+                "action": "Restoring linked modules",
+                "status": "in_progress",
+                "details": ""
+            })
+            
+            restored_modules = self._restore_linked_modules(client_dir, branch)
+            
+            steps[-1].update({
+                "status": "completed",
+                "details": f"Restored {restored_modules} linked modules for branch '{branch}'"
+            })
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"Successfully switched to branch '{branch}' and updated submodules",
+                    "previous_branch": current_branch,
+                    "current_branch": branch,
+                    "created": not branch_exists and create,
+                    "submodules_updated": submodule_result["success"],
+                    "steps": steps
+                })
+            )]
+            
+        except Exception as e:
+            # Mark current step as failed if we have one
+            if steps and steps[-1]["status"] == "in_progress":
+                steps[-1].update({
+                    "status": "failed",
+                    "details": f"Error: {str(e)}"
+                })
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False, 
+                    "error": str(e),
+                    "steps": steps
+                })
+            )]
+
+    async def _switch_client_branch_with_progress_websocket(self, websocket: WebSocket, client: str, branch: str, create: bool = False):
+        """Switch client repository to a specific Git branch with real-time progress via WebSocket"""
+        import json
+        
+        if not client or not branch:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Client name and branch are required"
+            }))
+            return
+
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": f"Client '{client}' not found"
+            }))
+            return
+
+        current_step = 0
+
+        try:
+            # Send start message
+            await websocket.send_text(json.dumps({
+                "type": "start",
+                "message": f"Starting branch switch to '{branch}'"
+            }))
+
+            # Step 1: Check current branch
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Checking current branch",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            current_branch_result = self._run_command(["git", "branch", "--show-current"], cwd=client_dir)
+            current_branch = current_branch_result["stdout"].strip() if current_branch_result["success"] else "unknown"
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Current branch: {current_branch}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 2: Save current linked modules
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Saving current linked modules",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            saved_modules = self._save_linked_modules(client_dir, current_branch)
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Saved {saved_modules} linked modules for branch '{current_branch}'"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 3: Clean symbolic links
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Cleaning symbolic links",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            extra_addons_dir = client_dir / "extra-addons"
+            symlinks_removed = 0
+            if extra_addons_dir.exists():
+                import os
+                for item in extra_addons_dir.iterdir():
+                    if item.is_symlink():
+                        item.unlink()
+                        symlinks_removed += 1
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Removed {symlinks_removed} symbolic links"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 4: Check if branch exists
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Checking branch existence",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            branch_exists_result = self._run_command(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=client_dir)
+            branch_exists = branch_exists_result["return_code"] == 0
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Branch '{branch}' {'exists' if branch_exists else 'does not exist'}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 5: Create branch if needed
+            if not branch_exists and create:
+                current_step += 1
+                step_data = {
+                    "step": current_step,
+                    "action": f"Creating branch '{branch}'",
+                    "status": "in_progress",
+                    "details": ""
+                }
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                
+                create_result = self._run_command(["git", "checkout", "-b", branch], cwd=client_dir)
+                if not create_result["success"]:
+                    step_data.update({
+                        "status": "failed",
+                        "details": f"Failed to create branch: {create_result['stderr']}"
+                    })
+                    await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": f"Failed to create branch '{branch}': {create_result['stderr']}"
+                    }))
+                    return
+                
+                step_data.update({
+                    "status": "completed",
+                    "details": f"Branch '{branch}' created successfully"
+                })
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            elif not branch_exists:
+                current_step += 1
+                step_data = {
+                    "step": current_step,
+                    "action": "Branch validation",
+                    "status": "failed",
+                    "details": f"Branch '{branch}' does not exist. Use create=true to create it."
+                }
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": f"Branch '{branch}' does not exist. Use create=true to create it."
+                }))
+                return
+
+            # Step 5/6: Handle uncommitted and untracked files
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Managing uncommitted changes",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            # Check if there are any changes or untracked files
+            status_result = self._run_command(["git", "status", "--porcelain"], cwd=client_dir)
+            status_lines = status_result["stdout"].strip().split('\n') if status_result["success"] and status_result["stdout"].strip() else []
+            
+            untracked_files = []
+            for line in status_lines:
+                if line.startswith('??'):  # Untracked files
+                    untracked_files.append(line[3:])
+            
+            # Add untracked files to Git (especially project_config.json)
+            if untracked_files:
+                for file in untracked_files:
+                    if file == "project_config.json":  # Always add project config
+                        add_result = self._run_command(["git", "add", file], cwd=client_dir)
+                        
+            # Now stash all changes
+            status_result2 = self._run_command(["git", "status", "--porcelain"], cwd=client_dir)
+            has_changes = bool(status_result2["stdout"].strip()) if status_result2["success"] else False
+            
+            if has_changes:
+                stash_result = self._run_command(["git", "stash", "push", "-m", f"Auto-stash before switching to {branch}"], cwd=client_dir)
+                details = f"Added {len(untracked_files)} untracked files and stashed all changes"
+                if not stash_result["success"]:
+                    details = f"Stash failed: {stash_result['stderr']}"
+            else:
+                details = f"Added {len(untracked_files)} untracked files, no changes to stash"
+            
+            step_data.update({
+                "status": "completed",
+                "details": details
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 6/7: Switch to branch
+            if branch_exists or create:
+                current_step += 1
+                step_data = {
+                    "step": current_step,
+                    "action": f"Switching to branch '{branch}'",
+                    "status": "in_progress",
+                    "details": ""
+                }
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                
+                checkout_result = self._run_command(["git", "checkout", branch], cwd=client_dir)
+                if not checkout_result["success"]:
+                    step_data.update({
+                        "status": "failed",
+                        "details": f"Failed to switch: {checkout_result['stderr']}"
+                    })
+                    await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": f"Failed to switch to branch '{branch}': {checkout_result['stderr']}"
+                    }))
+                    return
+                
+                step_data.update({
+                    "status": "completed",
+                    "details": f"Successfully switched to branch '{branch}'"
+                })
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 7/8: Clean submodule cache
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Cleaning submodule cache",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            git_modules_dir = client_dir / ".git" / "modules" / "addons"
+            cache_cleaned = False
+            if git_modules_dir.exists():
+                import shutil
+                shutil.rmtree(git_modules_dir)
+                cache_cleaned = True
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Submodule cache {'cleaned' if cache_cleaned else 'already clean'}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 8/9: Clean addons directory
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Cleaning addons directory",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            addons_dir = client_dir / "addons"
+            addons_cleaned = False
+            if addons_dir.exists():
+                import shutil
+                shutil.rmtree(addons_dir)
+                addons_cleaned = True
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Addons directory {'cleaned' if addons_cleaned else 'already clean'}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 9/10: Deinitialize submodules
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Deinitializing submodules",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            deinit_result = self._run_command(["git", "submodule", "deinit", "--all", "--force"], cwd=client_dir)
+            
+            step_data.update({
+                "status": "completed" if deinit_result["success"] else "completed_with_warnings",
+                "details": "Submodules deinitialized" if deinit_result["success"] else f"Submodules deinitialized with warnings: {deinit_result['stderr']}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 10/11: Sync submodules
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Syncing submodules with .gitmodules",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            sync_result = self._run_command(["git", "submodule", "sync"], cwd=client_dir)
+            
+            step_data.update({
+                "status": "completed" if sync_result["success"] else "completed_with_warnings",
+                "details": "Submodules synced" if sync_result["success"] else f"Submodules synced with warnings: {sync_result['stderr']}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 11/12: Initialize and update submodules
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Initializing and updating submodules",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            submodule_result = self._run_command(["git", "submodule", "update", "--init", "--recursive"], cwd=client_dir)
+            
+            # Parse submodule output to show which ones were cloned
+            submodule_details = "Submodules updated"
+            if submodule_result["success"] and submodule_result["stdout"]:
+                cloned_count = submodule_result["stdout"].count("Submodule path")
+                if cloned_count > 0:
+                    submodule_details = f"Updated {cloned_count} submodules"
+            
+            step_data.update({
+                "status": "completed" if submodule_result["success"] else "failed",
+                "details": submodule_details if submodule_result["success"] else f"Failed to update submodules: {submodule_result['stderr']}"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 12/13: Clean stale submodule directories
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Cleaning stale submodule directories",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            gitmodules_file = client_dir / ".gitmodules"
+            addons_dir = client_dir / "addons"  # Redefine since we deleted it earlier
+            removed_count = 0
+            
+            if gitmodules_file.exists() and addons_dir.exists():
+                # Read defined submodules from .gitmodules
+                defined_submodules = set()
+                gitmodules_content = gitmodules_file.read_text()
+                for line in gitmodules_content.split('\n'):
+                    if line.strip().startswith('path = addons/'):
+                        submodule_name = line.strip()[len('path = addons/'):].strip()
+                        defined_submodules.add(submodule_name)
+                
+                # Remove any addons directory not in .gitmodules
+                for item in addons_dir.iterdir():
+                    if item.is_dir() and item.name not in defined_submodules:
+                        import shutil
+                        shutil.rmtree(item)
+                        removed_count += 1
+                        
+                        # Also clean the cache for this specific submodule
+                        cache_dir = client_dir / ".git" / "modules" / "addons" / item.name
+                        if cache_dir.exists():
+                            shutil.rmtree(cache_dir)
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Removed {removed_count} stale submodule directories"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Step 13/14: Restore linked modules
+            current_step += 1
+            step_data = {
+                "step": current_step,
+                "action": "Restoring linked modules",
+                "status": "in_progress",
+                "details": ""
+            }
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            restored_modules = self._restore_linked_modules(client_dir, branch)
+            
+            step_data.update({
+                "status": "completed",
+                "details": f"Restored {restored_modules} linked modules for branch '{branch}'"
+            })
+            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+
+            # Final success message
+            await websocket.send_text(json.dumps({
+                "type": "success",
+                "message": f"Successfully switched to branch '{branch}' and updated submodules",
+                "previous_branch": current_branch,
+                "current_branch": branch
+            }))
+
+        except Exception as e:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": str(e)
+            }))
+
+    async def _get_client_git_status(self, client: str):
+        """Get Git status of client repository including sync status with remote"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            # Get current branch
+            current_branch_result = self._run_command(["git", "branch", "--show-current"], cwd=client_dir)
+            current_branch = current_branch_result["stdout"].strip() if current_branch_result["success"] else "unknown"
+            
+            # Get working directory status
+            status_result = self._run_command(["git", "status", "--porcelain"], cwd=client_dir)
+            has_changes = bool(status_result["stdout"].strip()) if status_result["success"] else False
+            
+            # Get remote info
+            remote_result = self._run_command(["git", "remote", "get-url", "origin"], cwd=client_dir)
+            remote_url = remote_result["stdout"].strip() if remote_result["success"] else "unknown"
+            
+            # Fetch remote to get latest info (non-blocking)
+            fetch_result = self._run_command(["git", "fetch", "origin"], cwd=client_dir)
+            fetch_success = fetch_result["success"]
+            
+            # Get commit comparison with remote
+            sync_status = "unknown"
+            ahead_count = 0
+            behind_count = 0
+            
+            if fetch_success and current_branch != "unknown":
+                # Check if remote branch exists
+                remote_branch_result = self._run_command(
+                    ["git", "show-ref", "--verify", "--quiet", f"refs/remotes/origin/{current_branch}"], 
+                    cwd=client_dir
+                )
+                
+                if remote_branch_result["return_code"] == 0:
+                    # Get ahead/behind count
+                    ahead_result = self._run_command(
+                        ["git", "rev-list", "--count", f"origin/{current_branch}..HEAD"], 
+                        cwd=client_dir
+                    )
+                    behind_result = self._run_command(
+                        ["git", "rev-list", "--count", f"HEAD..origin/{current_branch}"], 
+                        cwd=client_dir
+                    )
+                    
+                    if ahead_result["success"] and behind_result["success"]:
+                        ahead_count = int(ahead_result["stdout"].strip())
+                        behind_count = int(behind_result["stdout"].strip())
+                        
+                        if ahead_count == 0 and behind_count == 0:
+                            sync_status = "up_to_date"
+                        elif ahead_count > 0 and behind_count == 0:
+                            sync_status = "ahead"
+                        elif ahead_count == 0 and behind_count > 0:
+                            sync_status = "behind"
+                        else:
+                            sync_status = "diverged"
+                else:
+                    sync_status = "no_remote_branch"
+            
+            # Get last commit info
+            last_commit_result = self._run_command(
+                ["git", "log", "-1", "--pretty=format:%H|%an|%ad|%s", "--date=iso"], 
+                cwd=client_dir
+            )
+            last_commit = {}
+            if last_commit_result["success"] and last_commit_result["stdout"]:
+                parts = last_commit_result["stdout"].split("|", 3)
+                if len(parts) == 4:
+                    last_commit = {
+                        "hash": parts[0][:8],
+                        "author": parts[1],
+                        "date": parts[2],
+                        "message": parts[3]
+                    }
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client,
+                    "current_branch": current_branch,
+                    "has_uncommitted_changes": has_changes,
+                    "remote_url": remote_url,
+                    "sync_status": sync_status,
+                    "ahead_count": ahead_count,
+                    "behind_count": behind_count,
+                    "last_commit": last_commit,
+                    "fetch_success": fetch_success
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    def _get_branch_suffix(self, branch_name: str) -> str:
+        """Get suffix for branch-specific container names"""
+        if branch_name.startswith("staging-"):
+            return "-staging"
+        elif branch_name.startswith("dev-"):
+            return "-dev"
+        elif branch_name in ["18.0", "17.0", "16.0", "master", "main"]:
+            return ""  # Production branches don't get suffix
+        else:
+            return f"-{branch_name.replace('/', '-')}"
 
 
 async def main():
