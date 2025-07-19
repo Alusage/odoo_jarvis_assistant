@@ -1,6 +1,6 @@
 # Makefile pour la gestion des clients Odoo
 
-.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status diagnose-client
+.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status diagnose-client migrate-client switch-branch check-compatibility configure-branch-version get-branch-version deploy-branch start-deployment stop-deployment list-deployments build-branch-image deploy-branch-v2 stop-deployment-v2 restart-deployment-v2 deployment-logs-v2 deployment-shell-v2 deployment-status-v2
 
 # Variables
 CLIENTS_DIR = clients
@@ -225,6 +225,235 @@ build: ## Construire l'image Docker Odoo personnalisée (usage: make build [VERS
 	@$(SCRIPTS_DIR)/build_docker_image.sh $(VERSION) $(TAG)
 
 # Versioning and changelog
+# Version and Branch Management
+migrate-client: ## Migrer un client vers une version Odoo différente (usage: make migrate-client CLIENT=nom_client VERSION=17.0 [BACKUP=true])
+	@if [ -z "$(CLIENT)" ] || [ -z "$(VERSION)" ]; then \
+		echo "❌ Usage: make migrate-client CLIENT=nom_client VERSION=17.0 [BACKUP=true]"; \
+		echo "Versions disponibles:"; \
+		jq -r '.odoo_versions | keys[]' config/odoo_versions.json | sed 's/^/  - /'; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@if [ "$(BACKUP)" = "true" ]; then \
+		$(SCRIPTS_DIR)/migrate_client_version.sh $(CLIENT) $(VERSION) --backup; \
+	else \
+		$(SCRIPTS_DIR)/migrate_client_version.sh $(CLIENT) $(VERSION); \
+	fi
+
+switch-branch: ## Changer de branche pour un client (usage: make switch-branch CLIENT=nom_client BRANCH=nom_branche [CREATE=true])
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make switch-branch CLIENT=nom_client BRANCH=nom_branche [CREATE=true]"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@if [ "$(CREATE)" = "true" ]; then \
+		$(SCRIPTS_DIR)/switch_client_branch.sh $(CLIENT) $(BRANCH) --create; \
+	else \
+		$(SCRIPTS_DIR)/switch_client_branch.sh $(CLIENT) $(BRANCH); \
+	fi
+
+check-compatibility: ## Vérifier la compatibilité des modules d'un client (usage: make check-compatibility CLIENT=nom_client [VERSION=17.0] [FORMAT=text])
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make check-compatibility CLIENT=nom_client [VERSION=17.0] [FORMAT=text]"; \
+		echo "Formats disponibles: text, json, csv"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@if [ -n "$(VERSION)" ] && [ -n "$(FORMAT)" ]; then \
+		$(SCRIPTS_DIR)/check_version_compatibility.sh $(CLIENT) $(VERSION) --output $(FORMAT); \
+	elif [ -n "$(VERSION)" ]; then \
+		$(SCRIPTS_DIR)/check_version_compatibility.sh $(CLIENT) $(VERSION); \
+	elif [ -n "$(FORMAT)" ]; then \
+		$(SCRIPTS_DIR)/check_version_compatibility.sh $(CLIENT) --output $(FORMAT); \
+	else \
+		$(SCRIPTS_DIR)/check_version_compatibility.sh $(CLIENT); \
+	fi
+
+configure-branch-version: ## Configurer l'association branche-version Odoo (usage: make configure-branch-version CLIENT=nom_client BRANCH=nom_branche VERSION=18.0)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ] || [ -z "$(VERSION)" ]; then \
+		echo "❌ Usage: make configure-branch-version CLIENT=nom_client BRANCH=nom_branche VERSION=18.0"; \
+		echo "Options spéciales:"; \
+		echo "  make configure-branch-version CLIENT=nom_client LIST=true  # Lister les mappings"; \
+		echo "Versions disponibles:"; \
+		jq -r '.odoo_versions | keys[]' config/odoo_versions.json | sed 's/^/  - /'; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/configure_branch_version.sh $(CLIENT) $(BRANCH) $(VERSION)
+
+list-branch-mappings: ## Lister les mappings branche-version d'un client (usage: make list-branch-mappings CLIENT=nom_client)
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make list-branch-mappings CLIENT=nom_client"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/configure_branch_version.sh $(CLIENT) --list
+
+get-branch-version: ## Obtenir la version Odoo d'une branche (usage: make get-branch-version CLIENT=nom_client [BRANCH=nom_branche])
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make get-branch-version CLIENT=nom_client [BRANCH=nom_branche]"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@if [ -n "$(BRANCH)" ]; then \
+		$(SCRIPTS_DIR)/get_branch_version.sh $(CLIENT) $(BRANCH); \
+	else \
+		$(SCRIPTS_DIR)/get_branch_version.sh $(CLIENT); \
+	fi
+
+# Multi-Branch Deployment Management (Simple Docker + Traefik)
+deploy-branch: ## Déployer une branche spécifique (usage: make deploy-branch CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deploy-branch CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch.sh $(CLIENT) $(BRANCH) up -d
+
+stop-deployment: ## Arrêter un déploiement (usage: make stop-deployment CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make stop-deployment CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch.sh $(CLIENT) $(BRANCH) down
+
+restart-deployment: ## Redémarrer un déploiement (usage: make restart-deployment CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make restart-deployment CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch.sh $(CLIENT) $(BRANCH) restart
+
+list-deployments: ## Lister tous les déploiements actifs
+	@$(SCRIPTS_DIR)/manage_deployments.sh list
+
+deployment-status: ## Afficher le statut de tous les déploiements
+	@$(SCRIPTS_DIR)/manage_deployments.sh status
+
+deployment-logs: ## Afficher les logs d'un déploiement (usage: make deployment-logs CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deployment-logs CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch.sh $(CLIENT) $(BRANCH) logs
+
+deployment-shell: ## Ouvrir un shell dans un déploiement (usage: make deployment-shell CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deployment-shell CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch.sh $(CLIENT) $(BRANCH) shell
+
+deployment-urls: ## Afficher toutes les URLs des déploiements
+	@$(SCRIPTS_DIR)/manage_deployments.sh urls
+
+stop-all-deployments: ## Arrêter tous les déploiements
+	@$(SCRIPTS_DIR)/manage_deployments.sh stop-all
+
+clean-deployments: ## Nettoyer les conteneurs arrêtés
+	@$(SCRIPTS_DIR)/manage_deployments.sh clean
+
+# Branch-Based Deployment (V2 - Git Clone in Docker)
+build-branch-image: ## Construire l'image Docker pour une branche (usage: make build-branch-image CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make build-branch-image CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@if [ "$(FORCE)" = "true" ]; then \
+		$(SCRIPTS_DIR)/build_branch_image.sh $(CLIENT) $(BRANCH) --force; \
+	else \
+		$(SCRIPTS_DIR)/build_branch_image.sh $(CLIENT) $(BRANCH); \
+	fi
+
+deploy-branch-v2: ## Déployer une branche avec Git clone dans Docker (usage: make deploy-branch-v2 CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deploy-branch-v2 CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)" ]; then \
+		echo "❌ Client '$(CLIENT)' non trouvé dans $(CLIENTS_DIR)/"; \
+		echo "Clients disponibles:"; \
+		ls -1 "$(CLIENTS_DIR)" 2>/dev/null | sed 's/^/  - /' || echo "  Aucun client trouvé"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) up
+
+stop-deployment-v2: ## Arrêter un déploiement V2 (usage: make stop-deployment-v2 CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make stop-deployment-v2 CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) down
+
+restart-deployment-v2: ## Redémarrer un déploiement V2 (usage: make restart-deployment-v2 CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make restart-deployment-v2 CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) restart
+
+deployment-logs-v2: ## Afficher les logs d'un déploiement V2 (usage: make deployment-logs-v2 CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deployment-logs-v2 CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) logs
+
+deployment-shell-v2: ## Ouvrir un shell dans un déploiement V2 (usage: make deployment-shell-v2 CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deployment-shell-v2 CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) shell
+
+deployment-status-v2: ## Afficher le statut d'un déploiement V2 (usage: make deployment-status-v2 CLIENT=nom_client BRANCH=nom_branche)
+	@if [ -z "$(CLIENT)" ] || [ -z "$(BRANCH)" ]; then \
+		echo "❌ Usage: make deployment-status-v2 CLIENT=nom_client BRANCH=nom_branche"; \
+		exit 1; \
+	fi
+	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) status
+
 release:
 	@bash -e -c 'echo "Créer une release GitHub avec un changelog propre"; \
 	read -p "Nouvelle version (ex: 0.1.0): " VERSION; \

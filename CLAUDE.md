@@ -71,6 +71,91 @@ make descriptions-validate
 make edit-descriptions
 ```
 
+### Version and Branch Management
+```bash
+# Configure branch-version mappings for a client
+make configure-branch-version CLIENT=client_name BRANCH=master VERSION=18.0
+make configure-branch-version CLIENT=client_name BRANCH=production VERSION=17.0
+
+# List branch-version mappings for a client
+make list-branch-mappings CLIENT=client_name
+./scripts/configure_branch_version.sh client_name --list
+
+# Get Odoo version for a branch
+make get-branch-version CLIENT=client_name BRANCH=master
+make get-branch-version CLIENT=client_name  # Current branch
+
+# Switch branches (with version info)
+make switch-branch CLIENT=client_name BRANCH=staging
+./scripts/switch_client_branch.sh client_name staging --create
+
+# Check module compatibility across versions
+make check-compatibility CLIENT=client_name VERSION=17.0
+make check-compatibility CLIENT=client_name FORMAT=json
+```
+
+### Multi-Branch Deployment Management
+
+Le système supporte deux architectures pour les déploiements multi-branches :
+
+#### **V1 - Dynamic Docker Compose with Traefik**
+- **Principe** : Docker Compose dynamique avec volumes montés
+- **Avantages** : Configuration Traefik automatique, URLs dynamiques
+- **Inconvénients** : Partage du même dépôt Git local
+```bash
+# Deploy a specific branch (creates Docker containers with Traefik URLs)
+make deploy-branch CLIENT=client_name BRANCH=master
+make deploy-branch CLIENT=client_name BRANCH=dev-feature
+make deploy-branch CLIENT=client_name BRANCH=staging
+
+# Manage deployments
+make stop-deployment CLIENT=client_name BRANCH=master
+make restart-deployment CLIENT=client_name BRANCH=dev-feature
+make deployment-logs CLIENT=client_name BRANCH=staging
+make deployment-shell CLIENT=client_name BRANCH=master
+
+# Global deployment management
+make list-deployments              # List all active deployments
+make deployment-status             # Show status of all deployments
+make deployment-urls               # Show all deployment URLs
+make stop-all-deployments          # Stop all deployments
+make clean-deployments             # Clean up stopped containers
+
+# Direct script usage for more control
+./scripts/deploy_branch.sh client_name master up -d
+./scripts/deploy_branch.sh client_name dev-feature logs
+./scripts/deploy_branch.sh client_name staging shell
+./scripts/manage_deployments.sh status
+```
+
+#### **V2 - Git Clone in Docker (Recommended)**
+- **Principe** : Git clone de la branche dans l'image Docker lors du build
+- **Avantages** : Isolation complète des branches, version spécifique embarquée
+- **Workflow** : `git clone /mnt/client` → `git checkout branch` → Image Docker dédiée
+```bash
+# Build Docker image for a specific branch (embeds Git repository)
+make build-branch-image CLIENT=client_name BRANCH=master
+make build-branch-image CLIENT=client_name BRANCH=dev-feature FORCE=true
+
+# Deploy a branch with embedded Git repository
+make deploy-branch-v2 CLIENT=client_name BRANCH=master
+make deploy-branch-v2 CLIENT=client_name BRANCH=dev-feature
+make deploy-branch-v2 CLIENT=client_name BRANCH=staging
+
+# Manage V2 deployments
+make stop-deployment-v2 CLIENT=client_name BRANCH=master
+make restart-deployment-v2 CLIENT=client_name BRANCH=dev-feature
+make deployment-logs-v2 CLIENT=client_name BRANCH=staging
+make deployment-shell-v2 CLIENT=client_name BRANCH=master
+make deployment-status-v2 CLIENT=client_name BRANCH=production
+
+# Direct script usage for more control
+./scripts/build_branch_image.sh client_name master --force
+./scripts/deploy_branch_v2.sh client_name dev-feature up
+./scripts/deploy_branch_v2.sh client_name staging logs
+./scripts/deploy_branch_v2.sh client_name production shell
+```
+
 ### Docker Operations
 ```bash
 # Build custom Odoo Docker image
@@ -137,6 +222,18 @@ make backup-client CLIENT=client_name
 2. `scripts/generate_client_repo.sh` - Core client repository generator
 3. Template system creates complete client structure with Docker configurations
 
+**Version and Branch Management**:
+1. `scripts/configure_branch_version.sh` - Configure Odoo version mappings for client branches
+2. `scripts/get_branch_version.sh` - Get Odoo version for specific branches
+3. `scripts/switch_client_branch.sh` - Enhanced branch switching with version info
+4. `scripts/check_version_compatibility.sh` - Check module compatibility across versions
+
+**Multi-Branch Deployment**:
+1. `scripts/deploy_branch.sh` - V1 deployment with Traefik and dynamic compose
+2. `scripts/manage_deployments.sh` - Global deployment management
+3. `scripts/build_branch_image.sh` - V2 branch-specific Docker image builder
+4. `scripts/deploy_branch_v2.sh` - V2 deployment with embedded Git repository
+
 **Generated Client Structure**:
 ```
 clients/client_name/
@@ -146,7 +243,9 @@ clients/client_name/
 ├── docker/                # Client-specific Docker setup
 ├── scripts/               # Client management scripts
 ├── data/                  # Client data directory
-└── requirements.txt       # Auto-generated Python dependencies
+├── requirements.txt       # Auto-generated Python dependencies
+├── .odoo_branch_config    # Branch-to-Odoo-version mappings
+└── .odoo_version          # Legacy version tracking (deprecated)
 ```
 
 ### Key Scripts
@@ -193,9 +292,18 @@ The system supports French and English descriptions for OCA modules via `config/
 The project includes an **MCP (Model Context Protocol) server** that exposes all functionality to Claude Desktop:
 - **Location**: `mcp_server/` (serveur, tests, outils de développement)
 - **Configuration**: `~/.config/Claude/claude_desktop_config.json`
-- **Tools exposed**: 12 outils stables pour gestion clients, modules OCA, Docker
-- **Testing**: `make test-mcp` pour tests unitaires complets (12/12 ✅)
+- **Tools exposed**: 19+ outils stables pour gestion clients, modules OCA, Docker, déploiements multi-branches
+- **Testing**: `make test-mcp` pour tests unitaires complets
 - **Development**: `make dev-mcp ARGS="help"` pour outils de développement
+
+**Multi-Branch Tools** (nouvellement ajoutés):
+- `start_client_branch` - Démarrer un déploiement de branche
+- `stop_client_branch` - Arrêter un déploiement de branche  
+- `restart_client_branch` - Redémarrer un déploiement de branche
+- `get_branch_logs` - Récupérer les logs d'une branche
+- `open_branch_shell` - Ouvrir un shell dans le conteneur d'une branche
+- `get_branch_status` - Obtenir le statut d'un déploiement de branche
+- `list_deployments` - Lister tous les déploiements actifs
 
 ## Important Notes
 
@@ -205,6 +313,23 @@ The project includes an **MCP (Model Context Protocol) server** that exposes all
 - Git hooks are versioned in the `hooks/` directory - configure with `git config core.hooksPath hooks`
 - Client repositories are independent Git repositories with their own submodules
 - The system maintains a cache of OCA repositories for performance optimization
+
+### Multi-Branch Deployment Notes
+
+**V1 vs V2 Architecture**:
+- **V1** : Volumes montés, partage du même dépôt Git local entre branches
+- **V2** : Git clone dans Docker, isolation complète des branches, version embarquée
+
+**V2 Workflow**:
+1. `make build-branch-image CLIENT=client BRANCH=branch` - Clone la branche dans l'image
+2. `make deploy-branch-v2 CLIENT=client BRANCH=branch` - Déploie l'image avec la branche
+3. Chaque rebuild récupère automatiquement le dernier commit de la branche
+
+**V2 Advantages**:
+- Isolation complète des branches (code, données, configuration)
+- Version spécifique embarquée dans l'image Docker
+- Pas de conflit entre branches simultanées
+- Rebuild automatique des derniers commits
 
 ## Testing
 
