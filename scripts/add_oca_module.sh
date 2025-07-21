@@ -101,13 +101,30 @@ echo_info "Branche: $ODOO_VERSION"
 echo_info "Chemin: $SUBMODULE_PATH"
 
 if [ -d "$SUBMODULE_PATH" ]; then
-    echo_error "Le submodule existe déjà: $SUBMODULE_PATH"
-    exit 1
+    echo_info "Le submodule existe déjà: $SUBMODULE_PATH"
+    echo_info "Vérification et synchronisation du submodule existant..."
+    
+    # Aller dans le répertoire du submodule et vérifier
+    cd "$SUBMODULE_PATH"
+    
+    # Vérifier si c'est bien un dépôt git (fichier ou dossier .git)
+    if [ ! -e ".git" ]; then
+        echo_error "Le dossier existe mais n'est pas un submodule Git valide"
+        exit 1
+    fi
+    
+    # Récupérer les dernières modifications
+    git fetch origin || echo_info "Impossible de récupérer les dernières modifications"
+    
+    # Retour au répertoire client
+    cd "$CLIENT_DIR"
+    
+    echo_success "Submodule $MODULE_KEY déjà présent et synchronisé"
+else
+    # Ajouter le nouveau submodule
+    git submodule add -b "$ODOO_VERSION" "$MODULE_URL" "$SUBMODULE_PATH"
+    echo_success "Submodule $MODULE_KEY ajouté avec succès"
 fi
-
-git submodule add -b "$ODOO_VERSION" "$MODULE_URL" "$SUBMODULE_PATH"
-
-echo_success "Submodule '$MODULE_KEY' ajouté avec succès"
 
 # Fonction pour lister les modules disponibles dans un dépôt
 list_available_modules() {

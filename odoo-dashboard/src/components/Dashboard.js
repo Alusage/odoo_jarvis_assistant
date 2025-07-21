@@ -54,7 +54,7 @@ export class Dashboard extends Component {
               </svg>
               Clone
             </button>
-            <button t-if="state.clientStatus.status !== 'running' &amp;&amp; state.clientStatus.status !== 'missing'" class="btn-success" t-on-click="startClient">
+            <button t-if="state.clientStatus.status !== 'running' and state.clientStatus.status !== 'missing'" class="btn-success" t-on-click="startClient">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m-9-4h.01M12 5v.01M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/>
               </svg>
@@ -179,7 +179,7 @@ export class Dashboard extends Component {
                     <span t-if="state.gitStatus.sync_status === 'ahead'" class="text-blue-600">↑ Ahead of remote</span>
                   </div>
                 </div>
-                <div t-if="state.gitStatus &amp;&amp; state.gitStatus.has_uncommitted_changes" class="flex gap-2">
+                <div t-if="state.gitStatus and state.gitStatus.has_uncommitted_changes" class="flex gap-2">
                   <button 
                     class="btn-secondary btn-sm" 
                     t-on-click="showDiffDialog"
@@ -268,7 +268,7 @@ export class Dashboard extends Component {
                   <div class="flex items-center space-x-1">
                     <!-- Individual pull button for outdated submodules -->
                     <button 
-                      t-if="getSubmoduleStatus(addon.name) &amp;&amp; getSubmoduleStatus(addon.name).needs_update"
+                      t-if="getSubmoduleStatus(addon.name) and getSubmoduleStatus(addon.name).needs_update"
                       class="btn-sm btn-primary flex items-center space-x-1"
                       t-on-click="() => this.updateSubmodule(addon.name)"
                       t-att-disabled="state.updatingSubmodules"
@@ -330,7 +330,7 @@ export class Dashboard extends Component {
               </div>
             </div>
             
-            <div t-if="state.addons.length === 0 &amp;&amp; !state.loading" class="text-center py-12">
+            <div t-if="state.addons.length === 0 and !state.loading" class="text-center py-12">
               <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7"/>
               </svg>
@@ -352,7 +352,7 @@ export class Dashboard extends Component {
             />
           </div>
           
-          <div t-if="state.builds.length === 0 &amp;&amp; !state.loading" class="text-center py-12">
+          <div t-if="state.builds.length === 0 and !state.loading" class="text-center py-12">
             <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
             </svg>
@@ -596,7 +596,7 @@ export class Dashboard extends Component {
             </div>
             
             <!-- Diff Stats -->
-            <div t-if="!state.diffLoading &amp;&amp; state.diffContent &amp;&amp; state.diffContent.stats" class="px-6 py-4 border-b border-gray-200">
+            <div t-if="!state.diffLoading and state.diffContent and state.diffContent.stats" class="px-6 py-4 border-b border-gray-200">
               <div class="flex items-center space-x-6">
                 <div class="text-sm">
                   <span class="text-gray-500">Files changed:</span>
@@ -610,7 +610,7 @@ export class Dashboard extends Component {
             </div>
             
             <!-- Diff Content -->
-            <div t-if="!state.diffLoading &amp;&amp; state.diffContent &amp;&amp; state.diffContent.files &amp;&amp; state.diffContent.files.length > 0" class="px-6 py-4">
+            <div t-if="!state.diffLoading and state.diffContent and state.diffContent.files and state.diffContent.files.length > 0" class="px-6 py-4">
               <h3 class="text-lg font-medium text-gray-900 mb-4">Changes</h3>
               
               <!-- File Changes -->
@@ -665,7 +665,7 @@ export class Dashboard extends Component {
             </div>
             
             <!-- No Changes -->
-            <div t-if="!state.diffLoading &amp;&amp; state.diffContent &amp;&amp; (!state.diffContent.files || state.diffContent.files.length === 0)" class="flex items-center justify-center h-full">
+            <div t-if="!state.diffLoading and state.diffContent and (!state.diffContent.files || state.diffContent.files.length === 0)" class="flex items-center justify-center h-full">
               <div class="text-center">
                 <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -730,7 +730,12 @@ export class Dashboard extends Component {
           <!-- OCA Module Selection -->
           <div t-if="state.addRepoType === 'oca'" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Search OCA Modules</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Search OCA Modules
+                <span t-if="state.selectedOcaModules.length > 0" class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                  <span t-esc="state.selectedOcaModules.length"/> selected
+                </span>
+              </label>
               <input 
                 type="text" 
                 class="input w-full"
@@ -751,11 +756,23 @@ export class Dashboard extends Component {
                   t-foreach="state.availableOcaModules" 
                   t-as="module" 
                   t-key="module.key"
-                  class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                  t-on-click="() => this.selectOcaModule(module.key)"
+                  t-attf-class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 select-none {{ state.selectedOcaModules.includes(module.key) ? 'bg-primary-50 border-primary-200' : '' }}"
+                  style="user-select: none; pointer-events: auto;"
+                  t-on-click="_toggleOcaModule"
+                  t-att-data-module="module.key"
                 >
-                  <div class="font-medium text-gray-900" t-esc="module.key"/>
-                  <div class="text-sm text-gray-600" t-esc="module.description"/>
+                  <div class="flex items-start space-x-3">
+                    <input 
+                      type="checkbox" 
+                      t-att-checked="state.selectedOcaModules.includes(module.key)"
+                      class="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      readonly="true"
+                    />
+                    <div class="flex-1">
+                      <div class="font-medium text-gray-900" t-esc="module.key"/>
+                      <div class="text-sm text-gray-600" t-esc="module.description"/>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -800,9 +817,18 @@ export class Dashboard extends Component {
             <button 
               class="btn-primary" 
               t-on-click="confirmAddRepository"
-              t-att-disabled="!canAddRepository()"
+              t-att-disabled="!canAddRepository() or state.addingRepository"
             >
-              Add Repository
+              <div t-if="state.addingRepository" class="flex items-center space-x-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"/>
+                <span>Adding...</span>
+              </div>
+              <div t-else="" class="flex items-center">
+                <span t-if="state.addRepoType === 'oca' and state.selectedOcaModules.length > 1">
+                  Add <span t-esc="state.selectedOcaModules.length"/> Repositories
+                </span>
+                <span t-else="">Add Repository</span>
+              </div>
             </button>
           </div>
         </div>
@@ -865,12 +891,13 @@ export class Dashboard extends Component {
       addons: [],
       submodulesStatus: [],
       updatingSubmodules: false,
+      addingRepository: false,
       showAddRepoDialog: false,
       addRepoType: 'oca', // 'oca' or 'external'
       availableOcaModules: [],
       loadingOcaModules: false,
       ocaModulesSearch: '',
-      selectedOcaModule: '',
+      selectedOcaModules: [], // Array for multiple selection
       externalRepoUrl: '',
       externalRepoName: '',
       selectedRepoBranch: '',
@@ -1786,17 +1813,19 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
   resetAddRepoForm() {
     this.state.addRepoType = 'oca';
     this.state.ocaModulesSearch = '';
-    this.state.selectedOcaModule = '';
+    this.state.selectedOcaModules = [];
     this.state.externalRepoUrl = '';
     this.state.externalRepoName = '';
     this.state.selectedRepoBranch = '';
     this.state.availableOcaModules = [];
+    this.state.addingRepository = false;
   }
 
   async loadOcaModules() {
     try {
       this.state.loadingOcaModules = true;
-      const result = await dataService.listAvailableOcaModules();
+      const { baseName } = this.parseClientInfo();
+      const result = await dataService.listAvailableOcaModules(null, baseName);
       if (result.success) {
         this.state.availableOcaModules = result.modules || [];
       } else {
@@ -1814,7 +1843,8 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
   async searchOcaModules() {
     try {
       this.state.loadingOcaModules = true;
-      const result = await dataService.listAvailableOcaModules(this.state.ocaModulesSearch);
+      const { baseName } = this.parseClientInfo();
+      const result = await dataService.listAvailableOcaModules(this.state.ocaModulesSearch, baseName);
       if (result.success) {
         this.state.availableOcaModules = result.modules || [];
       } else {
@@ -1827,30 +1857,84 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
     }
   }
 
+  _toggleOcaModule(event) {
+    const moduleKey = event.currentTarget.getAttribute('data-module');
+    console.log('OCA toggle event triggered, moduleKey:', moduleKey);
+    
+    if (moduleKey) {
+      const currentIndex = this.state.selectedOcaModules.indexOf(moduleKey);
+      if (currentIndex === -1) {
+        // Add to selection
+        this.state.selectedOcaModules.push(moduleKey);
+      } else {
+        // Remove from selection
+        this.state.selectedOcaModules.splice(currentIndex, 1);
+      }
+      console.log('Selected OCA modules:', this.state.selectedOcaModules);
+    } else {
+      console.error('No moduleKey found in event target');
+    }
+  }
+
   selectOcaModule(moduleKey) {
     this.state.selectedOcaModule = moduleKey;
+    console.log('Selected OCA module:', moduleKey);
   }
 
   canAddRepository() {
     if (this.state.addRepoType === 'oca') {
-      return this.state.selectedOcaModule;
+      return this.state.selectedOcaModules.length > 0;
     } else {
       return this.state.externalRepoUrl && this.state.externalRepoName;
     }
   }
 
   async confirmAddRepository() {
+    console.log('🚀 confirmAddRepository called');
     try {
       this.state.updatingSubmodules = true;
+      this.state.addingRepository = true; // New loading state
       const { baseName } = this.parseClientInfo();
+      console.log('🚀 Client name:', baseName);
       let result;
 
       if (this.state.addRepoType === 'oca') {
-        result = await dataService.addOcaModuleToClient(
-          baseName,
-          this.state.selectedOcaModule,
-          this.state.selectedRepoBranch || null
-        );
+        console.log('🚀 Adding OCA modules:', this.state.selectedOcaModules);
+        // Add multiple OCA modules
+        const results = [];
+        for (const moduleKey of this.state.selectedOcaModules) {
+          console.log('🚀 Adding module:', moduleKey);
+          const moduleResult = await dataService.addOcaModuleToClient(
+            baseName,
+            moduleKey,
+            this.state.selectedRepoBranch || null
+          );
+          console.log('🚀 Module result:', moduleKey, moduleResult);
+          results.push({ module: moduleKey, result: moduleResult });
+        }
+        console.log('🚀 All modules processed, results:', results);
+        
+        // Combine results
+        const successCount = results.filter(r => r.result.success).length;
+        const totalCount = results.length;
+        
+        if (successCount === totalCount) {
+          result = {
+            success: true,
+            message: `Successfully added ${successCount} OCA module(s)`
+          };
+        } else if (successCount > 0) {
+          result = {
+            success: true,
+            message: `Added ${successCount}/${totalCount} OCA modules (some failed)`
+          };
+        } else {
+          const firstError = results[0]?.result?.error || 'Unknown error';
+          result = {
+            success: false,
+            error: firstError
+          };
+        }
       } else {
         result = await dataService.addExternalRepoToClient(
           baseName,
@@ -1860,20 +1944,25 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
         );
       }
 
-      if (result.success) {
+      console.log('Add repository result:', result);
+      
+      if (result && result.success) {
         this.showCommitMessage(result.message || 'Repository added successfully', 'success');
         this.closeAddRepoDialog();
         // Reload addons and submodules status
         await this.loadAddons();
         await this.loadSubmodulesStatus();
       } else {
-        this.showCommitMessage(`Failed to add repository: ${result.error}`, 'error');
+        const errorMsg = result ? (result.error || result.message || 'Unknown error') : 'No response received';
+        this.showCommitMessage(`Failed to add repository: ${errorMsg}`, 'error');
+        console.error('Add repository failed:', result);
       }
     } catch (error) {
       console.error('Error adding repository:', error);
       this.showCommitMessage(`Error adding repository: ${error.message}`, 'error');
     } finally {
       this.state.updatingSubmodules = false;
+      this.state.addingRepository = false;
     }
   }
 

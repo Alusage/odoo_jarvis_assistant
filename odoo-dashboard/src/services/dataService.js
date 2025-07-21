@@ -2011,10 +2011,54 @@ class DataService {
         params.branch = branch;
       }
 
+      console.log(`🔧 Adding OCA module: ${moduleKey} to client: ${clientName}`, params);
+      
       const response = await this.callMCPServer('add_oca_module_to_client', params);
-      return response;
+      
+      console.log('🔧 Raw MCP response for addOcaModuleToClient:', response);
+      console.log('🔧 Response type:', typeof response);
+      console.log('🔧 Response keys:', response ? Object.keys(response) : 'N/A');
+      
+      // Handle different response formats like in listAvailableOcaModules
+      if (response) {
+        // Case 1: Response has text content that needs parsing
+        if (response.type === 'text' && response.content) {
+          console.log('🔧 Response has text content, attempting to parse...');
+          try {
+            const parsed = JSON.parse(response.content);
+            console.log('🔧 Parsed JSON from text content:', parsed);
+            return parsed;
+          } catch (parseError) {
+            console.error('🔧 JSON parse error:', parseError);
+            console.error('🔧 Content was:', response.content);
+            return { success: false, error: 'Failed to parse text content' };
+          }
+        }
+        
+        // Case 2: Response is already a parsed object
+        if (response.success !== undefined || response.error !== undefined) {
+          console.log('🔧 Response is already parsed object:', response);
+          return response;
+        }
+        
+        // Case 3: Response is a string that needs parsing  
+        if (typeof response === 'string') {
+          console.log('🔧 Response is string, attempting to parse...');
+          try {
+            const parsed = JSON.parse(response);
+            console.log('🔧 Parsed JSON from string:', parsed);
+            return parsed;
+          } catch (parseError) {
+            console.error('🔧 String parse error:', parseError);
+            return { success: false, error: 'Failed to parse string response' };
+          }
+        }
+      }
+
+      console.log('🔧 Response format not recognized, returning error');
+      return { success: false, error: 'Unknown response format' };
     } catch (error) {
-      console.error('Error adding OCA module:', error);
+      console.error('🔧 Error adding OCA module:', error);
       return { success: false, error: error.message };
     }
   }
@@ -2098,9 +2142,48 @@ class DataService {
   }
 
   /**
+   * Get existing submodule names for a client
+   */
+  async getExistingSubmodules(clientName) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        submodules: ['account-analytic', 'partner-contact']
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('list_submodules', {
+        client: clientName
+      });
+      
+      let submoduleNames = [];
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          if (parsed.success && parsed.submodules) {
+            // Extract just the names from the submodules
+            submoduleNames = parsed.submodules.map(sub => sub.name);
+          }
+        } catch (parseError) {
+          console.error('Error parsing submodules response:', parseError);
+        }
+      }
+      
+      return {
+        success: true,
+        submodules: submoduleNames
+      };
+    } catch (error) {
+      console.error('Error getting existing submodules:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * List available OCA modules
    */
-  async listAvailableOcaModules(search = null) {
+  async listAvailableOcaModules(search = null, clientName = null) {
     if (this.mockMode) {
       return {
         success: true,
@@ -2121,10 +2204,121 @@ class DataService {
         params.search = search;
       }
 
+      console.log(`📋 listAvailableOcaModules called with search: "${search}"`);
+      console.log('📋 MCP parameters:', params);
+
       const response = await this.callMCPServer('list_available_oca_modules', params);
-      return response;
+      
+      console.log('📋 Raw MCP response for listAvailableOcaModules:', response);
+      console.log('📋 Response type:', typeof response);
+      console.log('📋 Response keys:', response ? Object.keys(response) : 'N/A');
+
+      // Handle different response formats
+      if (response) {
+        // Case 1: Response has text content that needs parsing
+        if (response.type === 'text' && response.content) {
+          console.log('📋 Response has text content, attempting to parse...');
+          try {
+            const parsed = JSON.parse(response.content);
+            console.log('📋 Parsed JSON from text content:', parsed);
+            
+            // Filter out existing submodules if clientName is provided
+            if (clientName && parsed.success && parsed.modules) {
+              try {
+                const existingSubmodules = await this.getExistingSubmodules(clientName);
+                if (existingSubmodules.success && existingSubmodules.submodules) {
+                  const filteredModules = parsed.modules.filter(module => 
+                    !existingSubmodules.submodules.includes(module.key)
+                  );
+                  console.log(`📋 Filtered ${parsed.modules.length - filteredModules.length} existing modules from text content`);
+                  return {
+                    ...parsed,
+                    modules: filteredModules,
+                    total: filteredModules.length
+                  };
+                }
+              } catch (filterError) {
+                console.error('📋 Error filtering existing modules from text content:', filterError);
+                // If filtering fails, return original response
+              }
+            }
+            
+            return parsed;
+          } catch (parseError) {
+            console.error('📋 JSON parse error:', parseError);
+            console.error('📋 Content was:', response.content);
+            return { success: false, error: 'Failed to parse text content' };
+          }
+        }
+        
+        // Case 2: Response is already a parsed object
+        if (response.success !== undefined || response.modules !== undefined) {
+          console.log('📋 Response is already parsed object:', response);
+          
+          // Filter out existing submodules if clientName is provided
+          if (clientName && response.success && response.modules) {
+            try {
+              const existingSubmodules = await this.getExistingSubmodules(clientName);
+              if (existingSubmodules.success && existingSubmodules.submodules) {
+                const filteredModules = response.modules.filter(module => 
+                  !existingSubmodules.submodules.includes(module.key)
+                );
+                console.log(`📋 Filtered ${response.modules.length - filteredModules.length} existing modules`);
+                return {
+                  ...response,
+                  modules: filteredModules,
+                  total: filteredModules.length
+                };
+              }
+            } catch (filterError) {
+              console.error('📋 Error filtering existing modules:', filterError);
+              // If filtering fails, return original response
+            }
+          }
+          
+          return response;
+        }
+        
+        // Case 3: Response is a string that needs parsing  
+        if (typeof response === 'string') {
+          console.log('📋 Response is string, attempting to parse...');
+          try {
+            const parsed = JSON.parse(response);
+            console.log('📋 Parsed JSON from string:', parsed);
+            
+            // Filter out existing submodules if clientName is provided
+            if (clientName && parsed.success && parsed.modules) {
+              try {
+                const existingSubmodules = await this.getExistingSubmodules(clientName);
+                if (existingSubmodules.success && existingSubmodules.submodules) {
+                  const filteredModules = parsed.modules.filter(module => 
+                    !existingSubmodules.submodules.includes(module.key)
+                  );
+                  console.log(`📋 Filtered ${parsed.modules.length - filteredModules.length} existing modules from string`);
+                  return {
+                    ...parsed,
+                    modules: filteredModules,
+                    total: filteredModules.length
+                  };
+                }
+              } catch (filterError) {
+                console.error('📋 Error filtering existing modules from string:', filterError);
+                // If filtering fails, return original response
+              }
+            }
+            
+            return parsed;
+          } catch (parseError) {
+            console.error('📋 String parse error:', parseError);
+            return { success: false, error: 'Failed to parse string response' };
+          }
+        }
+      }
+
+      console.log('📋 Response format not recognized, returning error');
+      return { success: false, error: 'Unknown response format' };
     } catch (error) {
-      console.error('Error listing available OCA modules:', error);
+      console.error('📋 Error listing available OCA modules:', error);
       return { success: false, error: error.message };
     }
   }
