@@ -173,6 +173,86 @@ export class Settings extends Component {
             </form>
           </div>
 
+          <!-- Git Configuration Section -->
+          <div class="border-t border-gray-200 pt-6 mb-8">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Git Configuration</h3>
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+              <div class="flex items-center space-x-2 mb-2">
+                <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <span class="text-sm font-medium text-gray-700">Global Git Identity</span>
+                <span t-if="state.git.isConfigured" class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Configured</span>
+                <span t-else="" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">Not Configured</span>
+              </div>
+              <p class="text-sm text-gray-600">Configure Git identity for commits when creating new clients.</p>
+            </div>
+
+            <form t-on-submit.prevent="saveGitConfig" class="space-y-4">
+              <!-- Git User Configuration -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Git User Name
+                  </label>
+                  <input 
+                    type="text" 
+                    class="input w-full"
+                    placeholder="Your Name"
+                    t-model="state.git.userName"
+                    required=""
+                  />
+                  <p class="text-xs text-gray-500 mt-1">
+                    This will be used for git commits when creating clients.
+                  </p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Git User Email
+                  </label>
+                  <input 
+                    type="email" 
+                    class="input w-full"
+                    placeholder="your.email@example.com"
+                    t-model="state.git.userEmail"
+                    required=""
+                  />
+                  <p class="text-xs text-gray-500 mt-1">
+                    This will be used for git commits when creating clients.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Save Button -->
+              <div class="flex items-center space-x-3 pt-4">
+                <button 
+                  type="submit"
+                  class="btn-primary"
+                  t-att-disabled="state.savingGit"
+                >
+                  <svg t-if="state.savingGit" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  <span t-if="state.savingGit">Saving...</span>
+                  <span t-else="">Save Git Configuration</span>
+                </button>
+                
+                <div t-if="state.gitSaveResult" class="flex items-center space-x-2">
+                  <svg t-if="state.gitSaveResult.success" class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                  </svg>
+                  <svg t-else="" class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                  </svg>
+                  <span t-att-class="state.gitSaveResult.success ? 'text-green-700' : 'text-red-700'" class="text-sm">
+                    <t t-esc="state.gitSaveResult.message"/>
+                  </span>
+                </div>
+              </div>
+            </form>
+          </div>
+
           <!-- Other Settings Sections -->
           <div class="border-t border-gray-200 pt-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">General Settings</h3>
@@ -214,6 +294,11 @@ export class Settings extends Component {
         gitUserEmail: '',
         isConfigured: false
       },
+      git: {
+        userName: '',
+        userEmail: '',
+        isConfigured: false
+      },
       general: {
         autoRefresh: true,
         detailedLogs: false
@@ -222,7 +307,9 @@ export class Settings extends Component {
       testing: false,
       testResult: null,
       saving: false,
-      saveResult: null
+      saveResult: null,
+      savingGit: false,
+      gitSaveResult: null
     });
 
     onMounted(async () => {
@@ -241,8 +328,18 @@ export class Settings extends Component {
           isConfigured: !!(githubConfig.token && githubConfig.organization)
         };
       }
+
+      // Charger la configuration Git existante
+      const gitConfig = await dataService.getGitConfig();
+      if (gitConfig) {
+        this.state.git = {
+          ...this.state.git,
+          ...gitConfig,
+          isConfigured: !!(gitConfig.userName && gitConfig.userEmail)
+        };
+      }
     } catch (error) {
-      console.error('Error loading GitHub config:', error);
+      console.error('Error loading settings:', error);
     }
   }
 
@@ -319,6 +416,42 @@ export class Settings extends Component {
       // Clear save result after 5 seconds
       setTimeout(() => {
         this.state.saveResult = null;
+      }, 5000);
+    }
+  }
+
+  async saveGitConfig() {
+    this.state.savingGit = true;
+    this.state.gitSaveResult = null;
+
+    try {
+      const config = {
+        userName: this.state.git.userName,
+        userEmail: this.state.git.userEmail
+      };
+
+      const result = await dataService.saveGitConfig(config);
+      
+      if (result.success) {
+        this.state.git.isConfigured = true;
+        this.state.gitSaveResult = {
+          success: true,
+          message: '✅ Git configuration saved successfully'
+        };
+      } else {
+        throw new Error(result.error || 'Failed to save git configuration');
+      }
+    } catch (error) {
+      this.state.gitSaveResult = {
+        success: false,
+        message: `❌ Error: ${error.message}`
+      };
+    } finally {
+      this.state.savingGit = false;
+      
+      // Clear save result after 5 seconds
+      setTimeout(() => {
+        this.state.gitSaveResult = null;
       }, 5000);
     }
   }

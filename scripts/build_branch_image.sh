@@ -159,7 +159,7 @@ CLEAN_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g')
 if [[ -n "$CUSTOM_TAG" ]]; then
     IMAGE_NAME="$CUSTOM_TAG"
 else
-    IMAGE_NAME="odoo-alusage-${CLIENT_NAME}-${CLEAN_BRANCH}:${ODOO_VERSION}"
+    IMAGE_NAME="odoo-alusage-${CLIENT_NAME}:${ODOO_VERSION}"
 fi
 
 # Build date
@@ -174,9 +174,9 @@ echo -e "${BLUE}Build Date: $BUILD_DATE${NC}"
 echo
 
 # Check if Dockerfile exists
-DOCKERFILE_PATH="docker/Dockerfile"
-if [[ ! -f "$DOCKERFILE_PATH" ]]; then
-    echo -e "${RED}Error: Dockerfile not found at $DOCKERFILE_PATH${NC}"
+DOCKERFILE_PATH="Dockerfile"  # Will be relative to docker/ directory
+if [[ ! -f "docker/$DOCKERFILE_PATH" ]]; then
+    echo -e "${RED}Error: Dockerfile not found at docker/$DOCKERFILE_PATH${NC}"
     exit 1
 fi
 
@@ -206,7 +206,6 @@ if [[ "$DRY_RUN" == true ]]; then
     if [[ "$PULL_BASE" == true ]]; then
         echo "  --pull \\"
     fi
-    echo "  -v \$(pwd):/mnt/client \\"
     echo "  -t $IMAGE_NAME \\"
     echo "  -f $DOCKERFILE_PATH \\"
     echo "  ."
@@ -224,7 +223,6 @@ BUILD_ARGS=(
     "--build-arg" "ODOO_VERSION=$ODOO_VERSION"
     "--build-arg" "CLIENT_BRANCH=$BRANCH_NAME"
     "--build-arg" "BUILD_DATE=$BUILD_DATE"
-    "-v" "$(pwd):/mnt/client"
     "-t" "$IMAGE_NAME"
     "-f" "$DOCKERFILE_PATH"
 )
@@ -239,9 +237,9 @@ fi
 
 BUILD_ARGS+=(".")
 
-# Execute build
+# Execute build from docker directory
 echo -e "${BLUE}Executing: docker build ${BUILD_ARGS[*]}${NC}"
-docker build "${BUILD_ARGS[@]}"
+cd docker && docker build "${BUILD_ARGS[@]}"
 
 BUILD_EXIT_CODE=$?
 

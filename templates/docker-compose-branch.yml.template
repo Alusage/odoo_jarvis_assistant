@@ -1,0 +1,73 @@
+# Docker Compose temporaire pour branche {{BRANCH}} du client {{CLIENT}}
+# Généré automatiquement - ne pas modifier
+
+services:
+  {{SERVICE_NAME}}:
+    image: {{IMAGE_NAME}}:{{BRANCH_ORIGINAL}}
+    container_name: {{SERVICE_NAME}}
+    restart: unless-stopped
+    
+    labels:
+      - traefik.enable=true
+      # Odoo HTTP
+      - traefik.http.routers.{{SERVICE_NAME}}.entrypoints=web
+      - traefik.http.routers.{{SERVICE_NAME}}.rule=Host(`{{BRANCH}}.{{CLIENT}}.{{DOMAIN}}`)
+      - traefik.http.services.{{SERVICE_NAME}}.loadbalancer.server.port=8069
+      - traefik.http.routers.{{SERVICE_NAME}}.service={{SERVICE_NAME}}@docker
+      # Odoo WebSocket
+      - traefik.http.routers.{{SERVICE_NAME}}-ws.entrypoints=web
+      - traefik.http.routers.{{SERVICE_NAME}}-ws.rule=Path(`/websocket`) && Host(`{{BRANCH}}.{{CLIENT}}.{{DOMAIN}}`)
+      - traefik.http.services.{{SERVICE_NAME}}-ws.loadbalancer.server.port=8072
+      - traefik.http.routers.{{SERVICE_NAME}}-ws.service={{SERVICE_NAME}}-ws@docker
+    
+    volumes:
+      # Container localtime
+      - /etc/localtime:/etc/localtime:ro
+      # Configuration embarquée dans l'image + volumes pour override
+      - {{CLIENT_DIR}}/config:/mnt/client/config:ro
+      # Modules personnalisés et OCA  
+      - {{CLIENT_DIR}}/extra-addons:/mnt/client/extra-addons:ro
+      - {{CLIENT_DIR}}/addons:/mnt/client/addons:ro
+      # Dépendances Python
+      - {{CLIENT_DIR}}/requirements.txt:/mnt/client/requirements.txt:ro
+      # Volumes nommés pour les données par branche
+      - {{DATA_VOLUME}}:/data
+      - {{FILESTORE_VOLUME}}:/data/filestore
+      - {{SESSIONS_VOLUME}}:/data/sessions
+    
+    environment:
+      # Configuration de base
+      - HOST={{POSTGRES_SERVICE}}
+      - USER=odoo
+      - PASSWORD=odoo
+      # Configuration spécifique
+      - CLIENT_NAME={{CLIENT}}
+      - BRANCH_NAME={{BRANCH}}
+      - ODOO_VERSION={{ODOO_VERSION}}
+    
+    # Note: PostgreSQL service is managed separately via main docker-compose.yml
+    
+    networks:
+      - traefik-local
+    
+    # Healthcheck pour vérifier que le service fonctionne
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# Réseaux
+networks:
+  traefik-local:
+    external: true
+
+# Volumes nommés pour cette branche
+volumes:
+  {{DATA_VOLUME}}:
+    external: true
+  {{FILESTORE_VOLUME}}:
+    external: true
+  {{SESSIONS_VOLUME}}:
+    external: true

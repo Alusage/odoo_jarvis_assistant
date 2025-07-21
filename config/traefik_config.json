@@ -1,0 +1,12 @@
+{
+  "domain": "local",
+  "protocol": "http",
+  "description": "Configuration du domaine Traefik pour les URLs des branches",
+  "examples": {
+    "local": "http://18.0.testclient.local (n\u00e9cessite *.local dans /etc/hosts)",
+    "localhost": "http://18.0.testclient.localhost (peut fonctionner directement)",
+    "dev": "http://18.0.testclient.dev (n\u00e9cessite *.dev dans /etc/hosts)"
+  },
+  "hosts_file_example": "127.0.0.1 *.local",
+  "url_pattern": "http://{branch}.{client}.local"
+}

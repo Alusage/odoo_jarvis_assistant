@@ -14,6 +14,7 @@ import sys
 import logging
 import json
 import argparse
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
@@ -148,23 +149,29 @@ class OdooClientMCPServer:
         if extra_addons_dir.exists():
             for item in extra_addons_dir.iterdir():
                 if item.is_symlink():
-                    # Get the target path and extract repository name and module name
-                    target = item.resolve()
-                    addons_dir = client_dir / "addons"
-                    
-                    # Find which repository this module belongs to
-                    for repo_dir in addons_dir.iterdir():
-                        if repo_dir.is_dir() and target.is_relative_to(repo_dir):
-                            repo_name = repo_dir.name
-                            module_name = target.name
-                            
-                            if repo_name not in linked_modules:
-                                linked_modules[repo_name] = []
-                            
-                            if module_name not in linked_modules[repo_name]:
-                                linked_modules[repo_name].append(module_name)
-                                modules_count += 1
-                            break
+                    try:
+                        # Get the target path and extract repository name and module name
+                        target = item.resolve()
+                        addons_dir = client_dir / "addons"
+                        
+                        # Find which repository this module belongs to
+                        if addons_dir.exists():
+                            for repo_dir in addons_dir.iterdir():
+                                if repo_dir.is_dir() and target.is_relative_to(repo_dir):
+                                    repo_name = repo_dir.name
+                                    module_name = target.name
+                                    
+                                    if repo_name not in linked_modules:
+                                        linked_modules[repo_name] = []
+                                    
+                                    if module_name not in linked_modules[repo_name]:
+                                        linked_modules[repo_name].append(module_name)
+                                        modules_count += 1
+                                    break
+                    except (OSError, FileNotFoundError) as e:
+                        # Skip broken symlinks or missing targets
+                        print(f"Warning: Skipping broken symlink {item}: {e}")
+                        continue
         
         # Check if configuration has actually changed
         old_branch_config = config.get("branch_configs", {}).get(branch, {}).get("linked_modules", {})
@@ -849,6 +856,25 @@ class OdooClientMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="get_build_history",
+                    description="Get Docker build history and image versions for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum number of builds to return",
+                                "default": 20
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
                     name="execute_shell_command",
                     description="Execute a shell command in a client's container",
                     inputSchema={
@@ -905,6 +931,33 @@ class OdooClientMCPServer:
                             }
                         },
                         "required": ["token", "organization", "gitUserName", "gitUserEmail"]
+                    }
+                ),
+                types.Tool(
+                    name="get_git_config",
+                    description="Get current Git configuration for commits",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    }
+                ),
+                types.Tool(
+                    name="save_git_config",
+                    description="Save Git configuration for commits when creating clients",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "user_name": {
+                                "type": "string",
+                                "description": "Git user name for commits"
+                            },
+                            "user_email": {
+                                "type": "string",
+                                "description": "Git user email for commits"
+                            }
+                        },
+                        "required": ["user_name", "user_email"]
                     }
                 ),
                 types.Tool(
@@ -1213,6 +1266,203 @@ class OdooClientMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="update_client_submodules",
+                    description="Update Git submodules for a client repository",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="check_submodules_status",
+                    description="Check status of submodules and detect outdated ones",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="update_submodule",
+                    description="Update a specific submodule to latest version",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "submodule_path": {
+                                "type": "string",
+                                "description": "Path to the submodule (e.g., 'addons/partner-contact')"
+                            }
+                        },
+                        "required": ["client", "submodule_path"]
+                    }
+                ),
+                types.Tool(
+                    name="update_all_submodules",
+                    description="Update all outdated submodules to their latest versions",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="add_oca_module_to_client",
+                    description="Add an OCA module repository to a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "module_key": {
+                                "type": "string",
+                                "description": "OCA module key (e.g., 'partner-contact', 'account-analytic')"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Git branch to use (optional, defaults to client's Odoo version)"
+                            }
+                        },
+                        "required": ["client", "module_key"]
+                    }
+                ),
+                types.Tool(
+                    name="add_external_repo_to_client",
+                    description="Add an external Git repository to a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "repo_url": {
+                                "type": "string",
+                                "description": "Git repository URL"
+                            },
+                            "repo_name": {
+                                "type": "string",
+                                "description": "Name for the repository (will be used as directory name)"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Git branch to use (optional, defaults to main/master)"
+                            }
+                        },
+                        "required": ["client", "repo_url", "repo_name"]
+                    }
+                ),
+                types.Tool(
+                    name="change_submodule_branch",
+                    description="Change the branch of an existing submodule",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "submodule_path": {
+                                "type": "string",
+                                "description": "Path to the submodule (e.g., 'addons/partner-contact')"
+                            },
+                            "new_branch": {
+                                "type": "string",
+                                "description": "New branch to switch to"
+                            }
+                        },
+                        "required": ["client", "submodule_path", "new_branch"]
+                    }
+                ),
+                types.Tool(
+                    name="remove_submodule",
+                    description="Remove a submodule from a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "submodule_path": {
+                                "type": "string",
+                                "description": "Path to the submodule (e.g., 'addons/partner-contact')"
+                            }
+                        },
+                        "required": ["client", "submodule_path"]
+                    }
+                ),
+                types.Tool(
+                    name="list_available_oca_modules",
+                    description="List all available OCA modules",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "search": {
+                                "type": "string",
+                                "description": "Search term to filter modules (optional)"
+                            }
+                        }
+                    }
+                ),
+                types.Tool(
+                    name="get_client_diff",
+                    description="Get diff of uncommitted changes in client repository",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name (optional)"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="check_branch_docker_status",
+                    description="Check Docker image status for a client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Branch name (optional)"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
                     name="link_module_with_config",
                     description="Link a module and update project configuration",
                     inputSchema={
@@ -1276,6 +1526,121 @@ class OdooClientMCPServer:
                             }
                         },
                         "required": ["client", "old_branch", "new_branch"]
+                    }
+                ),
+                types.Tool(
+                    name="build_client_branch_docker",
+                    description="Build Docker image for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Name of the branch to build"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "description": "Force rebuild even if image exists",
+                                "default": False
+                            },
+                            "no_cache": {
+                                "type": "boolean",
+                                "description": "Build without using Docker cache",
+                                "default": False
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="start_client_branch",
+                    description="Start Docker service for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Name of the branch to start"
+                            },
+                            "build": {
+                                "type": "boolean",
+                                "description": "Build image before starting",
+                                "default": False
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="stop_client_branch",
+                    description="Stop Docker service for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Name of the branch to stop"
+                            },
+                            "clean_volumes": {
+                                "type": "boolean",
+                                "description": "Remove volumes for this branch",
+                                "default": False
+                            },
+                            "stop_postgres": {
+                                "type": "boolean",
+                                "description": "Stop PostgreSQL (affects all branches)",
+                                "default": False
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="get_client_branch_status",
+                    description="Get status of Docker services for a client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Name of the branch"
+                            }
+                        },
+                        "required": ["client", "branch"]
+                    }
+                ),
+                types.Tool(
+                    name="restart_client_branch",
+                    description="Restart Docker service for a specific client branch",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Name of the branch to restart"
+                            }
+                        },
+                        "required": ["client", "branch"]
                     }
                 )
             ]
@@ -1341,6 +1706,50 @@ class OdooClientMCPServer:
                 )
             elif name == "get_client_git_status":
                 return await self._get_client_git_status(arguments.get("client"))
+            elif name == "update_client_submodules":
+                return await self._update_client_submodules(arguments.get("client"))
+            elif name == "check_submodules_status":
+                return await self._check_submodules_status(arguments.get("client"))
+            elif name == "update_submodule":
+                return await self._update_submodule(arguments.get("client"), arguments.get("submodule_path"))
+            elif name == "update_all_submodules":
+                return await self._update_all_submodules(arguments.get("client"))
+            elif name == "add_oca_module_to_client":
+                return await self._add_oca_module_to_client(
+                    arguments.get("client"),
+                    arguments.get("module_key"),
+                    arguments.get("branch")
+                )
+            elif name == "add_external_repo_to_client":
+                return await self._add_external_repo_to_client(
+                    arguments.get("client"),
+                    arguments.get("repo_url"),
+                    arguments.get("repo_name"),
+                    arguments.get("branch")
+                )
+            elif name == "change_submodule_branch":
+                return await self._change_submodule_branch(
+                    arguments.get("client"),
+                    arguments.get("submodule_path"),
+                    arguments.get("new_branch")
+                )
+            elif name == "remove_submodule":
+                return await self._remove_submodule(
+                    arguments.get("client"),
+                    arguments.get("submodule_path")
+                )
+            elif name == "list_available_oca_modules":
+                return await self._list_available_oca_modules(arguments.get("search"))
+            elif name == "get_client_diff":
+                return await self._get_client_diff(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "check_branch_docker_status":
+                return await self._check_branch_docker_status(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
             elif name == "client_status":
                 return await self._client_status()
             elif name == "check_client":
@@ -1404,6 +1813,13 @@ class OdooClientMCPServer:
                     arguments.get("organization"),
                     arguments.get("gitUserName"),
                     arguments.get("gitUserEmail")
+                )
+            elif name == "get_git_config":
+                return await self._get_git_config()
+            elif name == "save_git_config":
+                return await self._save_git_config(
+                    arguments.get("user_name"),
+                    arguments.get("user_email")
                 )
             elif name == "test_github_connection":
                 return await self._test_github_connection(
@@ -1472,6 +1888,13 @@ class OdooClientMCPServer:
                 return await self._list_deployments(
                     arguments.get("client")
                 )
+            elif name == "get_traefik_config":
+                return await self._get_traefik_config()
+            elif name == "set_traefik_config":
+                return await self._set_traefik_config(
+                    arguments.get("domain"),
+                    arguments.get("protocol", "http")
+                )
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
@@ -1539,6 +1962,50 @@ class OdooClientMCPServer:
             )
         elif name == "get_client_git_status":
             return await self._get_client_git_status(arguments.get("client"))
+        elif name == "update_client_submodules":
+            return await self._update_client_submodules(arguments.get("client"))
+        elif name == "check_submodules_status":
+            return await self._check_submodules_status(arguments.get("client"))
+        elif name == "update_submodule":
+            return await self._update_submodule(arguments.get("client"), arguments.get("submodule_path"))
+        elif name == "update_all_submodules":
+            return await self._update_all_submodules(arguments.get("client"))
+        elif name == "add_oca_module_to_client":
+            return await self._add_oca_module_to_client(
+                arguments.get("client"),
+                arguments.get("module_key"),
+                arguments.get("branch")
+            )
+        elif name == "add_external_repo_to_client":
+            return await self._add_external_repo_to_client(
+                arguments.get("client"),
+                arguments.get("repo_url"),
+                arguments.get("repo_name"),
+                arguments.get("branch")
+            )
+        elif name == "change_submodule_branch":
+            return await self._change_submodule_branch(
+                arguments.get("client"),
+                arguments.get("submodule_path"),
+                arguments.get("new_branch")
+            )
+        elif name == "remove_submodule":
+            return await self._remove_submodule(
+                arguments.get("client"),
+                arguments.get("submodule_path")
+            )
+        elif name == "list_available_oca_modules":
+            return await self._list_available_oca_modules(arguments.get("search"))
+        elif name == "get_client_diff":
+            return await self._get_client_diff(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "check_branch_docker_status":
+            return await self._check_branch_docker_status(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
         elif name == "client_status":
             return await self._client_status()
         elif name == "check_client":
@@ -1602,6 +2069,13 @@ class OdooClientMCPServer:
                 arguments.get("organization"),
                 arguments.get("gitUserName"),
                 arguments.get("gitUserEmail")
+            )
+        elif name == "get_git_config":
+            return await self._get_git_config()
+        elif name == "save_git_config":
+            return await self._save_git_config(
+                arguments.get("user_name"),
+                arguments.get("user_email")
             )
         elif name == "test_github_connection":
             return await self._test_github_connection(
@@ -1670,6 +2144,13 @@ class OdooClientMCPServer:
             return await self._list_deployments(
                 arguments.get("client")
             )
+        elif name == "get_traefik_config":
+            return await self._get_traefik_config()
+        elif name == "set_traefik_config":
+            return await self._set_traefik_config(
+                arguments.get("domain"),
+                arguments.get("protocol", "http")
+            )
         elif name == "link_module_with_config":
             return await self._link_module_with_config(
                 arguments.get("client"),
@@ -1687,6 +2168,41 @@ class OdooClientMCPServer:
                 arguments.get("client"),
                 arguments.get("old_branch"),
                 arguments.get("new_branch")
+            )
+        elif name == "build_client_branch_docker":
+            return await self._build_client_branch_docker(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("force", False),
+                arguments.get("no_cache", False)
+            )
+        elif name == "start_client_branch":
+            return await self._start_client_branch(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("build", False)
+            )
+        elif name == "stop_client_branch":
+            return await self._stop_client_branch(
+                arguments.get("client"),
+                arguments.get("branch"),
+                arguments.get("clean_volumes", False),
+                arguments.get("stop_postgres", False)
+            )
+        elif name == "get_client_branch_status":
+            return await self._get_client_branch_status(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "restart_client_branch":
+            return await self._restart_client_branch(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "get_build_history":
+            return await self._get_build_history(
+                arguments.get("client"),
+                arguments.get("limit", 20)
             )
         else:
             raise ValueError(f"Unknown tool: {name}")
@@ -2186,6 +2702,183 @@ class OdooClientMCPServer:
                 type="text",
                 text=f"❌ Failed to rename branch: {str(e)}"
             )]
+
+    async def _build_client_branch_docker(self, client: str, branch: str, force: bool = False, no_cache: bool = False):
+        """Build Docker image for a specific client branch"""
+        try:
+            script_path = self.repo_path / "scripts" / "build_client_branch_docker.sh"
+            
+            if not script_path.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Build script not found: {script_path}"
+                )]
+            
+            # Build command arguments
+            cmd = [str(script_path), client, branch]
+            
+            if force:
+                cmd.append("--force")
+            if no_cache:
+                cmd.append("--no-cache")
+            
+            result = self._run_command(cmd)
+            
+            return [types.TextContent(
+                type="text",
+                text=result["stdout"] if result["success"] else f"❌ Build failed: {result['stderr']}"
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error building Docker image: {str(e)}"
+            )]
+    
+    async def _start_client_branch(self, client: str, branch: str, build: bool = False):
+        """Start Docker service for a specific client branch using docker-compose"""
+        try:
+            script_path = self.repo_path / "scripts" / "start_client_branch_compose.sh"
+            
+            if not script_path.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Start script not found: {script_path}"
+                )]
+            
+            # Build command arguments
+            cmd = [str(script_path), client, branch]
+            
+            if build:
+                cmd.append("--build")
+            
+            result = self._run_command(cmd)
+            
+            return [types.TextContent(
+                type="text",
+                text=result["stdout"] if result["success"] else f"❌ Start failed: {result['stderr']}"
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error starting client branch: {str(e)}"
+            )]
+    
+    async def _stop_client_branch(self, client: str, branch: str, clean_volumes: bool = False, stop_postgres: bool = False):
+        """Stop Docker service for a specific client branch using docker-compose"""
+        try:
+            script_path = self.repo_path / "scripts" / "stop_client_branch_compose.sh"
+            
+            if not script_path.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Stop script not found: {script_path}"
+                )]
+            
+            # Build command arguments
+            cmd = [str(script_path), client, branch]
+            
+            if clean_volumes:
+                cmd.append("--clean")
+            # Note: stop_postgres is not needed with compose since PostgreSQL is managed separately
+            
+            result = self._run_command(cmd)
+            
+            return [types.TextContent(
+                type="text",
+                text=result["stdout"] if result["success"] else f"❌ Stop failed: {result['stderr']}"
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error stopping client branch: {str(e)}"
+            )]
+    
+    async def _get_client_branch_status(self, client: str, branch: str):
+        """Get status of Docker services for a client branch"""
+        try:
+            import json
+            
+            service_name = f"odoo-alusage-{branch}-{client}"
+            postgres_service = f"postgres-{client}"
+            image_name = f"odoo-alusage-{client}:{branch}"
+            
+            # Check if containers exist and their status
+            odoo_status = "not_found"
+            postgres_status = "not_found"
+            image_exists = False
+            
+            # Check Odoo service
+            result = self._run_command(["docker", "container", "inspect", service_name])
+            if result["success"]:
+                try:
+                    container_info = json.loads(result["stdout"])
+                    if container_info and len(container_info) > 0:
+                        odoo_status = container_info[0]["State"]["Status"]
+                except:
+                    odoo_status = "error"
+            
+            # Check PostgreSQL service
+            result = self._run_command(["docker", "container", "inspect", postgres_service])
+            if result["success"]:
+                try:
+                    container_info = json.loads(result["stdout"])
+                    if container_info and len(container_info) > 0:
+                        postgres_status = container_info[0]["State"]["Status"]
+                except:
+                    postgres_status = "error"
+            
+            # Check if image exists
+            result = self._run_command(["docker", "image", "inspect", image_name])
+            image_exists = result["success"]
+            
+            # Get URL
+            url = f"https://{branch}.{client}.localhost"
+            
+            status_info = {
+                "client": client,
+                "branch": branch,
+                "service_name": service_name,
+                "postgres_service": postgres_service,
+                "image_name": image_name,
+                "odoo_status": odoo_status,
+                "postgres_status": postgres_status,
+                "image_exists": image_exists,
+                "url": url,
+                "overall_status": "running" if odoo_status == "running" and postgres_status == "running" else "stopped"
+            }
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps(status_info, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error getting branch status: {str(e)}"
+            )]
+    
+    async def _restart_client_branch(self, client: str, branch: str):
+        """Restart Docker service for a specific client branch"""
+        try:
+            # Stop and then start the branch service
+            await self._stop_client_branch(client, branch, clean_volumes=False, stop_postgres=False)
+            
+            # Wait a moment for proper cleanup
+            import asyncio
+            await asyncio.sleep(2)
+            
+            # Start the service again
+            return await self._start_client_branch(client, branch, build=False)
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error restarting client branch: {str(e)}"
+            )]
     
     async def _list_modules(self, client: str):
         """List available modules for a specific client"""
@@ -2483,6 +3176,112 @@ class OdooClientMCPServer:
                 text=f"❌ Failed to build Docker image\n\nError: {result['stderr']}"
             )]
     
+    async def _check_branch_docker_status(self, client: str, branch: str = None):
+        """Check Docker image status for a client branch"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        try:
+            # Determine image name based on branch - follow build_branch_image.sh convention
+            if branch and branch not in ["18.0", "17.0", "16.0", "master", "main"]:
+                # Branch-specific image name - use same format as build_branch_image.sh
+                branch_clean = re.sub(r'[^a-zA-Z0-9]', '-', branch)  # Same as build script
+                # Default to 18.0 but check branch config for actual version
+                odoo_version = "18.0"  # Could be enhanced to read from .odoo_branch_config
+                image_name = f"odoo-alusage-{client}-{branch_clean}:{odoo_version}"
+                deployment_image = f"odoo-alusage-{client}-{branch_clean}:{odoo_version}"
+            else:
+                # Default client image
+                image_name = f"odoo-alusage-{client}:18.0"
+                deployment_image = f"odoo-alusage-{client}:18.0"
+            
+            # Check if image exists locally
+            inspect_result = self._run_command(["docker", "image", "inspect", image_name], cwd=self.repo_path)
+            image_exists = inspect_result["success"]
+            
+            # Get image creation date if exists
+            image_date = None
+            if image_exists:
+                try:
+                    import json as json_lib
+                    inspect_data = json_lib.loads(inspect_result["stdout"])
+                    if inspect_data and len(inspect_data) > 0:
+                        image_date = inspect_data[0].get("Created", "")
+                except:
+                    pass
+            
+            # Check if containers are running with this image
+            ps_result = self._run_command(["docker", "ps", "--filter", f"ancestor={deployment_image}", "--format", "{{.Names}}"])
+            running_containers = ps_result["stdout"].strip().split("\n") if ps_result["success"] and ps_result["stdout"].strip() else []
+            
+            # Check last Git commit in client directory to compare with image
+            client_dir = self.repo_path / "clients" / client
+            git_latest = None
+            if client_dir.exists():
+                git_result = self._run_command(["git", "log", "-1", "--format=%H|%ad", "--date=iso"], cwd=client_dir)
+                if git_result["success"] and git_result["stdout"]:
+                    parts = git_result["stdout"].strip().split("|")
+                    if len(parts) >= 2:
+                        git_latest = {
+                            "hash": parts[0][:8],
+                            "date": parts[1]
+                        }
+            
+            # Determine status
+            if not image_exists:
+                status = "missing"
+                status_message = "Docker image not found"
+            elif not running_containers:
+                status = "stopped"
+                status_message = "Image exists but no containers running"
+            else:
+                # Compare dates if possible
+                if image_date and git_latest:
+                    try:
+                        from datetime import datetime
+                        image_dt = datetime.fromisoformat(image_date.replace('Z', '+00:00'))
+                        git_dt = datetime.fromisoformat(git_latest["date"])
+                        
+                        if git_dt > image_dt:
+                            status = "outdated"
+                            status_message = "Image exists but code is newer"
+                        else:
+                            status = "running"
+                            status_message = "Image is up to date and running"
+                    except:
+                        status = "running"
+                        status_message = "Image exists and containers running"
+                else:
+                    status = "running"
+                    status_message = "Image exists and containers running"
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client,
+                    "branch": branch,
+                    "image_name": image_name,
+                    "image_exists": image_exists,
+                    "image_date": image_date,
+                    "running_containers": running_containers,
+                    "git_latest": git_latest,
+                    "status": status,
+                    "message": status_message
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+    
     async def _backup_client(self, client: str):
         """Create a backup of a client"""
         result = self._run_command(["make", "backup-client", f"CLIENT={client}"])
@@ -2680,6 +3479,11 @@ class OdooClientMCPServer:
             # Retourner la liste des outils disponibles
             tools = self._get_tools_list()
             return [{"name": tool.name, "description": tool.description, "inputSchema": tool.inputSchema} for tool in tools]
+        
+        @self.http_app.options("/tools/call")
+        async def options_tools_call():
+            """Handle OPTIONS requests for CORS preflight"""
+            return {"message": "CORS preflight OK"}
         
         @self.http_app.post("/tools/call")
         async def call_tool(request: ToolCallRequest):
@@ -3288,6 +4092,96 @@ class OdooClientMCPServer:
                 }, indent=2)
             )]
 
+    async def _get_git_config(self):
+        """Get current Git configuration"""
+        try:
+            logger.info("Getting Git config...")
+            config_file = self.repo_path / "config" / "git_config.json"
+            logger.info(f"Git config file path: {config_file}")
+            
+            if config_file.exists():
+                logger.info("Git config file exists, reading...")
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                    logger.info("Git config loaded successfully")
+                    
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps(config, indent=2)
+                    )]
+            else:
+                logger.info("Git config file does not exist, returning default")
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "userName": "",
+                        "userEmail": ""
+                    }, indent=2)
+                )]
+        except Exception as e:
+            logger.error(f"Error in _get_git_config: {e}")
+            return [types.TextContent(
+                type="text",
+                text=f"❌ Error reading Git config: {str(e)}"
+            )]
+
+    async def _save_git_config(self, user_name: str, user_email: str):
+        """Save Git configuration"""
+        try:
+            logger.info(f"Saving Git config: {user_name}, {user_email}")
+            
+            if not user_name or not user_email:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": "User name and email are required"
+                    }, indent=2)
+                )]
+            
+            config_dir = self.repo_path / "config"
+            config_dir.mkdir(exist_ok=True)
+            
+            config_file = config_dir / "git_config.json"
+            
+            config = {
+                "userName": user_name,
+                "userEmail": user_email
+            }
+            
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            logger.info("Git config saved successfully")
+            
+            # Configure Git in the MCP container for immediate use
+            try:
+                import subprocess
+                subprocess.run(['git', 'config', '--global', 'user.name', user_name], check=True)
+                subprocess.run(['git', 'config', '--global', 'user.email', user_email], check=True)
+                logger.info("Git global config updated in MCP container")
+            except Exception as git_error:
+                logger.warning(f"Could not update Git global config: {git_error}")
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": "✅ Git configuration saved successfully",
+                    "config": config
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            logger.error(f"Error in _save_git_config: {e}")
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": f"Failed to save Git config: {str(e)}"
+                }, indent=2)
+            )]
+
     async def _get_client_git_log(self, client_name: str, limit: int = 20, format: str = "json"):
         """Get Git commit history for a client repository"""
         if not client_name:
@@ -3793,6 +4687,33 @@ class OdooClientMCPServer:
                 }
             ),
             types.Tool(
+                name="get_git_config",
+                description="Get current Git configuration for commits",
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            ),
+            types.Tool(
+                name="save_git_config",
+                description="Save Git configuration for commits when creating clients",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "user_name": {
+                            "type": "string",
+                            "description": "Git user name for commits"
+                        },
+                        "user_email": {
+                            "type": "string",
+                            "description": "Git user email for commits"
+                        }
+                    },
+                    "required": ["user_name", "user_email"]
+                }
+            ),
+            types.Tool(
                 name="test_github_connection",
                 description="Test GitHub connection with provided credentials",
                 inputSchema={
@@ -4013,6 +4934,34 @@ class OdooClientMCPServer:
                             "description": "Optional: filter by specific client name"
                         }
                     }
+                }
+            ),
+            types.Tool(
+                name="get_traefik_config",
+                description="Get current Traefik configuration (domain and protocol)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {}
+                }
+            ),
+            types.Tool(
+                name="set_traefik_config",
+                description="Set Traefik configuration for branch deployments",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "domain": {
+                            "type": "string",
+                            "description": "Domain to use for branch URLs (e.g., 'local', 'localhost', 'dev')"
+                        },
+                        "protocol": {
+                            "type": "string",
+                            "description": "Protocol to use",
+                            "enum": ["http", "https"],
+                            "default": "http"
+                        }
+                    },
+                    "required": ["domain"]
                 }
             )
         ]
@@ -5273,9 +6222,39 @@ class OdooClientMCPServer:
                 shutil.rmtree(addons_dir)
                 addons_cleaned = True
             
+            # Recreate the addons directory for submodules if needed
+            gitmodules_file = client_dir / ".gitmodules"
+            project_config_file = client_dir / "project_config.json"
+            
+            should_create_addons = False
+            
+            # Check if we have .gitmodules with submodules
+            if gitmodules_file.exists():
+                with open(gitmodules_file, 'r') as f:
+                    content = f.read()
+                    if '[submodule' in content:
+                        should_create_addons = True
+            
+            # Check if we have modules defined in project_config.json
+            if project_config_file.exists():
+                import json
+                try:
+                    with open(project_config_file, 'r') as f:
+                        config = json.load(f)
+                        if config.get('linked_modules') and len(config['linked_modules']) > 0:
+                            should_create_addons = True
+                except:
+                    pass
+            
+            if should_create_addons:
+                addons_dir.mkdir(exist_ok=True)
+                details = f"Addons directory {'cleaned and recreated' if addons_cleaned else 'created'} (submodules detected)"
+            else:
+                details = f"Addons directory {'cleaned' if addons_cleaned else 'skipped'} (no submodules detected)"
+            
             step_data.update({
                 "status": "completed",
-                "details": f"Addons directory {'cleaned' if addons_cleaned else 'already clean'}"
+                "details": details
             })
             await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
 
@@ -5321,11 +6300,44 @@ class OdooClientMCPServer:
                 "step": current_step,
                 "action": "Initializing and updating submodules",
                 "status": "in_progress",
-                "details": ""
+                "details": "Running git submodule update --init --recursive..."
             }
             await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
             
-            submodule_result = self._run_command(["git", "submodule", "update", "--init", "--recursive"], cwd=client_dir)
+            # Ensure addons directory exists before submodule operations
+            addons_dir = client_dir / "addons"
+            if not addons_dir.exists():
+                addons_dir.mkdir(exist_ok=True)
+                step_data.update({
+                    "details": "Created missing addons directory, running git submodule update --init --recursive..."
+                })
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            
+            # Configure git for better network handling
+            self._run_command(["git", "config", "http.postBuffer", "524288000"], cwd=client_dir)
+            self._run_command(["git", "config", "http.lowSpeedLimit", "0"], cwd=client_dir)
+            self._run_command(["git", "config", "http.lowSpeedTime", "999999"], cwd=client_dir)
+            
+            # Try submodule update with retry mechanism
+            max_retries = 3
+            for attempt in range(max_retries):
+                step_data.update({
+                    "details": f"Running git submodule update --init --recursive... (attempt {attempt + 1}/{max_retries})"
+                })
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                
+                submodule_result = self._run_command(["git", "submodule", "update", "--init", "--recursive", "--jobs", "1"], cwd=client_dir)
+                
+                if submodule_result["success"]:
+                    break
+                elif attempt < max_retries - 1:
+                    # Wait before retry
+                    import asyncio
+                    await asyncio.sleep(5)
+                    step_data.update({
+                        "details": f"Attempt {attempt + 1} failed, retrying in 5 seconds..."
+                    })
+                    await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
             
             # Parse submodule output to show which ones were cloned
             submodule_details = "Submodules updated"
@@ -5333,12 +6345,30 @@ class OdooClientMCPServer:
                 cloned_count = submodule_result["stdout"].count("Submodule path")
                 if cloned_count > 0:
                     submodule_details = f"Updated {cloned_count} submodules"
+                # Show actual stdout for debugging
+                submodule_details += f"\n\nOutput:\n{submodule_result['stdout']}"
             
-            step_data.update({
-                "status": "completed" if submodule_result["success"] else "failed",
-                "details": submodule_details if submodule_result["success"] else f"Failed to update submodules: {submodule_result['stderr']}"
-            })
-            await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+            # Enhanced error reporting
+            if not submodule_result["success"]:
+                error_details = f"SUBMODULE UPDATE FAILED!\n\nReturn code: {submodule_result.get('return_code', 'unknown')}\n\nSTDERR:\n{submodule_result.get('stderr', 'No stderr')}\n\nSTDOUT:\n{submodule_result.get('stdout', 'No stdout')}"
+                step_data.update({
+                    "status": "failed",
+                    "details": error_details
+                })
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
+                
+                # Send explicit error message that will be visible longer
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": f"CRITICAL: Submodule update failed!\n\n{error_details}"
+                }))
+                return
+            else:
+                step_data.update({
+                    "status": "completed",
+                    "details": submodule_details
+                })
+                await websocket.send_text(json.dumps({"type": "step", "data": step_data}))
 
             # Step 12/13: Clean stale submodule directories
             current_step += 1
@@ -5523,6 +6553,643 @@ class OdooClientMCPServer:
                 text=json.dumps({"success": False, "error": str(e)})
             )]
 
+    async def _update_client_submodules(self, client: str):
+        """Update Git submodules for a client repository"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            # Use the existing update_client_submodules.sh script
+            script_path = self.repo_path / "scripts" / "update_client_submodules.sh"
+            
+            result = self._run_command([str(script_path), client])
+            
+            if result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "message": f"Submodules updated successfully for client '{client}'",
+                        "output": result["stdout"]
+                    }, indent=2)
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to update submodules for client '{client}'",
+                        "stderr": result["stderr"],
+                        "stdout": result["stdout"]
+                    }, indent=2)
+                )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _check_submodules_status(self, client: str):
+        """Check status of submodules and detect outdated ones"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            submodules_status = []
+            
+            # Get list of submodules
+            status_result = self._run_command(["git", "submodule", "status"], cwd=client_dir)
+            if not status_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to get submodule status: {status_result['stderr']}"})
+                )]
+            
+            for line in status_result["stdout"].strip().split('\n'):
+                if not line.strip():
+                    continue
+                    
+                # Parse git submodule status output
+                # Format: " abcdef1234 path/to/submodule (tag or branch)"
+                parts = line.strip().split(' ', 2)
+                if len(parts) >= 2:
+                    current_commit = parts[0].lstrip(' -+')
+                    submodule_path = parts[1]
+                    
+                    # Get remote latest commit for this submodule
+                    submodule_dir = client_dir / submodule_path
+                    if submodule_dir.exists():
+                        # Fetch latest from remote
+                        fetch_result = self._run_command(["git", "fetch", "origin"], cwd=submodule_dir)
+                        
+                        # Get current branch from .gitmodules
+                        gitmodules_result = self._run_command(["git", "config", "-f", ".gitmodules", f"submodule.{submodule_path}.branch"], cwd=client_dir)
+                        branch = gitmodules_result["stdout"].strip() if gitmodules_result["success"] else "main"
+                        
+                        # Get latest commit on remote branch
+                        latest_result = self._run_command(["git", "rev-parse", f"origin/{branch}"], cwd=submodule_dir)
+                        latest_commit = latest_result["stdout"].strip() if latest_result["success"] else current_commit
+                        
+                        # Check if update is available
+                        needs_update = current_commit != latest_commit
+                        
+                        # Get commit messages for info
+                        current_msg_result = self._run_command(["git", "log", "-1", "--pretty=format:%s", current_commit], cwd=submodule_dir)
+                        current_msg = current_msg_result["stdout"].strip() if current_msg_result["success"] else "Unknown"
+                        
+                        if needs_update:
+                            latest_msg_result = self._run_command(["git", "log", "-1", "--pretty=format:%s", latest_commit], cwd=submodule_dir)
+                            latest_msg = latest_msg_result["stdout"].strip() if latest_msg_result["success"] else "Unknown"
+                        else:
+                            latest_msg = current_msg
+                        
+                        submodules_status.append({
+                            "path": submodule_path,
+                            "current_commit": current_commit,
+                            "current_message": current_msg,
+                            "latest_commit": latest_commit,
+                            "latest_message": latest_msg,
+                            "needs_update": needs_update,
+                            "branch": branch
+                        })
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "submodules": submodules_status
+                }, indent=2)
+            )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _update_submodule(self, client: str, submodule_path: str):
+        """Update a specific submodule to latest version"""
+        import json
+        
+        if not client or not submodule_path:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name and submodule path are required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        submodule_dir = client_dir / submodule_path
+        if not submodule_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Submodule '{submodule_path}' not found"})
+            )]
+        
+        try:
+            # Get branch from .gitmodules
+            gitmodules_result = self._run_command(["git", "config", "-f", ".gitmodules", f"submodule.{submodule_path}.branch"], cwd=client_dir)
+            branch = gitmodules_result["stdout"].strip() if gitmodules_result["success"] else "main"
+            
+            # Fetch latest changes
+            fetch_result = self._run_command(["git", "fetch", "origin"], cwd=submodule_dir)
+            if not fetch_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to fetch: {fetch_result['stderr']}"})
+                )]
+            
+            # Update to latest commit on branch
+            update_result = self._run_command(["git", "checkout", f"origin/{branch}"], cwd=submodule_dir)
+            if not update_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Failed to update: {update_result['stderr']}"})
+                )]
+            
+            # Get new commit info
+            commit_result = self._run_command(["git", "rev-parse", "HEAD"], cwd=submodule_dir)
+            new_commit = commit_result["stdout"].strip() if commit_result["success"] else "unknown"
+            
+            msg_result = self._run_command(["git", "log", "-1", "--pretty=format:%s"], cwd=submodule_dir)
+            commit_msg = msg_result["stdout"].strip() if msg_result["success"] else "Unknown"
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"Submodule '{submodule_path}' updated successfully",
+                    "new_commit": new_commit,
+                    "commit_message": commit_msg,
+                    "branch": branch
+                }, indent=2)
+            )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _update_all_submodules(self, client: str):
+        """Update all outdated submodules to their latest versions"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        try:
+            # First check which submodules need updates
+            status_result = await self._check_submodules_status(client)
+            status_data = json.loads(status_result[0].text)
+            
+            if not status_data["success"]:
+                return status_result
+            
+            outdated_submodules = [s for s in status_data["submodules"] if s["needs_update"]]
+            
+            if not outdated_submodules:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "message": "All submodules are already up to date",
+                        "updated_count": 0
+                    })
+                )]
+            
+            # Update each outdated submodule
+            updated_submodules = []
+            failed_submodules = []
+            
+            for submodule in outdated_submodules:
+                update_result = await self._update_submodule(client, submodule["path"])
+                update_data = json.loads(update_result[0].text)
+                
+                if update_data["success"]:
+                    updated_submodules.append({
+                        "path": submodule["path"],
+                        "old_commit": submodule["current_commit"],
+                        "new_commit": update_data["new_commit"],
+                        "message": update_data["commit_message"]
+                    })
+                else:
+                    failed_submodules.append({
+                        "path": submodule["path"],
+                        "error": update_data["error"]
+                    })
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": len(failed_submodules) == 0,
+                    "message": f"Updated {len(updated_submodules)} submodules" + (f", {len(failed_submodules)} failed" if failed_submodules else ""),
+                    "updated_count": len(updated_submodules),
+                    "failed_count": len(failed_submodules),
+                    "updated_submodules": updated_submodules,
+                    "failed_submodules": failed_submodules
+                }, indent=2)
+            )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _add_oca_module_to_client(self, client: str, module_key: str, branch: str = None):
+        """Add an OCA module repository to a client"""
+        import json
+        
+        if not client or not module_key:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name and module key are required"})
+            )]
+        
+        try:
+            # Use the existing add_oca_module.sh script
+            script_path = self.repo_path / "scripts" / "add_oca_module.sh"
+            
+            # Prepare command
+            cmd = [str(script_path), client, module_key]
+            if branch:
+                cmd.extend(["--branch", branch])
+            
+            result = self._run_command(cmd)
+            
+            if result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "message": f"OCA module '{module_key}' added successfully to client '{client}'",
+                        "output": result["stdout"]
+                    }, indent=2)
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to add OCA module '{module_key}' to client '{client}'",
+                        "stderr": result["stderr"],
+                        "stdout": result["stdout"]
+                    }, indent=2)
+                )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _add_external_repo_to_client(self, client: str, repo_url: str, repo_name: str, branch: str = None):
+        """Add an external Git repository to a client"""
+        import json
+        
+        if not client or not repo_url or not repo_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name, repository URL, and repository name are required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            addons_dir = client_dir / "addons"
+            repo_dir = addons_dir / repo_name
+            
+            # Check if repository already exists
+            if repo_dir.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": f"Repository '{repo_name}' already exists"})
+                )]
+            
+            # Create addons directory if it doesn't exist
+            addons_dir.mkdir(exist_ok=True)
+            
+            # Add as submodule
+            add_cmd = ["git", "submodule", "add", repo_url, f"addons/{repo_name}"]
+            if branch:
+                add_cmd.extend(["-b", branch])
+            
+            add_result = self._run_command(add_cmd, cwd=client_dir)
+            
+            if not add_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to add repository as submodule: {add_result['stderr']}"
+                    })
+                )]
+            
+            # Initialize and update the submodule
+            init_result = self._run_command(["git", "submodule", "update", "--init", f"addons/{repo_name}"], cwd=client_dir)
+            
+            if not init_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to initialize submodule: {init_result['stderr']}"
+                    })
+                )]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"External repository '{repo_name}' added successfully to client '{client}'",
+                    "repo_url": repo_url,
+                    "branch": branch or "default"
+                }, indent=2)
+            )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _change_submodule_branch(self, client: str, submodule_path: str, new_branch: str):
+        """Change the branch of an existing submodule"""
+        import json
+        
+        if not client or not submodule_path or not new_branch:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name, submodule path, and new branch are required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        submodule_dir = client_dir / submodule_path
+        if not submodule_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Submodule '{submodule_path}' not found"})
+            )]
+        
+        try:
+            # Update .gitmodules file to set new branch
+            config_result = self._run_command([
+                "git", "config", "-f", ".gitmodules", f"submodule.{submodule_path}.branch", new_branch
+            ], cwd=client_dir)
+            
+            if not config_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to update .gitmodules: {config_result['stderr']}"
+                    })
+                )]
+            
+            # Fetch latest changes in submodule
+            fetch_result = self._run_command(["git", "fetch", "origin"], cwd=submodule_dir)
+            
+            # Switch to new branch
+            checkout_result = self._run_command(["git", "checkout", f"origin/{new_branch}"], cwd=submodule_dir)
+            
+            if not checkout_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to switch to branch '{new_branch}': {checkout_result['stderr']}"
+                    })
+                )]
+            
+            # Commit the .gitmodules change
+            add_result = self._run_command(["git", "add", ".gitmodules"], cwd=client_dir)
+            commit_result = self._run_command([
+                "git", "commit", "-m", f"Change {submodule_path} branch to {new_branch}"
+            ], cwd=client_dir)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"Submodule '{submodule_path}' branch changed to '{new_branch}' successfully",
+                    "submodule_path": submodule_path,
+                    "new_branch": new_branch
+                }, indent=2)
+            )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _remove_submodule(self, client: str, submodule_path: str):
+        """Remove a submodule from a client"""
+        import json
+        
+        if not client or not submodule_path:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name and submodule path are required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        submodule_dir = client_dir / submodule_path
+        if not submodule_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Submodule '{submodule_path}' not found"})
+            )]
+        
+        try:
+            # Deinitialize submodule
+            deinit_result = self._run_command(["git", "submodule", "deinit", "-f", submodule_path], cwd=client_dir)
+            
+            # Remove from .gitmodules and index
+            rm_result = self._run_command(["git", "rm", submodule_path], cwd=client_dir)
+            
+            if not rm_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to remove submodule from git: {rm_result['stderr']}"
+                    })
+                )]
+            
+            # Remove submodule directory
+            import shutil
+            if submodule_dir.exists():
+                shutil.rmtree(submodule_dir)
+            
+            # Remove from .git/modules
+            git_modules_dir = client_dir / ".git" / "modules" / submodule_path
+            if git_modules_dir.exists():
+                shutil.rmtree(git_modules_dir)
+            
+            # Commit the removal
+            commit_result = self._run_command([
+                "git", "commit", "-m", f"Remove submodule {submodule_path}"
+            ], cwd=client_dir)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"Submodule '{submodule_path}' removed successfully from client '{client}'",
+                    "submodule_path": submodule_path
+                }, indent=2)
+            )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _list_available_oca_modules(self, search: str = None):
+        """List all available OCA modules"""
+        import json
+        
+        try:
+            # Use the existing list_oca_modules.sh script with --json option
+            script_path = self.repo_path / "scripts" / "list_oca_modules.sh"
+            
+            cmd = [str(script_path), "--json"]
+            if search:
+                cmd.extend(["--pattern", search])
+            
+            result = self._run_command(cmd)
+            
+            if result["success"]:
+                # The script now returns JSON directly, just parse and return it
+                try:
+                    parsed_result = json.loads(result["stdout"])
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps(parsed_result, indent=2)
+                    )]
+                except json.JSONDecodeError as e:
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": False,
+                            "error": f"Failed to parse script output as JSON: {e}"
+                        })
+                    )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Failed to list OCA modules: {result['stderr']}"
+                    })
+                )]
+                
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _get_client_diff(self, client: str, branch: str = None):
+        """Get diff of uncommitted changes in client repository"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name is required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
+            )]
+        
+        try:
+            # Get diff of uncommitted changes (both staged and unstaged)
+            diff_result = self._run_command(["git", "diff", "HEAD"], cwd=client_dir)
+            
+            if not diff_result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"success": False, "error": "Failed to get git diff"})
+                )]
+            
+            diff_content = diff_result["stdout"]
+            if not diff_content.strip():
+                diff_content = "No uncommitted changes found"
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client,
+                    "branch": branch,
+                    "diff": diff_content
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": str(e)})
+            )]
+
     def _get_branch_suffix(self, branch_name: str) -> str:
         """Get suffix for branch-specific container names"""
         if branch_name.startswith("staging-"):
@@ -5533,6 +7200,208 @@ class OdooClientMCPServer:
             return ""  # Production branches don't get suffix
         else:
             return f"-{branch_name.replace('/', '-')}"
+
+    async def _get_build_history(self, client: str, limit: int = 20):
+        """Get Docker build history and image versions for a client"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client}' not found"}, indent=2)
+            )]
+        
+        try:
+            builds = []
+            
+            # Get all Docker images for this client
+            images_result = self._run_command([
+                "docker", "images", "--format", "{{.Repository}}:{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}\t{{.ID}}",
+                "--filter", f"reference=odoo-alusage-{client}*"
+            ])
+            
+            if images_result["success"]:
+                image_lines = images_result["stdout"].strip().split("\n")
+                for line in image_lines:
+                    if not line.strip():
+                        continue
+                    
+                    parts = line.split("\t")
+                    if len(parts) >= 4:
+                        repo_tag, created_at, size, image_id = parts[:4]
+                        repo, tag = repo_tag.split(":", 1) if ":" in repo_tag else (repo_tag, "latest")
+                        
+                        # Extract branch name from tag
+                        branch_name = tag
+                        # Remove timestamp and hash suffixes to get base branch
+                        if "-202" in tag:  # Remove timestamp
+                            branch_name = tag.split("-202")[0]
+                        elif tag.endswith("-latest"):
+                            branch_name = tag[:-7]  # Remove -latest
+                        elif len(tag.split("-")) > 1 and len(tag.split("-")[-1]) == 7:  # Remove hash
+                            branch_name = "-".join(tag.split("-")[:-1])
+                        
+                        # Get Git info for this branch if available
+                        git_info = self._get_git_info_for_branch(client_path, branch_name)
+                        
+                        build = {
+                            "id": f"build_{image_id[:12]}",
+                            "image_tag": tag,
+                            "branch": branch_name,
+                            "created_at": created_at,
+                            "size": size,
+                            "image_id": image_id[:12],
+                            "status": "success",  # Si l'image existe, le build a réussi
+                            "type": "docker",
+                            "duration": "Unknown",
+                            "git_hash": git_info.get("hash", "unknown"),
+                            "git_message": git_info.get("message", "Unknown commit"),
+                            "author": git_info.get("author", "Unknown")
+                        }
+                        builds.append(build)
+            
+            # Sort by creation date (most recent first)
+            builds = sorted(builds, key=lambda x: x["created_at"], reverse=True)
+            
+            # Limit results
+            builds = builds[:limit]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "builds": builds,
+                    "total_images": len(builds)
+                }, indent=2)
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": f"Error getting build history: {str(e)}"
+                }, indent=2)
+            )]
+    
+    def _get_git_info_for_branch(self, client_path, branch_name):
+        """Get Git information for a specific branch"""
+        try:
+            # Switch to the branch temporarily to get its info
+            result = self._run_command([
+                "git", "log", "-1", "--format=%H|%an|%s|%ad", "--date=iso"
+            ], cwd=client_path)
+            
+            if result["success"] and result["stdout"]:
+                parts = result["stdout"].strip().split("|")
+                if len(parts) >= 4:
+                    return {
+                        "hash": parts[0][:8],
+                        "author": parts[1],
+                        "message": parts[2],
+                        "date": parts[3]
+                    }
+        except:
+            pass
+        
+        return {"hash": "unknown", "author": "Unknown", "message": "Unknown commit", "date": "Unknown"}
+
+    async def _get_traefik_config(self):
+        """Get current Traefik configuration"""
+        try:
+            config_file = self.repo_path / "config" / "traefik_config.json"
+            
+            if config_file.exists():
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "domain": config.get("domain", "local"),
+                        "protocol": config.get("protocol", "http"),
+                        "url_pattern": config.get("url_pattern", "{protocol}://{branch}.{client}.{domain}")
+                    }, indent=2)
+                )]
+            else:
+                # Return default configuration
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "domain": "local",
+                        "protocol": "http",
+                        "url_pattern": "{protocol}://{branch}.{client}.{domain}"
+                    }, indent=2)
+                )]
+        except Exception as e:
+            logger.error(f"Error getting Traefik config: {e}")
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": str(e)
+                }, indent=2)
+            )]
+
+    async def _set_traefik_config(self, domain: str, protocol: str = "http"):
+        """Set Traefik configuration"""
+        try:
+            config_dir = self.repo_path / "config"
+            config_dir.mkdir(exist_ok=True)
+            config_file = config_dir / "traefik_config.json"
+            
+            # Load existing config or create new one
+            if config_file.exists():
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+            else:
+                config = {}
+            
+            # Update configuration
+            config.update({
+                "domain": domain,
+                "protocol": protocol,
+                "description": "Configuration du domaine Traefik pour les URLs des branches",
+                "examples": {
+                    "local": f"{protocol}://18.0.testclient.local (nécessite *.local dans /etc/hosts)",
+                    "localhost": f"{protocol}://18.0.testclient.localhost (peut fonctionner directement)",
+                    "dev": f"{protocol}://18.0.testclient.dev (nécessite *.dev dans /etc/hosts)"
+                },
+                "hosts_file_example": f"127.0.0.1 *.{domain}",
+                "url_pattern": f"{protocol}://{{branch}}.{{client}}.{domain}"
+            })
+            
+            # Save configuration
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "message": f"Traefik configuration updated: domain={domain}, protocol={protocol}",
+                    "config": {
+                        "domain": domain,
+                        "protocol": protocol,
+                        "url_pattern": f"{protocol}://{{branch}}.{{client}}.{domain}"
+                    }
+                }, indent=2)
+            )]
+        except Exception as e:
+            logger.error(f"Error setting Traefik config: {e}")
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": str(e)
+                }, indent=2)
+            )]
 
 
 async def main():

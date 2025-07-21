@@ -13,7 +13,7 @@ export class BranchSwitchProgress extends Component {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
           </div>
-          <div t-elif="state.failed" class="text-red-600">
+          <div t-elif="state.failed" class="text-red-600 cursor-pointer hover:text-red-700" t-on-click="props.onClose">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>

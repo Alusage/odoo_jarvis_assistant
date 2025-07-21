@@ -5,14 +5,116 @@ class DataService {
   constructor() {
     this.baseURL = 'http://localhost:3001/api'; // MCP server integration endpoint
     this.mockMode = false; // Utiliser le serveur MCP
-    this.mcpServerURL = import.meta.env.VITE_MCP_SERVER_URL || 'http://mcp.localhost'; // MCP server HTTP API
-    // Si nous sommes dans le browser, utiliser l'URL publique
-    if (typeof window !== 'undefined') {
-      this.mcpServerURL = 'http://mcp.localhost';
-    }
-    console.log('DataService initialized with MCP server at:', this.mcpServerURL);
+    this.mcpServerURL = null; // Will be set dynamically
+    this.traefikDomain = this.getTraefikDomainFromBrowser(); // Get from current URL
     this.mcpServerStatus = 'unknown'; // unknown, connected, error
     this.lastError = null;
+    console.log('🚀 DataService constructor - traefikDomain:', this.traefikDomain);
+    // Initialize MCP URL with current domain configuration
+    this.initializeMcpUrl();
+  }
+
+  /**
+   * Get Traefik domain from current browser URL
+   */
+  getTraefikDomainFromBrowser() {
+    if (typeof window !== 'undefined' && window.location) {
+      const hostname = window.location.hostname;
+      console.log('🌐 Browser hostname:', hostname);
+      
+      // Extract domain from dashboard.local -> local
+      if (hostname.includes('.')) {
+        const domain = hostname.split('.').slice(-1)[0]; // Get last part (local, localhost, dev, etc.)
+        console.log('🌐 Extracted domain:', domain);
+        return domain;
+      }
+      console.log('🌐 Using hostname directly:', hostname);
+      return hostname;
+    }
+    console.log('🌐 Using fallback domain: localhost');
+    return 'localhost'; // Fallback for SSR or when window is not available
+  }
+
+  /**
+   * Initialize MCP server URL based on current domain configuration
+   */
+  async initializeMcpUrl() {
+    // Force rebuild URL with current domain from browser
+    const browserDomain = this.getTraefikDomainFromBrowser();
+    this.traefikDomain = browserDomain; // Override with browser detection
+    this.mcpServerURL = `http://mcp.${this.traefikDomain}`;
+    console.log('🚀 DataService force-set MCP server URL to:', this.mcpServerURL, 'using domain:', this.traefikDomain);
+    
+    // Test connectivity immediately with correct domain
+    if (typeof window !== 'undefined') {
+      setTimeout(async () => {
+        await this.testMCPConnectivity();
+      }, 1000); // Wait 1 second for services to be ready
+    }
+  }
+
+  /**
+   * Update Traefik domain from configuration
+   */
+  async updateTraefikDomain() {
+    try {
+      // Try to get config from a simple endpoint first
+      const response = await fetch('/api/traefik-domain');
+      if (response.ok) {
+        const data = await response.json();
+        this.traefikDomain = data.domain || 'localhost';
+        return;
+      }
+    } catch (error) {
+      // If that fails, try via MCP (using fallback URL)
+      try {
+        const config = await this.getTraefikConfig();
+        this.traefikDomain = config.domain || 'localhost';
+        this.mcpServerURL = `http://mcp.${this.traefikDomain}`;
+      } catch (mcpError) {
+        console.warn('Could not get Traefik domain, using localhost:', mcpError);
+      }
+    }
+  }
+
+  /**
+   * Get current MCP server URL (dynamically updated based on Traefik config)
+   */
+  getMcpServerUrl() {
+    // Si on est côté serveur (pendant le build), utiliser l'URL interne
+    if (typeof window === 'undefined') {
+      return 'http://mcp-server:8000';
+    }
+    // Côté client (navigateur), utiliser l'URL Traefik
+    const url = this.mcpServerURL || `http://mcp.${this.traefikDomain}`;
+    console.log('🔗 getMcpServerUrl returning:', url, 'from domain:', this.traefikDomain);
+    return url;
+  }
+
+  /**
+   * Get current Traefik domain
+   */
+  getTraefikDomain() {
+    return this.traefikDomain;
+  }
+
+  /**
+   * Get WebSocket URL for terminal connections
+   */
+  getWsUrl(baseName, branchName = null) {
+    const mcpUrl = this.getMcpServerUrl().replace('http://', 'ws://').replace('https://', 'wss://');
+    if (branchName) {
+      return `${mcpUrl}/terminal/${baseName}/${branchName}`;
+    }
+    return `${mcpUrl}/terminal/${baseName}`;
+  }
+
+  /**
+   * Get WebSocket URL for branch switching
+   */
+  getBranchSwitchWsUrl(clientName) {
+    const mcpUrl = this.getMcpServerUrl().replace('http://', 'ws://').replace('https://', 'wss://');
+    return `${mcpUrl}/branch-switch/${clientName}`;
   }
 
   /**
@@ -233,7 +335,8 @@ class DataService {
                 version: '18.0',
                 branch: branch.name,
                 current: branch.current,
-                isGitCurrent: branch.current  // Mark which branch is actually checked out in Git
+                isGitCurrent: branch.current,  // Mark which branch is actually checked out in Git
+                baseClientName: clientName  // Store the base client name
               });
             });
             
@@ -332,18 +435,56 @@ class DataService {
   }
 
   /**
+   * Test basic connectivity to MCP server
+   */
+  async testMCPConnectivity() {
+    try {
+      const mcpUrl = this.getMcpServerUrl();
+      console.log(`🔍 Testing MCP server connectivity at: ${mcpUrl}`);
+      
+      const response = await fetch(`${mcpUrl}/`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ MCP server is reachable:', data);
+        this.mcpServerStatus = 'connected';
+        return true;
+      } else {
+        console.error('❌ MCP server returned error:', response.status, response.statusText);
+        this.mcpServerStatus = 'error';
+        this.lastError = `HTTP ${response.status}: ${response.statusText}`;
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ MCP server connectivity test failed:', error);
+      this.mcpServerStatus = 'error';
+      this.lastError = error.message;
+      return false;
+    }
+  }
+
+  /**
    * Call MCP server with a specific command
    */
   async callMCPServer(command, params = {}) {
     try {
-      // All calls use the generic tool call endpoint
-      console.log(`Calling MCP server tool: ${command} with params:`, params);
-      const response = await fetch(`${this.mcpServerURL}/tools/call`, {
+      // Use current MCP server URL (dynamically updated)
+      const mcpUrl = this.getMcpServerUrl();
+      console.log(`🔗 Calling MCP server tool: ${command} with params:`, params, 'at', mcpUrl);
+      
+      const response = await fetch(`${mcpUrl}/tools/call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        mode: 'cors', // Explicitly enable CORS
         body: JSON.stringify({
           name: command,
           arguments: params
@@ -513,17 +654,82 @@ class DataService {
   /**
    * Get build history for a client
    */
-  async getBuildHistory(clientName) {
+  async getBuildHistory(clientName, branchName = null) {
     if (this.mockMode) {
       return this.getMockBuildHistory(clientName);
     }
     
     try {
-      // Pour l'instant, utiliser les données mock car pas d'API MCP pour l'historique des builds
+      const params = {
+        client: clientName,
+        limit: 20
+      };
+      
+      // Add branch filter if specified
+      if (branchName && branchName !== '18.0') {
+        params.branch = branchName;
+      }
+      
+      const response = await this.callMCPServer('get_build_history', params);
+      
+      if (response.success !== false) {
+        const data = JSON.parse(response.content || response.text || '{}');
+        if (data.success && data.builds) {
+          // Transform the data to match the expected format
+          const transformedBuilds = data.builds.map((build, index) => ({
+            id: `${build.id || 'build'}_${build.image_tag || index}_${build.created_at || Date.now()}`,
+            title: build.git_message || `Build ${build.image_tag}`,
+            author: build.author || 'Unknown',
+            timestamp: this.formatTimestamp(build.created_at),
+            duration: build.duration || 'Unknown',
+            status: build.status || 'success',
+            branch: build.branch,
+            image_tag: build.image_tag,
+            size: build.size,
+            git_hash: build.git_hash,
+            image_id: build.image_id,
+            type: build.type || 'docker'
+          }));
+          
+          // Ensure unique IDs by adding index if duplicates exist
+          const seenIds = new Set();
+          const uniqueBuilds = transformedBuilds.map((build, index) => {
+            let uniqueId = build.id;
+            let counter = 0;
+            while (seenIds.has(uniqueId)) {
+              counter++;
+              uniqueId = `${build.id}_${counter}`;
+            }
+            seenIds.add(uniqueId);
+            return { ...build, id: uniqueId };
+          });
+          
+          return uniqueBuilds;
+        }
+      }
+      
+      // Fallback to mock data if API fails
+      console.warn('Build history API returned no data, using mock data');
       return this.getMockBuildHistory(clientName);
     } catch (error) {
       console.error(`Error fetching build history for ${clientName}:`, error);
       return this.getMockBuildHistory(clientName);
+    }
+  }
+
+  formatTimestamp(dockerTimestamp) {
+    try {
+      // Docker timestamp format: "2025-07-20 14:41:53 +0200 CEST"
+      const date = new Date(dockerTimestamp);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return dockerTimestamp || 'Unknown';
     }
   }
 
@@ -532,16 +738,161 @@ class DataService {
    */
   async getClientStatus(clientName, branchName = null) {
     try {
-      const toolName = branchName ? 'get_branch_status' : 'get_client_status';
-      const params = branchName ? 
+      // For production branch (18.0), use normal client status, not branch status
+      const isProductionBranch = branchName === '18.0';
+      const toolName = (branchName && !isProductionBranch) ? 'get_branch_status' : 'get_client_status';
+      const params = (branchName && !isProductionBranch) ? 
         { client: clientName, branch: branchName } : 
         { client: clientName };
       
       const response = await this.callMCPServer(toolName, params);
-      return JSON.parse(response.content || '{"status": "unknown"}');
+      console.log(`getClientStatus(${clientName}, ${branchName}):`, response);
+      
+      if (branchName && !isProductionBranch) {
+        // For branch status, parse the nested JSON response
+        try {
+          const content = response.content || '{}';
+          const nestedData = JSON.parse(content);
+          const statusText = nestedData.status || '';
+          
+          let status = 'unknown';
+          
+          // Look for actual status indicators in the text
+          if (statusText.includes('✓ Container running:') && statusText.includes('✓ PostgreSQL running:')) {
+            status = 'running';
+          } else if (statusText.includes('✓ Container running:') || statusText.includes('✓ PostgreSQL running:')) {
+            status = 'partial';
+          } else if (statusText.includes('✓ Image found:') || statusText.includes('✓ Image exists:')) {
+            // Image exists but containers not running
+            status = 'stopped';
+          } else if (statusText.includes('✗ Image not found:')) {
+            // No image available  
+            status = 'missing';
+          } else {
+            // Check for other success indicators
+            if (statusText.includes('✓') && !statusText.includes('✗')) {
+              status = 'stopped'; // Has some success indicators
+            } else if (statusText.includes('✗') && !statusText.includes('✓')) {
+              status = 'missing'; // Only error indicators
+            }
+          }
+          
+          console.log(`Parsed branch status: ${status} from:`, statusText);
+          return { 
+            status: status,
+            details: statusText
+          };
+        } catch (e) {
+          console.error('Failed to parse nested JSON for branch status:', e, response);
+          return { status: 'unknown', details: response.content };
+        }
+      } else {
+        // For regular client status, try to parse as JSON
+        try {
+          const parsed = JSON.parse(response.content || '{"status": "unknown"}');
+          console.log(`Parsed status:`, parsed);
+          return parsed;
+        } catch (e) {
+          console.log(`Failed to parse JSON, treating as text:`, response.content);
+          return { status: 'unknown', details: response.content };
+        }
+      }
     } catch (error) {
       console.error(`Error fetching client status for ${clientName}${branchName ? ' branch ' + branchName : ''}:`, error);
       return { status: "unknown" };
+    }
+  }
+
+  /**
+   * Start client branch deployment
+   */
+  async startClientBranch(clientName, branchName, build = false) {
+    try {
+      // For production branch (18.0), use normal client start
+      const isProductionBranch = branchName === '18.0';
+      const toolName = isProductionBranch ? 'start_client' : 'start_client_branch';
+      const params = isProductionBranch ? 
+        { client: clientName } : 
+        { client: clientName, branch: branchName, build: build };
+      
+      const response = await this.callMCPServer(toolName, params);
+      
+      if (response && response.success !== false) {
+        return { 
+          success: true, 
+          message: response.content || response.text || 'Client started successfully'
+        };
+      } else {
+        return { 
+          success: false, 
+          error: response?.error || 'Failed to start client'
+        };
+      }
+    } catch (error) {
+      console.error(`Error starting client ${clientName}:${branchName}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Stop client branch deployment
+   */
+  async stopClientBranch(clientName, branchName, cleanVolumes = false, stopPostgres = false) {
+    try {
+      // For production branch (18.0), use normal client stop
+      const isProductionBranch = branchName === '18.0';
+      const toolName = isProductionBranch ? 'stop_client' : 'stop_client_branch';
+      const params = isProductionBranch ? 
+        { client: clientName } : 
+        { client: clientName, branch: branchName, clean_volumes: cleanVolumes, stop_postgres: stopPostgres };
+      
+      const response = await this.callMCPServer(toolName, params);
+      
+      if (response && response.success !== false) {
+        return { 
+          success: true, 
+          message: response.content || response.text || 'Client stopped successfully'
+        };
+      } else {
+        return { 
+          success: false, 
+          error: response?.error || 'Failed to stop client'
+        };
+      }
+    } catch (error) {
+      console.error(`Error stopping client ${clientName}:${branchName}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Restart client branch deployment
+   */
+  async restartClientBranch(clientName, branchName) {
+    try {
+      // For production branch (18.0), use normal client restart
+      const isProductionBranch = branchName === '18.0';
+      const toolName = isProductionBranch ? 'restart_client' : 'restart_client_branch';
+      const params = isProductionBranch ? 
+        { client: clientName } : 
+        { client: clientName, branch: branchName };
+      
+      const response = await this.callMCPServer(toolName, params);
+      
+      if (response && response.success !== false) {
+        return { 
+          success: true, 
+          message: response.content || response.text || 'Client restarted successfully'
+        };
+      } else {
+        return { 
+          success: false, 
+          error: response?.error || 'Failed to restart client'
+        };
+      }
+    } catch (error) {
+      console.error(`Error restarting client ${clientName}:${branchName}:`, error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -660,20 +1011,39 @@ class DataService {
   }
 
   /**
-   * Start a specific client branch
+   * Delete a client and all its data
    */
-  async startClientBranch(clientName, branchName) {
+  async deleteClient(clientName) {
+    if (this.mockMode) {
+      return { success: true, message: 'Client deleted (mock mode)' };
+    }
+
     try {
-      const response = await this.callMCPServer('start_client_branch', {
+      const response = await this.callMCPServer('delete_client', {
         client: clientName,
-        branch: branchName
+        confirmed: true
       });
+      
+      // Parse the JSON content from MCP response if needed
+      if (response && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          return parsed;
+        } catch (parseError) {
+          // If parsing fails, assume it's a simple success response
+          return {
+            success: true,
+            message: response.content || 'Client deleted successfully'
+          };
+        }
+      }
+      
       return {
         success: true,
-        message: response.content || 'Branch started successfully'
+        message: 'Client deleted successfully'
       };
     } catch (error) {
-      console.error(`Error starting branch ${branchName} for client ${clientName}:`, error);
+      console.error('Error deleting client:', error);
       return {
         success: false,
         error: error.message
@@ -681,49 +1051,6 @@ class DataService {
     }
   }
 
-  /**
-   * Stop a specific client branch
-   */
-  async stopClientBranch(clientName, branchName) {
-    try {
-      const response = await this.callMCPServer('stop_client_branch', {
-        client: clientName,
-        branch: branchName
-      });
-      return {
-        success: true,
-        message: response.content || 'Branch stopped successfully'
-      };
-    } catch (error) {
-      console.error(`Error stopping branch ${branchName} for client ${clientName}:`, error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Restart a specific client branch
-   */
-  async restartClientBranch(clientName, branchName) {
-    try {
-      const response = await this.callMCPServer('restart_client_branch', {
-        client: clientName,
-        branch: branchName
-      });
-      return {
-        success: true,
-        message: response.content || 'Branch restarted successfully'
-      };
-    } catch (error) {
-      console.error(`Error restarting branch ${branchName} for client ${clientName}:`, error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
 
   /**
    * Get client addons (submodules) with their modules and link status
@@ -889,6 +1216,202 @@ class DataService {
     }
   }
 
+  /**
+   * Update Git submodules for a client repository
+   */
+  async updateClientSubmodules(clientName) {
+    try {
+      const response = await this.callMCPServer('update_client_submodules', {
+        client: clientName
+      });
+      
+      if (response && response.content) {
+        const parsed = JSON.parse(response.content);
+        return parsed;
+      }
+      return response;
+    } catch (error) {
+      console.error(`Error updating submodules for ${clientName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get diff of uncommitted changes in client repository
+   */
+  async getClientDiff(clientName, branchName = null) {
+    try {
+      const response = await this.callMCPServer('get_client_diff', {
+        client: clientName,
+        branch: branchName
+      });
+      
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          if (parsed.success && parsed.diff) {
+            return this.parseDiff(parsed.diff);
+          }
+        } catch (parseError) {
+          // If parsing fails, assume the content is the diff itself
+          return this.parseDiff(response.content);
+        }
+      }
+      
+      const rawDiff = response.content || 'No changes found';
+      return this.parseDiff(rawDiff);
+    } catch (error) {
+      console.error(`Error getting diff for ${clientName}${branchName ? ' branch ' + branchName : ''}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse raw git diff into structured format
+   */
+  parseDiff(rawDiff) {
+    if (!rawDiff || rawDiff === 'No changes found' || rawDiff.trim() === '') {
+      return {
+        files: [],
+        stats: { files: 0, insertions: 0, deletions: 0 },
+        raw: rawDiff
+      };
+    }
+
+    const files = [];
+    const lines = rawDiff.split('\n');
+    let currentFile = null;
+    let currentHunk = null;
+    let totalInsertions = 0;
+    let totalDeletions = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // File header: diff --git a/file b/file
+      if (line.startsWith('diff --git')) {
+        if (currentFile) {
+          files.push(currentFile);
+        }
+        
+        // Extract filename
+        const match = line.match(/diff --git a\/(.+?) b\/(.+)/);
+        const filename = match ? match[2] : 'unknown';
+        
+        currentFile = {
+          filename: filename,
+          additions: 0,
+          deletions: 0,
+          hunks: []
+        };
+        currentHunk = null;
+      }
+      // Hunk header: @@ -1,4 +1,6 @@
+      else if (line.startsWith('@@')) {
+        if (currentFile) {
+          if (currentHunk) {
+            currentFile.hunks.push(currentHunk);
+          }
+          
+          currentHunk = {
+            header: line,
+            lines: []
+          };
+        }
+      }
+      // Added line
+      else if (line.startsWith('+') && !line.startsWith('+++')) {
+        if (currentHunk) {
+          currentHunk.lines.push({
+            type: 'added',
+            content: line.substring(1),
+            lineNumber: ''
+          });
+          if (currentFile) {
+            currentFile.additions++;
+            totalInsertions++;
+          }
+        }
+      }
+      // Removed line
+      else if (line.startsWith('-') && !line.startsWith('---')) {
+        if (currentHunk) {
+          currentHunk.lines.push({
+            type: 'removed',
+            content: line.substring(1),
+            lineNumber: ''
+          });
+          if (currentFile) {
+            currentFile.deletions++;
+            totalDeletions++;
+          }
+        }
+      }
+      // Context line
+      else if (line.startsWith(' ') && currentHunk) {
+        currentHunk.lines.push({
+          type: 'context',
+          content: line.substring(1),
+          lineNumber: ''
+        });
+      }
+    }
+
+    // Add last file and hunk
+    if (currentHunk && currentFile) {
+      currentFile.hunks.push(currentHunk);
+    }
+    if (currentFile) {
+      files.push(currentFile);
+    }
+
+    return {
+      files: files,
+      stats: {
+        files: files.length,
+        insertions: totalInsertions,
+        deletions: totalDeletions
+      },
+      raw: rawDiff
+    };
+  }
+
+  /**
+   * Check Docker image status for a client branch
+   */
+  async checkBranchDockerStatus(clientName, branchName = null) {
+    try {
+      const response = await this.callMCPServer('check_branch_docker_status', {
+        client: clientName,
+        branch: branchName
+      });
+      
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          if (parsed.success) {
+            return parsed;
+          }
+        } catch (parseError) {
+          console.error('Error parsing Docker status response:', parseError);
+        }
+      }
+      
+      return {
+        success: false,
+        status: 'unknown',
+        message: 'Could not check Docker status'
+      };
+    } catch (error) {
+      console.error(`Error checking Docker status for ${clientName}${branchName ? ' branch ' + branchName : ''}:`, error);
+      return {
+        success: false,
+        status: 'error',
+        message: error.message
+      };
+    }
+  }
+
   // Mock data methods
   getMockClients() {
     return [
@@ -1036,7 +1559,15 @@ class DataService {
 
   getMockClient(clientName) {
     const clients = this.getMockClients();
-    const client = clients.find(c => c.name === clientName);
+    
+    // Extract base client name if it's a branch name (e.g., "njtest-staging-2025-07-20" -> "njtest")
+    const baseClientName = clientName.includes('-') ? clientName.split('-')[0] : clientName;
+    
+    // First try to find exact match, then try base name
+    let client = clients.find(c => c.name === clientName);
+    if (!client) {
+      client = clients.find(c => c.name === baseClientName || c.baseClientName === baseClientName);
+    }
     
     if (!client) {
       throw new Error(`Client ${clientName} not found`);
@@ -1228,6 +1759,374 @@ class DataService {
         branch: 'upgrade-odoo-18'
       }
     ];
+  }
+
+  /**
+   * Get Traefik configuration
+   */
+  async getTraefikConfig() {
+    if (this.mockMode) {
+      return { domain: 'local', protocol: 'http' };
+    }
+
+    try {
+      const response = await this.callMCPServer('get_traefik_config');
+      return response;
+    } catch (error) {
+      console.error('Error getting Traefik config:', error);
+      // Return default values on error
+      return { domain: 'local', protocol: 'http' };
+    }
+  }
+
+  /**
+   * Get Git configuration
+   */
+  async getGitConfig() {
+    if (this.mockMode) {
+      return {
+        userName: 'Mock User',
+        userEmail: 'mock@example.com'
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('get_git_config');
+      
+      // Parse the JSON content from MCP response
+      if (response && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          return parsed;
+        } catch (parseError) {
+          console.error('Error parsing Git config response:', parseError);
+          return null;
+        }
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Error getting Git config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Save Git configuration
+   */
+  async saveGitConfig(config) {
+    if (this.mockMode) {
+      return { success: true };
+    }
+
+    try {
+      const response = await this.callMCPServer('save_git_config', {
+        user_name: config.userName,
+        user_email: config.userEmail
+      });
+      
+      console.log('Raw MCP response for save_git_config:', response);
+      
+      // Parse the JSON content from MCP response
+      if (response && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          console.log('Parsed Git config response:', parsed);
+          return parsed;
+        } catch (parseError) {
+          console.error('Error parsing Git config response:', parseError);
+          console.log('Raw content was:', response.content);
+          return { success: false, error: 'Failed to parse server response' };
+        }
+      }
+      
+      console.log('No content to parse, returning raw response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error saving Git config:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set Traefik configuration and update MCP URL
+   */
+  async setTraefikConfig(domain, protocol) {
+    if (this.mockMode) {
+      return { success: true };
+    }
+
+    try {
+      const response = await this.callMCPServer('set_traefik_config', {
+        domain: domain,
+        protocol: protocol
+      });
+      
+      // Update our local domain and MCP URL
+      if (response && response.success !== false) {
+        this.traefikDomain = domain;
+        this.mcpServerURL = `http://mcp.${domain}`;
+        console.log('Updated MCP server URL to:', this.mcpServerURL);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Error setting Traefik config:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync submodules for a client (force sync)
+   */
+  async updateClientSubmodules(clientName) {
+    if (this.mockMode) {
+      return { success: true, message: 'Submodules synchronized successfully' };
+    }
+
+    try {
+      const response = await this.callMCPServer('update_client_submodules', {
+        client: clientName
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error syncing submodules:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Check status of submodules and detect outdated ones
+   */
+  async checkSubmodulesStatus(clientName) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        submodules: [
+          {
+            path: 'addons/partner-contact',
+            current_commit: 'abc123',
+            current_message: 'Current version',
+            latest_commit: 'def456',
+            latest_message: 'Latest version with improvements',
+            needs_update: true,
+            branch: '18.0'
+          },
+          {
+            path: 'addons/account-analytic',
+            current_commit: 'ghi789',
+            current_message: 'Up to date version',
+            latest_commit: 'ghi789',
+            latest_message: 'Up to date version',
+            needs_update: false,
+            branch: '18.0'
+          }
+        ]
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('check_submodules_status', {
+        client: clientName
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error checking submodules status:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Update a specific submodule to latest version
+   */
+  async updateSubmodule(clientName, submodulePath) {
+    if (this.mockMode) {
+      return { 
+        success: true, 
+        message: `Submodule '${submodulePath}' updated successfully`,
+        new_commit: 'xyz999',
+        commit_message: 'Latest improvements'
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('update_submodule', {
+        client: clientName,
+        submodule_path: submodulePath
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error updating submodule:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Update all outdated submodules to their latest versions
+   */
+  async updateAllSubmodules(clientName) {
+    if (this.mockMode) {
+      return { 
+        success: true, 
+        message: 'Updated 2 submodules',
+        updated_count: 2,
+        failed_count: 0,
+        updated_submodules: [
+          { path: 'addons/partner-contact', old_commit: 'abc123', new_commit: 'def456' },
+          { path: 'addons/server-ux', old_commit: 'ghi789', new_commit: 'jkl012' }
+        ],
+        failed_submodules: []
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('update_all_submodules', {
+        client: clientName
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error updating all submodules:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Add an OCA module to a client
+   */
+  async addOcaModuleToClient(clientName, moduleKey, branch = null) {
+    if (this.mockMode) {
+      return { 
+        success: true, 
+        message: `OCA module '${moduleKey}' added successfully to client '${clientName}'`
+      };
+    }
+
+    try {
+      const params = { client: clientName, module_key: moduleKey };
+      if (branch) {
+        params.branch = branch;
+      }
+
+      const response = await this.callMCPServer('add_oca_module_to_client', params);
+      return response;
+    } catch (error) {
+      console.error('Error adding OCA module:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Add an external repository to a client
+   */
+  async addExternalRepoToClient(clientName, repoUrl, repoName, branch = null) {
+    if (this.mockMode) {
+      return { 
+        success: true, 
+        message: `External repository '${repoName}' added successfully to client '${clientName}'`
+      };
+    }
+
+    try {
+      const params = { 
+        client: clientName, 
+        repo_url: repoUrl, 
+        repo_name: repoName 
+      };
+      if (branch) {
+        params.branch = branch;
+      }
+
+      const response = await this.callMCPServer('add_external_repo_to_client', params);
+      return response;
+    } catch (error) {
+      console.error('Error adding external repository:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Change the branch of a submodule
+   */
+  async changeSubmoduleBranch(clientName, submodulePath, newBranch) {
+    if (this.mockMode) {
+      return { 
+        success: true, 
+        message: `Submodule '${submodulePath}' branch changed to '${newBranch}' successfully`
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('change_submodule_branch', {
+        client: clientName,
+        submodule_path: submodulePath,
+        new_branch: newBranch
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error changing submodule branch:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Remove a submodule from a client
+   */
+  async removeSubmodule(clientName, submodulePath) {
+    if (this.mockMode) {
+      return { 
+        success: true, 
+        message: `Submodule '${submodulePath}' removed successfully from client '${clientName}'`
+      };
+    }
+
+    try {
+      const response = await this.callMCPServer('remove_submodule', {
+        client: clientName,
+        submodule_path: submodulePath
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error removing submodule:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * List available OCA modules
+   */
+  async listAvailableOcaModules(search = null) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        modules: [
+          { key: 'account-analytic', description: 'Account analytic tools and utilities' },
+          { key: 'partner-contact', description: 'Partner and contact management extensions' },
+          { key: 'server-ux', description: 'Server user experience improvements' },
+          { key: 'stock-logistics-workflow', description: 'Stock and logistics workflow management' },
+          { key: 'project', description: 'Project management tools' }
+        ].filter(m => !search || m.key.includes(search) || m.description.toLowerCase().includes(search.toLowerCase())),
+        total: 5
+      };
+    }
+
+    try {
+      const params = {};
+      if (search) {
+        params.search = search;
+      }
+
+      const response = await this.callMCPServer('list_available_oca_modules', params);
+      return response;
+    } catch (error) {
+      console.error('Error listing available OCA modules:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

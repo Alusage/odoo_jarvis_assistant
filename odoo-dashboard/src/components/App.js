@@ -51,6 +51,7 @@ export class App extends Component {
           onClientSelect="(client) => this.onClientSelect(client)"
           onToggleSidebar="() => this.onToggleSidebar()"
           onRefreshClients="() => this.loadClients()"
+          onSidebarReady="(sidebarComponent) => this.setSidebarRef(sidebarComponent)"
         />
         
         <!-- Main Content -->
@@ -61,12 +62,16 @@ export class App extends Component {
               currentTab="state.currentTab"
               onTabChange="(tab) => this.onTabChange(tab)"
               onClientCreated="() => this.loadClients()"
+              onDockerStatusChange="() => this.refreshDockerStatuses()"
             />
           </div>
           
           <!-- Clients Overview (No client selected) -->
           <div t-else="" class="h-full">
-            <ClientsOverview onClientSelect="(client) => this.onClientSelect(client)"/>
+            <ClientsOverview 
+              onClientSelect="(client) => this.onClientSelect(client)"
+              refreshKey="state.clientsRefreshKey"
+            />
           </div>
         </main>
       </div>
@@ -100,6 +105,7 @@ export class App extends Component {
 
   setup() {
     this.navbarRef = null;
+    this.sidebarRef = null;
     this.state = useState({
       currentProject: 'odoo-alusage',
       user: {
@@ -117,7 +123,8 @@ export class App extends Component {
       loading: true,
       settingsOpen: false,
       createClientModalOpen: false,
-      mcpServerError: null
+      mcpServerError: null,
+      clientsRefreshKey: 0
     });
 
     onMounted(async () => {
@@ -148,6 +155,9 @@ export class App extends Component {
       if (this.state.selectedBaseClient && clients.length > 0) {
         this.autoSelectGitCurrentBranch(clients);
       }
+      
+      // Increment refresh key to trigger ClientsOverview reload
+      this.state.clientsRefreshKey++;
     } catch (error) {
       console.error('Error loading clients:', error);
       const mcpStatus = dataService.getMCPStatus();
@@ -300,5 +310,15 @@ export class App extends Component {
 
   setNavbarRef(navbarComponent) {
     this.navbarRef = navbarComponent;
+  }
+
+  setSidebarRef(sidebarComponent) {
+    this.sidebarRef = sidebarComponent;
+  }
+
+  async refreshDockerStatuses() {
+    if (this.sidebarRef && this.sidebarRef.refreshDockerStatuses) {
+      await this.sidebarRef.refreshDockerStatuses();
+    }
   }
 }

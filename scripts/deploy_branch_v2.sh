@@ -161,7 +161,7 @@ get_next_port() {
 # Variables
 VERSION=$(get_branch_version "$BRANCH_NAME")
 CLEAN_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g')
-IMAGE_NAME="odoo-alusage-${CLIENT_NAME}-${CLEAN_BRANCH}:${VERSION}"
+IMAGE_NAME="odoo-alusage-${CLIENT_NAME}:${VERSION}"
 
 # Container naming: branche-odoo-client format
 CONTAINER_NAME="${CLEAN_BRANCH}-odoo-${CLIENT_NAME}"
@@ -169,7 +169,7 @@ POSTGRES_CONTAINER_NAME="${CLEAN_BRANCH}-postgres-${CLIENT_NAME}"
 NETWORK_NAME="${CLIENT_NAME}-${CLEAN_BRANCH}-network"
 
 # Traefik URLs
-TRAEFIK_URL="${CLEAN_BRANCH}.${CLIENT_NAME}.localhost"
+TRAEFIK_URL="${CLEAN_BRANCH}.${CLIENT_NAME}.local"
 
 # Get port
 if [[ -z "$CUSTOM_PORT" ]]; then
@@ -189,7 +189,12 @@ echo
 
 # Function to check if image exists
 image_exists() {
-    docker images -q "$IMAGE_NAME" 2>/dev/null | grep -q .
+    # For branches other than production, look for any image with branch pattern
+    if [[ "$BRANCH_NAME" != "18.0" ]]; then
+        docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^odoo-alusage-${CLIENT_NAME}:${CLEAN_BRANCH}-"
+    else
+        docker images -q "$IMAGE_NAME" 2>/dev/null | grep -q .
+    fi
 }
 
 # Function to check if container exists
@@ -365,9 +370,19 @@ show_status() {
     echo -e "${BLUE}=== Deployment Status ===${NC}"
     
     if image_exists; then
-        echo -e "${GREEN}✓ Image exists: $IMAGE_NAME${NC}"
+        if [[ "$BRANCH_NAME" != "18.0" ]]; then
+            # Show actual images found for this branch
+            local found_images=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^odoo-alusage-${CLIENT_NAME}:${CLEAN_BRANCH}-")
+            echo -e "${GREEN}✓ Image exists: $found_images${NC}"
+        else
+            echo -e "${GREEN}✓ Image exists: $IMAGE_NAME${NC}"
+        fi
     else
-        echo -e "${RED}✗ Image not found: $IMAGE_NAME${NC}"
+        if [[ "$BRANCH_NAME" != "18.0" ]]; then
+            echo -e "${RED}✗ Image not found: odoo-alusage-${CLIENT_NAME}:${CLEAN_BRANCH}-*${NC}"
+        else
+            echo -e "${RED}✗ Image not found: $IMAGE_NAME${NC}"
+        fi
     fi
     
     if container_exists; then

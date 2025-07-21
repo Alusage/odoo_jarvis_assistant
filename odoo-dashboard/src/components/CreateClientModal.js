@@ -193,27 +193,39 @@ export class CreateClientModal extends Component {
     try {
       // Always use create_client_github - it will automatically fall back to normal creation if GitHub is not configured
       console.log('Creating client via MCP server...');
-      const response = await fetch('http://mcp.localhost/tools/call', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: 'create_client_github',
-          arguments: {
-            name: this.state.newClient.name,
-            template: this.state.newClient.template,
-            version: this.state.newClient.version,
-            has_enterprise: this.state.newClient.hasEnterprise
-          }
-        })
+      const mcpResult = await dataService.callMCPServer('create_client_github', {
+        name: this.state.newClient.name,
+        template: this.state.newClient.template,
+        version: this.state.newClient.version,
+        has_enterprise: this.state.newClient.hasEnterprise
       });
-
-      const mcpResult = await response.json();
-      const result = {
-        success: mcpResult.success,
-        message: mcpResult.success ? mcpResult.result.content : mcpResult.error
-      };
+      console.log('MCP Result:', mcpResult);
+      
+      // Parse MCP server response - mcpResult has structure: {success, result: {type, content}, error}
+      let result;
+      if (mcpResult.success && mcpResult.result && mcpResult.result.content) {
+        // Successful MCP response
+        const responseText = mcpResult.result.content;
+        result = {
+          success: true,
+          message: responseText
+        };
+      } else if (mcpResult.error) {
+        // Error response
+        result = {
+          success: false,
+          error: mcpResult.error
+        };
+      } else {
+        // Fallback - check if there's any content in result
+        const responseText = mcpResult.result?.content || mcpResult.result?.text || JSON.stringify(mcpResult);
+        const isSuccess = responseText.includes('✅') || responseText.includes('created successfully');
+        result = {
+          success: isSuccess,
+          message: isSuccess ? responseText : undefined,
+          error: isSuccess ? undefined : responseText
+        };
+      }
 
       if (result.success) {
         this.state.createResult = {
@@ -236,7 +248,7 @@ export class CreateClientModal extends Component {
       } else {
         this.state.createResult = {
           success: false,
-          error: result.error || 'Unknown error occurred'
+          error: result.error || result.message || 'Unknown error occurred'
         };
       }
     } catch (error) {

@@ -137,7 +137,7 @@ link_modules() {
     
     for module in "${modules_to_link[@]}"; do
         if [ -d "$submodule_path/$module" ] && [ -f "$submodule_path/$module/__manifest__.py" ]; then
-            ln -sf "../../$submodule_path/$module" "extra-addons/$module"
+            ln -sf "../$submodule_path/$module" "extra-addons/$module"
             echo_success "Module '$module' lié dans extra-addons"
         else
             echo_error "Module '$module' non trouvé dans $submodule_path"

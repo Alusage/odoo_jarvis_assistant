@@ -362,8 +362,6 @@ EOF
 # Docker Compose pour le client $CLIENT_NAME
 # Version avec support Traefik
 
-version: '3.8'
-
 services:
   odoo:
     # Option 1: Utiliser l'image construite localement (recommandé)
@@ -388,13 +386,13 @@ services:
       - traefik.enable=true
       # Odoo
       - traefik.http.routers.odoo-$CLIENT_NAME.entrypoints=web
-      - traefik.http.routers.odoo-$CLIENT_NAME.rule=Host(\`dev.$CLIENT_NAME.localhost\`)
+      - traefik.http.routers.odoo-$CLIENT_NAME.rule=Host(\`dev.$CLIENT_NAME.\${TRAEFIK_DOMAIN:-localhost}\`)
       - traefik.http.services.odoo-$CLIENT_NAME.loadbalancer.server.port=8069
       - traefik.http.routers.odoo-$CLIENT_NAME.service=odoo-$CLIENT_NAME@docker
       - traefik.http.routers.odoo-$CLIENT_NAME.middlewares=odoo-forward@docker,odoo-compress@docker
       # Odoo Websocket
       - traefik.http.routers.odoo-$CLIENT_NAME-ws.entrypoints=web
-      - traefik.http.routers.odoo-$CLIENT_NAME-ws.rule=Path(\`/websocket\`) && Host(\`dev.$CLIENT_NAME.localhost\`)
+      - traefik.http.routers.odoo-$CLIENT_NAME-ws.rule=Path(\`/websocket\`) && Host(\`dev.$CLIENT_NAME.\${TRAEFIK_DOMAIN:-localhost}\`)
       - traefik.http.services.odoo-$CLIENT_NAME-ws.loadbalancer.server.port=8072
       - traefik.http.routers.odoo-$CLIENT_NAME-ws.service=odoo-$CLIENT_NAME-ws@docker
       - traefik.http.routers.odoo-$CLIENT_NAME-ws.middlewares=odoo-headers@docker,odoo-forward@docker,odoo-compress@docker
@@ -444,6 +442,21 @@ services:
       retries: 5
       start_period: 60s
 
+  postgres-init:
+    image: alpine:3.18
+    container_name: postgres-init-$CLIENT_NAME
+    command: |
+      sh -c "
+        mkdir -p /data/postgresql-data &&
+        chown 999:999 /data/postgresql-data &&
+        chmod 755 /data/postgresql-data &&
+        echo 'PostgreSQL data directory created with correct permissions'
+      "
+    volumes:
+      - ./data:/data
+    profiles:
+      - init
+
   postgresql-$CLIENT_NAME:
     image: postgres:15
     container_name: postgresql-$CLIENT_NAME
@@ -457,7 +470,7 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
     
     volumes:
-      - ./data/postgresql:/var/lib/postgresql/data
+      - ./data/postgresql-data:/var/lib/postgresql/data
     
     # Healthcheck pour PostgreSQL
     healthcheck:
@@ -474,10 +487,8 @@ networks:
   traefik-local:
     external: true
 
-# Volumes nommés optionnels (alternative aux bind mounts)
-# volumes:
-#   odoo_data:
-#   postgres_data:
+# Note: PostgreSQL utilise maintenant un bind mount vers ./data/postgresql-data
+# Ce dossier sera créé automatiquement et ignoré par Git
 EOF
 
     # requirements.txt
@@ -485,6 +496,26 @@ EOF
 # Requirements pour Odoo $ODOO_VERSION
 wheel
 setuptools
+EOF
+    
+    # project_config.json - Configuration pour la gestion des branches et modules
+    cat > "$CLIENT_DIR/project_config.json" << EOF
+{
+  "version": "1.0",
+  "project_name": "$CLIENT_NAME",
+  "odoo_version": "$ODOO_VERSION",
+  "linked_modules": {},
+  "branch_configs": {},
+  "settings": {
+    "auto_restore_modules": true,
+    "backup_before_switch": true
+  },
+  "metadata": {
+    "created": "$(date -Iseconds)",
+    "last_updated": "$(date -Iseconds)",
+    "updated_by": "generate_client_repo"
+  }
+}
 EOF
 
     # Créer les fichiers .gitkeep pour les dossiers vides
@@ -837,6 +868,84 @@ echo "📂 Structure des dossiers de données:"
 ls -la data/ logs/ 2>/dev/null || true
 EOF
 
+    # Script de build Docker par branche
+    cat > "$CLIENT_DIR/scripts/build_client_branch_docker.sh" << 'EOF'
+#!/bin/bash
+
+# Script pour construire une image Docker spécifique à une branche
+# Utilise la même logique que le script principal mais adapté au contexte client
+
+set -e
+
+# Détection automatique du répertoire de base
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLIENT_DIR="$(dirname "$SCRIPT_DIR")"
+BASE_DIR="$(cd "$CLIENT_DIR/../.." && pwd)"
+
+# Extraire le nom du client depuis le répertoire
+CLIENT_NAME="$(basename "$CLIENT_DIR")"
+
+echo "🔨 Building Docker image for client: $CLIENT_NAME"
+echo "📁 Client directory: $CLIENT_DIR"
+echo "🏠 Base directory: $BASE_DIR"
+
+# Appeler le script principal depuis le répertoire de base
+cd "$BASE_DIR"
+exec ./scripts/build_client_branch_docker.sh "$CLIENT_NAME" "$@"
+EOF
+
+    # Script de démarrage par branche avec Compose
+    cat > "$CLIENT_DIR/scripts/start_client_branch.sh" << 'EOF'
+#!/bin/bash
+
+# Script pour démarrer un service Docker spécifique à une branche
+# Utilise la même logique que le script principal mais adapté au contexte client
+
+set -e
+
+# Détection automatique du répertoire de base
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLIENT_DIR="$(dirname "$SCRIPT_DIR")"
+BASE_DIR="$(cd "$CLIENT_DIR/../.." && pwd)"
+
+# Extraire le nom du client depuis le répertoire
+CLIENT_NAME="$(basename "$CLIENT_DIR")"
+
+echo "🚀 Starting branch service for client: $CLIENT_NAME"
+echo "📁 Client directory: $CLIENT_DIR"
+echo "🏠 Base directory: $BASE_DIR"
+
+# Appeler le script principal depuis le répertoire de base
+cd "$BASE_DIR"
+exec ./scripts/start_client_branch_compose.sh "$CLIENT_NAME" "$@"
+EOF
+
+    # Script d'arrêt par branche avec Compose
+    cat > "$CLIENT_DIR/scripts/stop_client_branch.sh" << 'EOF'
+#!/bin/bash
+
+# Script pour arrêter un service Docker spécifique à une branche
+# Utilise la même logique que le script principal mais adapté au contexte client
+
+set -e
+
+# Détection automatique du répertoire de base
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLIENT_DIR="$(dirname "$SCRIPT_DIR")"
+BASE_DIR="$(cd "$CLIENT_DIR/../.." && pwd)"
+
+# Extraire le nom du client depuis le répertoire
+CLIENT_NAME="$(basename "$CLIENT_DIR")"
+
+echo "🛑 Stopping branch service for client: $CLIENT_NAME"
+echo "📁 Client directory: $CLIENT_DIR"
+echo "🏠 Base directory: $BASE_DIR"
+
+# Appeler le script principal depuis le répertoire de base
+cd "$BASE_DIR"
+exec ./scripts/stop_client_branch_compose.sh "$CLIENT_NAME" "$@"
+EOF
+
     # Rendre les scripts exécutables
     chmod +x "$CLIENT_DIR/scripts"/*.sh
 }
@@ -1153,8 +1262,8 @@ RUN mkdir -p \${CUSTOM_CONF_DIR} \${EXTRA_ADDONS_DIR} \${ADDONS_DIR} /data /var/
     chmod -R 755 /data /var/lib/odoo
 
 # Étape 5 : Copier les scripts personnalisés
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY install_requirements.sh /usr/local/bin/install_requirements.sh
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/install_requirements.sh /usr/local/bin/install_requirements.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/install_requirements.sh
 
 # Étape 6 : Configurer le PATH pour l'utilisateur odoo

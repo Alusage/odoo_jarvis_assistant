@@ -1,5 +1,6 @@
 import { Component, useState, xml } from "@odoo/owl";
 import { BranchSwitchProgress } from "./BranchSwitchProgress.js";
+import { dataService } from "../services/dataService.js";
 
 export class Sidebar extends Component {
   static template = xml`
@@ -68,7 +69,11 @@ export class Sidebar extends Component {
                   t-on-dragend="(ev) => this.handleDragEnd(ev)"
                 >
                   <div class="flex items-center space-x-2 flex-1">
-                    <div t-att-class="getStatusClass(client.status)" class="w-2 h-2 rounded-full"/>
+                    <div 
+                      t-att-class="getStatusClass(client)" 
+                      t-att-title="getStatusTooltip(client)"
+                      class="w-2 h-2 rounded-full"
+                    />
                     <div t-if="!props.sidebarCollapsed" class="flex-1 text-left">
                       <div class="flex items-center justify-between">
                         <!-- Display mode -->
@@ -151,7 +156,11 @@ export class Sidebar extends Component {
                   t-on-click="() => this.selectClient(client)"
                 >
                   <div class="flex items-center space-x-2 flex-1">
-                    <div t-att-class="getStatusClass(client.status)" class="w-2 h-2 rounded-full"/>
+                    <div 
+                      t-att-class="getStatusClass(client)" 
+                      t-att-title="getStatusTooltip(client)"
+                      class="w-2 h-2 rounded-full"
+                    />
                     <div t-if="!props.sidebarCollapsed" class="flex-1 text-left">
                       <div class="flex items-center justify-between">
                         <!-- Display mode -->
@@ -234,7 +243,11 @@ export class Sidebar extends Component {
                   t-on-click="() => this.selectClient(client)"
                 >
                   <div class="flex items-center space-x-2 flex-1">
-                    <div t-att-class="getStatusClass(client.status)" class="w-2 h-2 rounded-full"/>
+                    <div 
+                      t-att-class="getStatusClass(client)" 
+                      t-att-title="getStatusTooltip(client)"
+                      class="w-2 h-2 rounded-full"
+                    />
                     <div t-if="!props.sidebarCollapsed" class="flex-1 text-left">
                       <div class="flex items-center justify-between">
                         <!-- Display mode -->
@@ -357,11 +370,21 @@ export class Sidebar extends Component {
       currentProgressParams: null,
       editingBranch: null,
       newBranchName: '',
-      editingClient: null
+      editingClient: null,
+      dockerStatusCache: new Map(), // Cache for Docker status checks
+      statusCheckInProgress: new Set() // Track ongoing status checks
     });
 
     // Reference to progress dialog component
     this.progressDialog = null;
+    
+    // Check Docker status for all clients on mount
+    this.checkAllDockerStatuses();
+    
+    // Register this component with parent for external method calls
+    if (this.props.onSidebarReady) {
+      this.props.onSidebarReady(this);
+    }
   }
 
   get filteredClients() {
@@ -513,7 +536,7 @@ export class Sidebar extends Component {
     
     try {
       // Use WebSocket for real-time progress
-      const wsUrl = `ws://mcp.localhost/branch-switch/${clientName}`;
+      const wsUrl = dataService.getBranchSwitchWsUrl(clientName);
       const websocket = new WebSocket(wsUrl);
       
       websocket.onopen = () => {
@@ -562,8 +585,8 @@ export class Sidebar extends Component {
             // Auto-close progress dialog after a short delay if successful
             setTimeout(() => {
               this.closeProgressDialog();
-              // Reload the page to reflect the new branch
-              window.location.reload();
+              // Instead of reloading, stay on the switched branch
+              this.stayOnSwitchedBranch(message.current_branch);
             }, 2000);
             websocket.close();
             break;
@@ -681,14 +704,129 @@ export class Sidebar extends Component {
     return '';
   }
 
-  getStatusClass(status) {
-    const statusClasses = {
-      'healthy': 'bg-green-500',
-      'warning': 'bg-yellow-500',
-      'error': 'bg-red-500',
-      'critical': 'bg-red-600'
-    };
-    return statusClasses[status] || 'bg-slate-400';
+  getStatusClass(client) {
+    // Get Docker status for this client/branch
+    const dockerStatus = this.getDockerStatus(client);
+    
+    // Map Docker status to visual indicators
+    switch (dockerStatus) {
+      case 'running':
+        return 'bg-green-500'; // Green - running
+      case 'stopped':
+        return 'bg-green-400'; // Light green - stopped but image exists
+      case 'outdated':
+        return 'bg-yellow-500'; // Orange - outdated image
+      case 'missing':
+        return 'bg-red-500'; // Red - no image
+      case 'checking':
+        return 'bg-blue-500 animate-pulse'; // Blue pulsing - checking status
+      default:
+        return 'bg-slate-400'; // Gray - unknown status
+    }
+  }
+
+  getStatusTooltip(client) {
+    const dockerStatus = this.getDockerStatus(client);
+    const clientKey = `${client.name}:${client.branch || 'main'}`;
+    const cachedStatus = this.state.dockerStatusCache.get(clientKey);
+    
+    switch (dockerStatus) {
+      case 'running':
+        return 'Docker container is running';
+      case 'stopped':
+        return 'Docker image exists but container is stopped';
+      case 'outdated':
+        return 'Docker image exists but is outdated compared to Git repository';
+      case 'missing':
+        return 'No Docker image found for this branch';
+      case 'checking':
+        return 'Checking Docker status...';
+      default:
+        const details = cachedStatus?.details || 'Unknown Docker status';
+        return `Docker status unknown: ${details}`;
+    }
+  }
+
+  getDockerStatus(client) {
+    const clientKey = `${client.name}:${client.branch || 'main'}`;
+    const cachedStatus = this.state.dockerStatusCache.get(clientKey);
+    
+    if (cachedStatus) {
+      return cachedStatus.status;
+    }
+    
+    // If not in cache and not currently checking, start a check
+    if (!this.state.statusCheckInProgress.has(clientKey)) {
+      this.checkDockerStatus(client);
+      return 'checking';
+    }
+    
+    return 'unknown';
+  }
+
+  async checkDockerStatus(client) {
+    const clientKey = `${client.name}:${client.branch || 'main'}`;
+    
+    // Mark as checking
+    this.state.statusCheckInProgress.add(clientKey);
+    
+    try {
+      // Extract base client name (remove environment suffix)
+      const baseClientName = client.name.split('-')[0];
+      const branchName = client.branch || client.currentBranch || 'main';
+      
+      const result = await dataService.checkBranchDockerStatus(baseClientName, branchName);
+      
+      if (result.success) {
+        // Cache the result
+        this.state.dockerStatusCache.set(clientKey, {
+          status: result.status,
+          timestamp: Date.now(),
+          details: result.details
+        });
+        
+        // Force re-render by creating new Map
+        this.state.dockerStatusCache = new Map(this.state.dockerStatusCache);
+      } else {
+        // Cache error as unknown status
+        this.state.dockerStatusCache.set(clientKey, {
+          status: 'unknown',
+          timestamp: Date.now(),
+          details: result.message
+        });
+        this.state.dockerStatusCache = new Map(this.state.dockerStatusCache);
+      }
+    } catch (error) {
+      console.error(`Error checking Docker status for ${clientKey}:`, error);
+      // Cache error as unknown status
+      this.state.dockerStatusCache.set(clientKey, {
+        status: 'unknown',
+        timestamp: Date.now(),
+        details: error.message
+      });
+      this.state.dockerStatusCache = new Map(this.state.dockerStatusCache);
+    } finally {
+      // Remove from checking set
+      this.state.statusCheckInProgress.delete(clientKey);
+      this.state.statusCheckInProgress = new Set(this.state.statusCheckInProgress);
+    }
+  }
+
+  async checkAllDockerStatuses() {
+    if (!this.props.clients) return;
+    
+    // Check status for all clients
+    const promises = this.props.clients.map(client => this.checkDockerStatus(client));
+    await Promise.allSettled(promises);
+  }
+
+  // Method to refresh Docker statuses (can be called externally)
+  async refreshDockerStatuses() {
+    // Clear cache for fresh check
+    this.state.dockerStatusCache.clear();
+    this.state.statusCheckInProgress.clear();
+    
+    await this.checkAllDockerStatuses();
   }
 
   // Drag and Drop methods
@@ -752,7 +890,7 @@ export class Sidebar extends Component {
       console.log(`Creating ${targetSection} branch ${branchName} from ${sourceClient.branch} for client ${baseClientName}`);
       
       // Call the API to create the branch
-      const response = await fetch('http://mcp.localhost/tools/call', {
+      const response = await fetch(`${dataService.getMcpServerUrl()}/tools/call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -859,7 +997,7 @@ export class Sidebar extends Component {
       const baseClientName = client.name.split('-')[0];
 
       // Call MCP server to rename the branch
-      const response = await fetch('http://mcp.localhost/tools/call', {
+      const response = await fetch(`${dataService.getMcpServerUrl()}/tools/call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -905,6 +1043,46 @@ export class Sidebar extends Component {
       console.error(`❌ ${message}`);
     } else {
       console.log(`ℹ️ ${message}`);
+    }
+  }
+
+  async stayOnSwitchedBranch(currentBranch) {
+    try {
+      // Refresh the clients list to get updated branch information
+      if (this.props.onRefreshClients) {
+        await this.props.onRefreshClients();
+      }
+      
+      // Find the client with the current branch and select it
+      if (this.state.currentProgressParams) {
+        const { clientName } = this.state.currentProgressParams;
+        
+        // Wait a bit for the client list to be updated
+        setTimeout(() => {
+          // Find the client entry that matches the base name and new branch
+          const allClients = this.getAllClients();
+          const targetClient = allClients.find(client => {
+            const baseName = client.name.split('-')[0];
+            const branchName = client.branch || client.currentBranch || 'main';
+            return baseName === clientName && branchName === currentBranch;
+          });
+          
+          if (targetClient && this.props.onClientSelect) {
+            console.log(`🎯 Auto-selecting switched client: ${targetClient.name} (branch: ${currentBranch})`);
+            this.props.onClientSelect(targetClient.name);
+          } else {
+            console.warn(`Could not find client for ${clientName} branch ${currentBranch}, falling back to refresh`);
+            // Fallback: just refresh the data without changing selection
+            if (this.props.onRefreshClients) {
+              this.props.onRefreshClients();
+            }
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error staying on switched branch:', error);
+      // Fallback: refresh the page if auto-selection fails
+      window.location.reload();
     }
   }
 

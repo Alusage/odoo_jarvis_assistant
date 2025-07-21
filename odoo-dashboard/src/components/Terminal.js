@@ -147,12 +147,7 @@ export class Terminal extends Component {
     this.state.connected = false;
 
     // Create WebSocket connection - use branch-specific endpoint if available
-    let wsUrl;
-    if (branchName && branchName !== '18.0') {
-      wsUrl = `ws://mcp.localhost/terminal/${baseName}/${branchName}`;
-    } else {
-      wsUrl = `ws://mcp.localhost/terminal/${baseName}`;
-    }
+    const wsUrl = dataService.getWsUrl(baseName, branchName && branchName !== '18.0' ? branchName : null);
     
     console.log(`🔌 Connecting to WebSocket: ${wsUrl}`);
     

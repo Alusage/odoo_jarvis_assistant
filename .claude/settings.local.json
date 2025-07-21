@@ -1,26 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls:*)",
-      "Bash(mkdir:*)",
-      "Bash(mv:*)",
-      "Bash(true)",
-      "Bash(git add:*)",
-      "Bash(./scripts/generate_client_repo.sh:*)",
-      "Bash(docker:*)",
-      "Bash(./build.sh)",
-      "Bash(chmod:*)",
-      "Bash(pip install:*)",
-      "Bash(python3:*)",
-      "Bash(grep:*)"
+      "Bash(find:*)"
     ],
     "deny": []
-  },
-  "customInstructions": [
-    "Always check that clients exist before running operations",
-    "Use exact GitHub repository names for OCA modules (with hyphens)",
-    "When creating commits, analyze all staged changes and draft appropriate commit messages",
-    "For Odoo client operations, always use the Makefile commands when available",
-    "NEVER add Claude advertising, promotional content, or 'Generated with Claude Code' messages in git commits"
-  ]
+  }
 }
