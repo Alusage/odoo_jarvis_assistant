@@ -2322,6 +2322,191 @@ class DataService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Toggle development mode for a repository
+   */
+  async toggleDevMode(clientName, repositoryName, branch = null) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: `Dev mode toggled for ${repositoryName}`,
+        mode: Math.random() > 0.5 ? 'dev' : 'production'
+      };
+    }
+
+    try {
+      const params = { client: clientName, repository: repositoryName };
+      if (branch) {
+        params.branch = branch;
+      }
+
+      console.log(`🛠️ Toggling dev mode for: ${repositoryName} on client: ${clientName}`, params);
+
+      const response = await this.callMCPServer('toggle_dev_mode', params);
+
+      console.log('🛠️ Raw MCP response for toggleDevMode:', response);
+
+      // Handle different response formats like in other methods
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          console.log('🛠️ Parsed JSON from text content:', parsed);
+          return parsed;
+        } catch (parseError) {
+          console.error('🛠️ JSON parse error:', parseError);
+          return { success: false, error: 'Failed to parse response' };
+        }
+      }
+
+      if (response && (response.success !== undefined || response.error !== undefined)) {
+        return response;
+      }
+
+      return { success: false, error: 'Unknown response format' };
+    } catch (error) {
+      console.error('🛠️ Error toggling dev mode:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Rename a development branch in a repository
+   */
+  async renameDevBranch(clientName, repositoryName, newBranchName, currentBranch = null) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: `Dev branch renamed to ${newBranchName}`,
+        oldBranch: 'dev-18.0-20250721-150638',
+        newBranch: newBranchName
+      };
+    }
+    try {
+      const params = { 
+        client: clientName, 
+        repository: repositoryName,
+        new_branch_name: newBranchName
+      };
+      if (currentBranch) {
+        params.current_branch = currentBranch;
+      }
+      console.log(`🔄 Renaming dev branch for: ${repositoryName} to: ${newBranchName}`, params);
+      const response = await this.callMCPServer('rename_dev_branch', params);
+      console.log('🔄 Raw MCP response for renameDevBranch:', response);
+      
+      // Handle different response formats like in other methods
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          console.log('🔄 Parsed JSON from text content:', parsed);
+          return parsed;
+        } catch (parseError) {
+          console.error('🔄 JSON parse error:', parseError);
+          return { success: false, error: 'Failed to parse response' };
+        }
+      }
+      if (response && (response.success !== undefined || response.error !== undefined)) {
+        return response;
+      }
+      return { success: false, error: 'Unknown response format' };
+    } catch (error) {
+      console.error('🔄 Error renaming dev branch:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get development status of repositories for a client
+   */
+  async getDevStatus(clientName, branch = null) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        branch: branch || '18.0',
+        repositories: {
+          'account-analytic': {
+            mode: 'dev',
+            dev_branch: 'feature/custom-analytics',
+            uncommitted_changes: true
+          },
+          'partner-contact': {
+            mode: 'production'
+          }
+        }
+      };
+    }
+
+    try {
+      const params = { client: clientName };
+      if (branch) {
+        params.branch = branch;
+      }
+
+      const response = await this.callMCPServer('get_dev_status', params);
+
+      // Handle different response formats
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          return parsed;
+        } catch (parseError) {
+          console.error('Error parsing dev status response:', parseError);
+          return { success: false, error: 'Failed to parse response' };
+        }
+      }
+
+      if (response && (response.success !== undefined)) {
+        return response;
+      }
+
+      return { success: false, error: 'Unknown response format' };
+    } catch (error) {
+      console.error('Error getting dev status:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Synchronize symbolic links for development/production modes
+   */
+  async syncDevLinks(clientName, branch = null) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: 'Links synchronized successfully'
+      };
+    }
+
+    try {
+      const params = { client: clientName };
+      if (branch) {
+        params.branch = branch;
+      }
+
+      const response = await this.callMCPServer('sync_dev_links', params);
+
+      // Handle different response formats
+      if (response && response.type === 'text' && response.content) {
+        try {
+          const parsed = JSON.parse(response.content);
+          return parsed;
+        } catch (parseError) {
+          console.error('Error parsing sync links response:', parseError);
+          return { success: false, error: 'Failed to parse response' };
+        }
+      }
+
+      if (response && (response.success !== undefined)) {
+        return response;
+      }
+
+      return { success: false, error: 'Unknown response format' };
+    } catch (error) {
+      console.error('Error syncing dev links:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export const dataService = new DataService();

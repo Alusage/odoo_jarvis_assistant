@@ -260,6 +260,18 @@ export class Dashboard extends Component {
                       <span class="badge badge-success">Up to Date</span>
                     </div>
                   </div>
+                  <!-- Dev Mode status -->
+                  <div class="mt-2">
+                    <div t-if="isDevModeActive(addon.name)" class="flex items-center space-x-2">
+                      <span class="badge bg-orange-100 text-orange-800 border-orange-200">🛠️ Dev Mode</span>
+                      <span t-if="getDevModeInfo(addon.name).dev_branch" class="text-xs text-gray-500">
+                        Branch: <span class="font-mono" t-esc="getDevModeInfo(addon.name).dev_branch"/>
+                      </span>
+                    </div>
+                    <div t-if="!isDevModeActive(addon.name)" class="flex items-center space-x-2">
+                      <span class="badge bg-blue-100 text-blue-800 border-blue-200">🏭 Production Mode</span>
+                    </div>
+                  </div>
                 </div>
                 <div class="flex items-center space-x-2">
                   <span class="badge badge-info" t-esc="addon.url"/>
@@ -293,6 +305,36 @@ export class Dashboard extends Component {
                       <span>Branch</span>
                     </button>
                     
+                    <!-- Dev Mode Toggle button -->
+                    <button 
+                      t-att-class="isDevModeActive(addon.name) ? 'btn-sm btn-warning flex items-center space-x-1' : 'btn-sm btn-outline flex items-center space-x-1'"
+                      t-on-click="() => this.toggleDevMode(addon.name)"
+                      t-att-disabled="state.togglingDevMode[addon.name] || state.updatingSubmodules"
+                      t-att-title="isDevModeActive(addon.name) ? 'Switch to Production Mode' : 'Switch to Dev Mode'"
+                    >
+                      <div t-if="state.togglingDevMode[addon.name]" class="animate-spin rounded-full h-3 w-3 border-b-2 border-current"/>
+                      <svg t-else="" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path t-if="isDevModeActive(addon.name)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                        <path t-else="" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"/>
+                      </svg>
+                      <span t-if="isDevModeActive(addon.name)">Dev Mode</span>
+                      <span t-else="">Dev Mode</span>
+                    </button>
+                    
+                    <!-- Rename dev branch button (only for dev mode) -->
+                    <button 
+                      t-if="isDevModeActive(addon.name)"
+                      class="btn-sm btn-secondary flex items-center space-x-1"
+                      t-on-click="() => this.promptRenameDevBranch(addon.name)"
+                      t-att-disabled="state.togglingDevMode[addon.name] || state.updatingSubmodules"
+                      title="Rename development branch"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                      <span>Rename</span>
+                    </button>
+
                     <!-- Remove repository button -->
                     <button 
                       class="btn-sm btn-danger flex items-center space-x-1"
@@ -921,7 +963,10 @@ export class Dashboard extends Component {
       // Traefik configuration
       traefikConfig: { domain: 'local', protocol: 'http' },
       editingTraefikConfig: false,
-      traefikConfigLoading: false
+      traefikConfigLoading: false,
+      // Dev mode management
+      devModeStatus: {}, // repo_name -> { mode: 'dev'|'production', dev_branch?: string, created_at?: string }
+      togglingDevMode: {}, // repo_name -> boolean
     });
 
     onMounted(() => {
@@ -1034,6 +1079,8 @@ export class Dashboard extends Component {
           }
           // Load submodules status
           await this.loadSubmodulesStatus();
+          // Load dev mode status
+          await this.loadDevModeStatus();
           break;
         case 'BUILDS':
           this.state.builds = await dataService.getBuildHistory(baseName, branchName);
@@ -1793,6 +1840,63 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
   }
 
   // ===========================
+  // Dev Mode Management
+  // ===========================
+  async loadDevModeStatus() {
+    try {
+      const { baseName } = this.parseClientInfo();
+      if (!baseName) return;
+      
+      const result = await dataService.getDevStatus(baseName);
+      if (result.success) {
+        this.state.devModeStatus = result.repositories || {};
+      } else {
+        console.error('Error loading dev mode status:', result.error);
+        this.state.devModeStatus = {};
+      }
+    } catch (error) {
+      console.error('Error loading dev mode status:', error);
+      this.state.devModeStatus = {};
+    }
+  }
+
+  async toggleDevMode(repoName) {
+    if (this.state.togglingDevMode[repoName]) return;
+    
+    try {
+      this.state.togglingDevMode[repoName] = true;
+      const { baseName } = this.parseClientInfo();
+      if (!baseName) return;
+      
+      const result = await dataService.toggleDevMode(baseName, repoName);
+      if (result.success) {
+        this.showCommitMessage(result.message || 'Dev mode toggled successfully', 'success');
+        // Reload dev mode status and addons
+        await Promise.all([
+          this.loadDevModeStatus(),
+          this.loadAddons()
+        ]);
+      } else {
+        this.showCommitMessage(`Failed to toggle dev mode: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling dev mode:', error);
+      this.showCommitMessage(`Error toggling dev mode: ${error.message}`, 'error');
+    } finally {
+      this.state.togglingDevMode[repoName] = false;
+    }
+  }
+
+  getDevModeInfo(repoName) {
+    return this.state.devModeStatus[repoName] || { mode: 'production' };
+  }
+
+  isDevModeActive(repoName) {
+    const info = this.getDevModeInfo(repoName);
+    return info.mode === 'dev';
+  }
+
+  // ===========================
   // Repository Management
   // ===========================
 
@@ -2034,6 +2138,48 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
       this.showCommitMessage(`Error removing repository: ${error.message}`, 'error');
     } finally {
       this.state.updatingSubmodules = false;
+    }
+  }
+
+  /**
+   * Prompt user to rename a development branch
+   */
+  async promptRenameDevBranch(repositoryName) {
+    const devInfo = this.getDevModeInfo(repositoryName);
+    const currentBranch = devInfo.dev_branch || 'unknown';
+    
+    const newBranchName = prompt(
+      `Rename development branch for repository "${repositoryName}"\n\nCurrent branch: ${currentBranch}\n\nEnter new branch name:`,
+      currentBranch.replace(/^dev-\d+\.\d+-\d{8}-\d{6}$/, '')
+    );
+    
+    if (!newBranchName || newBranchName.trim() === '') {
+      return;
+    }
+    
+    if (newBranchName === currentBranch) {
+      this.showCommitMessage('New branch name must be different from current name', 'warning');
+      return;
+    }
+    
+    try {
+      this.state.togglingDevMode[repositoryName] = true;
+      const { baseName } = this.parseClientInfo();
+      
+      const result = await dataService.renameDevBranch(baseName, repositoryName, newBranchName);
+      
+      if (result.success) {
+        this.showCommitMessage(result.message || `Development branch renamed to ${newBranchName}`, 'success');
+        // Reload dev mode status to reflect the new branch name
+        await this.loadDevModeStatus();
+      } else {
+        this.showCommitMessage(`Failed to rename dev branch: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error renaming dev branch:', error);
+      this.showCommitMessage(`Error renaming dev branch: ${error.message}`, 'error');
+    } finally {
+      this.state.togglingDevMode[repositoryName] = false;
     }
   }
 

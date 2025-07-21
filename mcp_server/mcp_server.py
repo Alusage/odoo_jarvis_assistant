@@ -1427,6 +1427,90 @@ class OdooClientMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="toggle_dev_mode",
+                    description="Toggle development mode for a repository (switch between submodule and git clone)",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "repository": {
+                                "type": "string",
+                                "description": "Name of the repository"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Target branch (optional, will auto-detect if not provided)"
+                            }
+                        },
+                        "required": ["client", "repository"]
+                    }
+                ),
+                types.Tool(
+                    name="get_dev_status",
+                    description="Get development status of repositories for a client",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Target branch (optional, will auto-detect if not provided)"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="sync_dev_links",
+                    description="Synchronize symbolic links for development/production modes",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "branch": {
+                                "type": "string",
+                                "description": "Target branch (optional, will auto-detect if not provided)"
+                            }
+                        },
+                        "required": ["client"]
+                    }
+                ),
+                types.Tool(
+                    name="rename_dev_branch",
+                    description="Rename a development branch in a repository",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "repository": {
+                                "type": "string",
+                                "description": "Repository name (e.g. 'project', 'account-analytic')"
+                            },
+                            "new_branch_name": {
+                                "type": "string",
+                                "description": "New name for the development branch"
+                            },
+                            "current_branch": {
+                                "type": "string",
+                                "description": "Current branch context (optional, will auto-detect if not provided)"
+                            }
+                        },
+                        "required": ["client", "repository", "new_branch_name"]
+                    }
+                ),
+                types.Tool(
                     name="get_client_diff",
                     description="Get diff of uncommitted changes in client repository",
                     inputSchema={
@@ -1740,6 +1824,22 @@ class OdooClientMCPServer:
                 )
             elif name == "list_available_oca_modules":
                 return await self._list_available_oca_modules(arguments.get("search"))
+            elif name == "toggle_dev_mode":
+                return await self._toggle_dev_mode(
+                    arguments.get("client"),
+                    arguments.get("repository"),
+                    arguments.get("branch")
+                )
+            elif name == "get_dev_status":
+                return await self._get_dev_status(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
+            elif name == "sync_dev_links":
+                return await self._sync_dev_links(
+                    arguments.get("client"),
+                    arguments.get("branch")
+                )
             elif name == "get_client_diff":
                 return await self._get_client_diff(
                     arguments.get("client"),
@@ -1996,6 +2096,29 @@ class OdooClientMCPServer:
             )
         elif name == "list_available_oca_modules":
             return await self._list_available_oca_modules(arguments.get("search"))
+        elif name == "toggle_dev_mode":
+            return await self._toggle_dev_mode(
+                arguments.get("client"),
+                arguments.get("repository"),
+                arguments.get("branch")
+            )
+        elif name == "get_dev_status":
+            return await self._get_dev_status(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "sync_dev_links":
+            return await self._sync_dev_links(
+                arguments.get("client"),
+                arguments.get("branch")
+            )
+        elif name == "rename_dev_branch":
+            return await self._rename_dev_branch(
+                arguments.get("client"),
+                arguments.get("repository"),
+                arguments.get("new_branch_name"),
+                arguments.get("current_branch")
+            )
         elif name == "get_client_diff":
             return await self._get_client_diff(
                 arguments.get("client"),
@@ -2482,8 +2605,29 @@ class OdooClientMCPServer:
             )]
         
         client_path = self.repo_path / "clients" / client
-        repo_path = client_path / "addons" / repository
         extra_addons_path = client_path / "extra-addons"
+        
+        # Check dev mode status to determine correct repo path
+        dev_config_path = client_path / ".dev-config.json"
+        is_dev_mode = False
+        current_branch = "18.0"  # Default branch
+        
+        if dev_config_path.exists():
+            try:
+                with open(dev_config_path, 'r') as f:
+                    dev_config = json.load(f)
+                    repo_config = dev_config.get("repositories", {}).get(repository, {})
+                    branch_config = repo_config.get("branches", {}).get(current_branch, {})
+                    is_dev_mode = branch_config.get("mode") == "dev"
+            except Exception:
+                pass  # Use production mode as fallback
+        
+        # Set repo path based on dev mode
+        if is_dev_mode:
+            repo_path = client_path / ".dev-repos" / current_branch / repository
+        else:
+            repo_path = client_path / "addons" / repository
+            
         module_path = repo_path / module
         
         # Check if client, repository, and module exist
@@ -2523,8 +2667,11 @@ class OdooClientMCPServer:
             if module_link.exists() or module_link.is_symlink():
                 module_link.unlink()
             
-            # Create new link
-            relative_path = f"../addons/{repository}/{module}"
+            # Create new link based on dev mode
+            if is_dev_mode:
+                relative_path = f"../.dev-repos/{current_branch}/{repository}/{module}"
+            else:
+                relative_path = f"../addons/{repository}/{module}"
             module_link.symlink_to(relative_path)
             
             # Update project configuration
@@ -7141,6 +7288,225 @@ class OdooClientMCPServer:
             return [types.TextContent(
                 type="text",
                 text=json.dumps({"success": False, "error": str(e)})
+            )]
+
+    async def _toggle_dev_mode(self, client: str, repository: str, branch: str = None):
+        """Toggle development mode for a repository"""
+        import json
+        
+        if not client or not repository:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": "Client and repository are required"
+                })
+            )]
+            
+        try:
+            script_path = self.repo_path / "scripts" / "toggle_dev_mode.sh"
+            cmd = [str(script_path), client, repository]
+            if branch:
+                cmd.append(branch)
+            
+            result = self._run_command(cmd)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": result["success"],
+                    "message": f"Dev mode toggled for {repository}" if result["success"] else "Failed to toggle dev mode",
+                    "output": result.get("stdout", ""),
+                    "error": result.get("stderr", "") if not result["success"] else None
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": str(e)
+                })
+            )]
+
+    async def _get_dev_status(self, client: str, branch: str = None):
+        """Get development status of repositories for a client"""
+        import json
+        import os
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": "Client is required"
+                })
+            )]
+            
+        try:
+            client_dir = self.repo_path / "clients" / client
+            if not client_dir.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Client '{client}' not found"
+                    })
+                )]
+            
+            # Read dev config file
+            dev_config_path = client_dir / ".dev-config.json"
+            if not dev_config_path.exists():
+                # No dev config = all repositories in production mode
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "repositories": {},
+                        "message": "No development repositories configured"
+                    })
+                )]
+            
+            with open(dev_config_path, 'r') as f:
+                dev_config = json.load(f)
+            
+            # If branch not specified, try to detect current branch
+            if not branch:
+                # Try to get current branch from git or branch config
+                try:
+                    result = self._run_command(["git", "branch", "--show-current"], cwd=str(client_dir))
+                    if result["success"]:
+                        git_branch = result["stdout"].strip()
+                        # Try to map git branch to Odoo version
+                        branch_config_path = client_dir / ".odoo_branch_config"
+                        if branch_config_path.exists():
+                            with open(branch_config_path, 'r') as f:
+                                branch_config = json.load(f)
+                                branch = branch_config.get(git_branch, "18.0")
+                        else:
+                            branch = "18.0"
+                except:
+                    branch = "18.0"
+            
+            # Filter repositories for the specified branch
+            branch_repos = {}
+            for repo_name, repo_data in dev_config.get("repositories", {}).items():
+                if branch in repo_data.get("branches", {}):
+                    branch_repos[repo_name] = repo_data["branches"][branch]
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "branch": branch,
+                    "repositories": branch_repos
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": str(e)
+                })
+            )]
+
+    async def _sync_dev_links(self, client: str, branch: str = None):
+        """Synchronize symbolic links for development/production modes"""
+        import json
+        
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": "Client is required"
+                })
+            )]
+            
+        try:
+            # If branch not specified, try to detect current branch
+            if not branch:
+                client_dir = self.repo_path / "clients" / client
+                try:
+                    result = self._run_command(["git", "branch", "--show-current"], cwd=str(client_dir))
+                    if result["success"]:
+                        git_branch = result["stdout"].strip()
+                        # Try to map git branch to Odoo version
+                        branch_config_path = client_dir / ".odoo_branch_config"
+                        if branch_config_path.exists():
+                            with open(branch_config_path, 'r') as f:
+                                branch_config = json.load(f)
+                                branch = branch_config.get(git_branch, "18.0")
+                        else:
+                            branch = "18.0"
+                except:
+                    branch = "18.0"
+            
+            script_path = self.repo_path / "scripts" / "sync_dev_links.sh"
+            cmd = [str(script_path), client, branch]
+            
+            result = self._run_command(cmd)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": result["success"],
+                    "message": f"Links synchronized for branch {branch}" if result["success"] else "Failed to sync links",
+                    "output": result.get("stdout", ""),
+                    "error": result.get("stderr", "") if not result["success"] else None
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": str(e)
+                })
+            )]
+
+    async def _rename_dev_branch(self, client: str, repository: str, new_branch_name: str, current_branch: str = None):
+        """Rename a development branch in a repository"""
+        import json
+        
+        if not client or not repository or not new_branch_name:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": "Client, repository, and new branch name are required"
+                })
+            )]
+            
+        try:
+            script_path = self.repo_path / "scripts" / "rename_dev_branch.sh"
+            cmd = [str(script_path), client, repository, new_branch_name]
+            if current_branch:
+                cmd.append(current_branch)
+            
+            result = self._run_command(cmd)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": result["success"],
+                    "message": f"Development branch renamed to {new_branch_name}" if result["success"] else "Failed to rename dev branch",
+                    "output": result.get("stdout", ""),
+                    "error": result.get("stderr", "") if not result["success"] else None
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": str(e)
+                })
             )]
 
     async def _get_client_diff(self, client: str, branch: str = None):

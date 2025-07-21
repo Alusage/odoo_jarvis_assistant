@@ -407,6 +407,9 @@ services:
       - ./extra-addons:/mnt/extra-addons:ro
       - ./addons:/mnt/addons:ro
       
+      # Repositories en mode dev (nécessaire pour les liens symboliques)
+      - ./.dev-repos:/mnt/.dev-repos:ro
+      
       # Dépendances Python
       - ./requirements.txt:/mnt/requirements.txt:ro
       
