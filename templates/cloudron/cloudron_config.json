@@ -1,0 +1,36 @@
+{
+  "enabled": true,
+  "client_name": "{{CLIENT_NAME}}",
+  "client_display_name": "{{CLIENT_DISPLAY_NAME}}",
+  "odoo_version": "{{ODOO_VERSION}}",
+  "cloudron": {
+    "server": "{{CLOUDRON_SERVER}}",
+    "app_id": "{{APP_ID}}",
+    "docker_registry": "{{DOCKER_REGISTRY}}",
+    "docker_username": "{{DOCKER_USERNAME}}",
+    "docker_password": "{{DOCKER_PASSWORD}}",
+    "cloudron_username": "{{CLOUDRON_USERNAME}}",
+    "cloudron_password": "{{CLOUDRON_PASSWORD}}",
+    "app_version": "{{APP_VERSION}}",
+    "contact_email": "{{CONTACT_EMAIL}}",
+    "author_name": "{{AUTHOR_NAME}}",
+    "client_website": "{{CLIENT_WEBSITE}}"
+  },
+  "deployment": {
+    "production_only": true,
+    "allowed_branches": ["18.0", "master", "main"],
+    "auto_deploy": false,
+    "backup_before_deploy": true
+  },
+  "docker": {
+    "memory_limit": "2GB", 
+    "cpu_limit": "1",
+    "health_check_enabled": true,
+    "restart_policy": "unless-stopped"
+  },
+  "metadata": {
+    "created": "{{CREATED_DATE}}",
+    "last_updated": "{{CREATED_DATE}}",
+    "version": "1.0.0"
+  }
+}

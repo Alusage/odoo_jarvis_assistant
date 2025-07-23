@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(chmod:*)",
+      "Bash(docker compose:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(./scripts/generate_client_repo.sh:*)",
+      "Bash(rm:*)",
+      "Bash(python3:*)",
+      "Bash(curl:*)",
+      "Bash(./scripts/enable_cloudron.sh:*)",
+      "Bash(./build.sh)",
+      "Bash(cloudron login:*)",
+      "Bash(./deploy.sh)",
+      "Bash(cloudron:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }

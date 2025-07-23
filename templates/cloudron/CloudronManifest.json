@@ -1,0 +1,31 @@
+{
+  "id": "{{APP_ID}}",
+  "title": "{{CLIENT_DISPLAY_NAME}} - Odoo {{ODOO_VERSION}}",
+  "author": "{{AUTHOR_NAME}}",
+  "description": "Instance Odoo personnalisée pour {{CLIENT_DISPLAY_NAME}}",
+  "tagline": "ERP/CRM Odoo avec modules OCA personnalisés",
+  "version": "{{APP_VERSION}}",
+  "healthCheckPath": "/web/health",
+  "httpPort": 8069,
+  "addons": {
+    "postgresql": {
+      "requiredVersion": ">=13.0.0"
+    }
+  },
+  "manifestVersion": 2,
+  "website": "https://www.odoo.com",
+  "contactEmail": "{{CONTACT_EMAIL}}",
+  "tags": [
+    "erp",
+    "crm", 
+    "business",
+    "odoo"
+  ],
+  "minBoxVersion": "7.0.0",
+  "maxBoxVersion": "99.0.0",
+  "postInstallMessage": "{{CLIENT_DISPLAY_NAME}} Odoo est maintenant accessible ! Utilisez 'admin' comme nom d'utilisateur et le mot de passe que vous avez défini lors de l'installation.",
+  "changelog": "file://CHANGELOG",
+  "documentationUrl": "https://docs.odoo.com/",
+  "optionalSso": false,
+  "memoryLimit": 2147483648
+}

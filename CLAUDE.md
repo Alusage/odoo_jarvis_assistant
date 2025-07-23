@@ -168,6 +168,26 @@ cd clients/client_name/docker
 ./build.sh --no-cache --tag 1.0
 ```
 
+### Cloudron Deployment
+```bash
+# Build Cloudron Docker image for a client
+make build-cloudron CLIENT=client_name
+
+# Deploy to Cloudron (requires interactive terminal)
+make deploy-cloudron CLIENT=client_name
+
+# Alternative: Direct interactive deployment script
+./deploy_cloudron_interactive.sh client_name
+
+# Enable Cloudron for an existing client
+./scripts/enable_cloudron.sh client_name
+
+# Manual Cloudron commands (in client's cloudron/ directory)
+cd clients/client_name/cloudron
+./build.sh        # Build and push Docker image
+./deploy.sh       # Deploy to Cloudron server
+```
+
 ### Testing and Demo
 ```bash
 # Run comprehensive tests

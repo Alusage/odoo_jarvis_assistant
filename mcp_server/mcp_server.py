@@ -1995,6 +1995,25 @@ class OdooClientMCPServer:
                     arguments.get("domain"),
                     arguments.get("protocol", "http")
                 )
+            elif name == "build_cloudron_app":
+                return await self._build_cloudron_app(
+                    arguments.get("client"),
+                    arguments.get("force", False)
+                )
+            elif name == "deploy_cloudron_app":
+                return await self._deploy_cloudron_app(
+                    arguments.get("client"),
+                    arguments.get("action", "install")
+                )
+            elif name == "get_cloudron_config":
+                return await self._get_cloudron_config(arguments.get("client"))
+            elif name == "update_cloudron_config":
+                return await self._update_cloudron_config(
+                    arguments.get("client"),
+                    arguments.get("config", {})
+                )
+            elif name == "get_cloudron_status":
+                return await self._get_cloudron_status(arguments.get("client"))
             else:
                 raise ValueError(f"Unknown tool: {name}")
         
@@ -2327,6 +2346,25 @@ class OdooClientMCPServer:
                 arguments.get("client"),
                 arguments.get("limit", 20)
             )
+        elif name == "build_cloudron_app":
+            return await self._build_cloudron_app(
+                arguments.get("client"),
+                arguments.get("force", False)
+            )
+        elif name == "deploy_cloudron_app":
+            return await self._deploy_cloudron_app(
+                arguments.get("client"),
+                arguments.get("action", "install")
+            )
+        elif name == "get_cloudron_config":
+            return await self._get_cloudron_config(arguments.get("client"))
+        elif name == "update_cloudron_config":
+            return await self._update_cloudron_config(
+                arguments.get("client"),
+                arguments.get("config", {})
+            )
+        elif name == "get_cloudron_status":
+            return await self._get_cloudron_status(arguments.get("client"))
         else:
             raise ValueError(f"Unknown tool: {name}")
     
@@ -5110,6 +5148,104 @@ class OdooClientMCPServer:
                     },
                     "required": ["domain"]
                 }
+            ),
+            types.Tool(
+                name="build_cloudron_app",
+                description="Build Cloudron application for a client (production branches only)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Client name"
+                        },
+                        "force": {
+                            "type": "boolean",
+                            "description": "Force rebuild even if image already exists",
+                            "default": False
+                        }
+                    },
+                    "required": ["client"]
+                }
+            ),
+            types.Tool(
+                name="deploy_cloudron_app",
+                description="Deploy Cloudron application for a client (production branches only)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Client name"
+                        },
+                        "action": {
+                            "type": "string",
+                            "description": "Deployment action",
+                            "enum": ["install", "update", "uninstall"],
+                            "default": "install"
+                        }
+                    },
+                    "required": ["client"]
+                }
+            ),
+            types.Tool(
+                name="get_cloudron_config",
+                description="Get Cloudron configuration for a client",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Client name"
+                        }
+                    },
+                    "required": ["client"]
+                }
+            ),
+            types.Tool(
+                name="update_cloudron_config",
+                description="Update Cloudron configuration for a client",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Client name"
+                        },
+                        "config": {
+                            "type": "object",
+                            "description": "Cloudron configuration object",
+                            "properties": {
+                                "server": {"type": "string"},
+                                "app_id": {"type": "string"},
+                                "docker_registry": {"type": "string"},
+                                "docker_username": {"type": "string"},
+                                "docker_password": {"type": "string"},
+                                "cloudron_username": {"type": "string"},
+                                "cloudron_password": {"type": "string"},
+                                "app_version": {"type": "string"},
+                                "contact_email": {"type": "string"},
+                                "author_name": {"type": "string"},
+                                "client_website": {"type": "string"}
+                            }
+                        }
+                    },
+                    "required": ["client", "config"]
+                }
+            ),
+            types.Tool(
+                name="get_cloudron_status",
+                description="Get status of Cloudron deployment for a client",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "client": {
+                            "type": "string",
+                            "description": "Client name"
+                        }
+                    },
+                    "required": ["client"]
+                }
             )
         ]
 
@@ -7767,6 +7903,377 @@ class OdooClientMCPServer:
                     "success": False,
                     "error": str(e)
                 }, indent=2)
+            )]
+
+    async def _build_cloudron_app(self, client: str, force: bool = False):
+        """Build Cloudron application for a client (production branches only)"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client}' not found"}, indent=2)
+            )]
+        
+        # Check if Cloudron is enabled for this client
+        project_config_path = client_path / "project_config.json"
+        if not project_config_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "project_config.json not found for client"}, indent=2)
+            )]
+        
+        try:
+            with open(project_config_path, 'r') as f:
+                project_config = json.load(f)
+            
+            cloudron_enabled = project_config.get("publication", {}).get("providers", {}).get("cloudron", {}).get("enabled", False)
+            if not cloudron_enabled:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Cloudron publication not enabled for this client"}, indent=2)
+                )]
+            
+            # Check if we're on a production branch
+            result = self._run_command(["git", "branch", "--show-current"], cwd=client_path)
+            if not result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Failed to get current branch"}, indent=2)
+                )]
+            
+            current_branch = result["stdout"].strip()
+            production_branches = project_config.get("publication", {}).get("allowed_branches", ["18.0", "master", "main"])
+            
+            if current_branch not in production_branches:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Cloudron publication only allowed on production branches: {production_branches}. Current branch: {current_branch}"
+                    }, indent=2)
+                )]
+            
+            # Execute Cloudron build script from cloudron directory
+            cloudron_build_script = client_path / "cloudron" / "build.sh"
+            cloudron_dir = client_path / "cloudron"
+            
+            if not cloudron_build_script.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Cloudron build.sh script not found"}, indent=2)
+                )]
+            
+            if not cloudron_dir.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Cloudron directory not found"}, indent=2)
+                )]
+            
+            cmd = ["./build.sh", "--push"]  # Always push when building from MCP
+            if force:
+                cmd.append("--force")
+            
+            result = self._run_command(cmd, cwd=cloudron_dir)
+            
+            # Check if the build was successful by looking for success indicators
+            # Docker build can have warnings on stderr but still succeed
+            build_successful = (
+                result["success"] or 
+                "Successfully built" in result["stdout"] or 
+                "✨ Image construite avec succès" in result["stdout"]
+            )
+            
+            if build_successful:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "client": client,
+                        "branch": current_branch,
+                        "message": "Cloudron application built successfully",
+                        "output": result["stdout"],
+                        "warnings": result["stderr"] if result["stderr"] else None
+                    }, indent=2)
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to build Cloudron application: {result['stderr']}",
+                        "output": result["stdout"]
+                    }, indent=2)
+                )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Error building Cloudron app: {str(e)}"}, indent=2)
+            )]
+
+    async def _deploy_cloudron_app(self, client: str, action: str = "install"):
+        """Deploy Cloudron application for a client"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client}' not found"}, indent=2)
+            )]
+        
+        # Check if Cloudron is enabled
+        project_config_path = client_path / "project_config.json"
+        if not project_config_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "project_config.json not found for client"}, indent=2)
+            )]
+        
+        try:
+            with open(project_config_path, 'r') as f:
+                project_config = json.load(f)
+            
+            cloudron_enabled = project_config.get("publication", {}).get("providers", {}).get("cloudron", {}).get("enabled", False)
+            if not cloudron_enabled:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Cloudron publication not enabled for this client"}, indent=2)
+                )]
+            
+            # Check production branch
+            result = self._run_command(["git", "branch", "--show-current"], cwd=client_path)
+            if not result["success"]:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Failed to get current branch"}, indent=2)
+                )]
+            
+            current_branch = result["stdout"].strip()
+            production_branches = project_config.get("publication", {}).get("allowed_branches", ["18.0", "master", "main"])
+            
+            if current_branch not in production_branches:
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Cloudron deployment only allowed on production branches: {production_branches}. Current branch: {current_branch}"
+                    }, indent=2)
+                )]
+            
+            # Check if Cloudron deploy script exists
+            cloudron_deploy_script = client_path / "cloudron" / "deploy.sh"
+            cloudron_dir = client_path / "cloudron"
+            
+            if not cloudron_deploy_script.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Cloudron deploy.sh script not found"}, indent=2)
+                )]
+            
+            if not cloudron_dir.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({"error": "Cloudron directory not found"}, indent=2)
+                )]
+            
+            # Cloudron CLI requires interactive terminal - provide instructions
+            interactive_script = self.repo_path / "deploy_cloudron_interactive.sh"
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": "Cloudron deployment requires interactive terminal",
+                    "solution": f"Please run this command in a terminal:\n\n./deploy_cloudron_interactive.sh {client}\n\nor manually:\n\ncd {cloudron_dir} && ./deploy.sh {action}",
+                    "client": client,
+                    "branch": current_branch,
+                    "action": action,
+                    "cloudron_directory": str(cloudron_dir),
+                    "interactive_script": str(interactive_script)
+                }, indent=2)
+            )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Error deploying Cloudron app: {str(e)}"}, indent=2)
+            )]
+
+    async def _get_cloudron_config(self, client: str):
+        """Get Cloudron configuration for a client"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client}' not found"}, indent=2)
+            )]
+        
+        cloudron_config_path = client_path / "cloudron" / "cloudron_config.json"
+        if not cloudron_config_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Cloudron configuration not found for this client"}, indent=2)
+            )]
+        
+        try:
+            with open(cloudron_config_path, 'r') as f:
+                config = json.load(f)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client,
+                    "config": config
+                }, indent=2)
+            )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Error reading Cloudron config: {str(e)}"}, indent=2)
+            )]
+
+    async def _update_cloudron_config(self, client: str, config: dict):
+        """Update Cloudron configuration for a client"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        if not config:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Configuration object is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client}' not found"}, indent=2)
+            )]
+        
+        cloudron_config_path = client_path / "cloudron" / "cloudron_config.json"
+        if not cloudron_config_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Cloudron configuration not found for this client"}, indent=2)
+            )]
+        
+        try:
+            # Load existing config
+            with open(cloudron_config_path, 'r') as f:
+                existing_config = json.load(f)
+            
+            # Update cloudron section
+            if "cloudron" in existing_config:
+                existing_config["cloudron"].update(config)
+            else:
+                existing_config["cloudron"] = config
+            
+            # Update metadata
+            existing_config["metadata"]["last_updated"] = f"{asyncio.get_event_loop().time():.3f}"
+            
+            # Save updated config
+            with open(cloudron_config_path, 'w') as f:
+                json.dump(existing_config, f, indent=2)
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client,
+                    "message": "Cloudron configuration updated successfully",
+                    "config": existing_config
+                }, indent=2)
+            )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Error updating Cloudron config: {str(e)}"}, indent=2)
+            )]
+
+    async def _get_cloudron_status(self, client: str):
+        """Get status of Cloudron deployment for a client"""
+        if not client:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": "Client name is required"}, indent=2)
+            )]
+        
+        client_path = self.repo_path / "clients" / client
+        if not client_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Client '{client}' not found"}, indent=2)
+            )]
+        
+        cloudron_config_path = client_path / "cloudron" / "cloudron_config.json"
+        if not cloudron_config_path.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "client": client,
+                    "status": "not_configured",
+                    "message": "Cloudron not configured for this client"
+                }, indent=2)
+            )]
+        
+        try:
+            with open(cloudron_config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Get current branch
+            result = self._run_command(["git", "branch", "--show-current"], cwd=client_path)
+            current_branch = result["stdout"].strip() if result["success"] else "unknown"
+            
+            # Check if we're on a production branch
+            production_branches = ["18.0", "master", "main"]  # From project config if available
+            
+            # Try to get Cloudron app status via CLI (if available)
+            cloudron_server = config.get("cloudron", {}).get("server", "")
+            app_id = f"{client}.odoo.{config.get('cloudron', {}).get('domain', 'localhost')}"
+            
+            # Simple status check
+            status_info = {
+                "client": client,
+                "current_branch": current_branch,
+                "is_production_branch": current_branch in production_branches,
+                "cloudron_enabled": config.get("enabled", False),
+                "cloudron_server": cloudron_server,
+                "app_id": app_id,
+                "last_updated": config.get("metadata", {}).get("last_updated", "unknown")
+            }
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "status": status_info
+                }, indent=2)
+            )]
+        
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"error": f"Error getting Cloudron status: {str(e)}"}, indent=2)
             )]
 
 

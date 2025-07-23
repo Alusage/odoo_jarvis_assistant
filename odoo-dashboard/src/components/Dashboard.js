@@ -430,6 +430,205 @@ export class Dashboard extends Component {
           </div>
         </div>
 
+        <!-- Cloudron Tab -->
+        <div t-if="props.currentTab === 'CLOUDRON'" class="h-full overflow-y-auto p-6">
+          <div class="max-w-4xl mx-auto space-y-8">
+            <!-- Cloudron Status Section -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div class="p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                  </svg>
+                  Cloudron Publication
+                </h3>
+                <p class="text-sm text-gray-600 mt-1">
+                  Deploy your Odoo instance to Cloudron.io platform
+                </p>
+              </div>
+              
+              <div class="p-6">
+                <div t-if="!state.cloudronStatus.cloudron_enabled" class="text-center py-8">
+                  <div class="text-gray-400 mb-4">
+                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                    </svg>
+                  </div>
+                  <h4 class="text-lg font-medium text-gray-900 mb-2">Cloudron Not Enabled</h4>
+                  <p class="text-gray-600 mb-4">Enable Cloudron to deploy this client online</p>
+                  <button class="btn-primary" t-on-click="enableCloudron">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Enable Cloudron
+                  </button>
+                </div>
+                
+                <div t-if="state.cloudronStatus.cloudron_enabled" class="space-y-6">
+                  <!-- Status Display -->
+                  <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-sm font-medium text-gray-700">Status</span>
+                      <span t-if="state.cloudronStatus.is_production_branch" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        ✓ Production Branch
+                      </span>
+                      <span t-else="" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        ⚠️ Non-production Branch
+                      </span>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                      <div>Current Branch: <span class="font-mono font-medium" t-esc="state.cloudronStatus.current_branch"/></div>
+                      <div t-if="state.cloudronStatus.cloudron_server">Server: <span class="font-mono text-xs" t-esc="state.cloudronStatus.cloudron_server"/></div>
+                      <div t-if="state.cloudronStatus.app_id">App ID: <span class="font-mono text-xs" t-esc="state.cloudronStatus.app_id"/></div>
+                    </div>
+                  </div>
+                  
+                  <!-- Configuration Form -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Cloudron Server
+                      </label>
+                      <input 
+                        type="text" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.server"
+                        placeholder="https://my.cloudron.me"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        App ID
+                      </label>
+                      <input 
+                        type="text" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.app_id"
+                        t-att-placeholder="props.client.name + '.odoo.localhost'"/>
+                      <p class="text-xs text-gray-500 mt-1">Full app identifier (e.g., myapp.odoo.localhost or myapp.odoo.mydomain.com)</p>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Docker Registry
+                      </label>
+                      <input 
+                        type="text" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.docker_registry"
+                        placeholder="docker.io/username"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Docker Username
+                      </label>
+                      <input 
+                        type="text" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.docker_username"
+                        placeholder="Docker registry username"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Docker Password
+                      </label>
+                      <input 
+                        type="password" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.docker_password"
+                        placeholder="Docker registry password"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Cloudron Username
+                      </label>
+                      <input 
+                        type="text" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.cloudron_username"
+                        placeholder="Cloudron account username"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Cloudron Password
+                      </label>
+                      <input 
+                        type="password" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.cloudron_password"
+                        placeholder="Cloudron account password"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Contact Email
+                      </label>
+                      <input 
+                        type="email" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.contact_email"
+                        placeholder="admin@example.com"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Author Name
+                      </label>
+                      <input 
+                        type="text" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        t-model="state.cloudronConfig.author_name"
+                        placeholder="Admin"/>
+                    </div>
+                  </div>
+                  
+                  <div class="flex justify-between">
+                    <button class="btn-secondary" t-on-click="updateCloudronConfig">
+                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
+                      </svg>
+                      Update Configuration
+                    </button>
+                    <div class="space-x-3">
+                      <button 
+                        class="btn-secondary"
+                        t-on-click="buildCloudronApp"
+                        t-att-disabled="!state.cloudronStatus.is_production_branch"
+                      >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                        </svg>
+                        Build App
+                      </button>
+                      <button 
+                        class="btn-success"
+                        t-on-click="deployCloudronApp"
+                        t-att-disabled="!state.cloudronStatus.is_production_branch"
+                      >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                        </svg>
+                        Deploy
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div t-if="!state.cloudronStatus.is_production_branch" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div class="flex items-start">
+                      <svg class="w-5 h-5 text-yellow-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"/>
+                      </svg>
+                      <div>
+                        <h4 class="text-sm font-medium text-yellow-800">Production Branch Required</h4>
+                        <p class="text-sm text-yellow-700 mt-1">
+                          Cloudron deployment is only available on production branches (18.0, master, main). 
+                          Switch to a production branch to enable build and deployment.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Shell Tab -->
         <div t-if="props.currentTab === 'SHELL'" class="h-full p-6">
           <Terminal client="props.client"/>
@@ -927,6 +1126,7 @@ export class Dashboard extends Component {
         { id: 'BUILDS', label: 'BUILDS' },
         { id: 'LOGS', label: 'LOGS' },
         { id: 'SHELL', label: 'SHELL' },
+        { id: 'CLOUDRON', label: 'CLOUDRON' },
         { id: 'SETTINGS', label: 'SETTINGS' }
       ],
       commits: [],
@@ -967,6 +1167,16 @@ export class Dashboard extends Component {
       // Dev mode management
       devModeStatus: {}, // repo_name -> { mode: 'dev'|'production', dev_branch?: string, created_at?: string }
       togglingDevMode: {}, // repo_name -> boolean
+      // Cloudron publication
+      cloudronStatus: { cloudron_enabled: false, current_branch: '', is_production_branch: false },
+      cloudronConfig: {
+        server: 'https://my.cloudron.me',
+        domain: 'localhost',
+        subdomain: '',
+        docker_registry: 'docker.io/username',
+        contact_email: 'admin@example.com',
+        author_name: 'Admin'
+      },
     });
 
     onMounted(() => {
@@ -1090,6 +1300,9 @@ export class Dashboard extends Component {
           break;
         case 'SHELL':
           // Terminal component handles its own initialization
+          break;
+        case 'CLOUDRON':
+          await this.loadCloudronData();
           break;
         case 'SETTINGS':
           await this.loadTraefikConfig();
@@ -2180,6 +2393,125 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
       this.showCommitMessage(`Error renaming dev branch: ${error.message}`, 'error');
     } finally {
       this.state.togglingDevMode[repositoryName] = false;
+    }
+  }
+
+  // Cloudron methods
+  async loadCloudronData() {
+    if (!this.props.client) return;
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      
+      // Load Cloudron status
+      const statusResponse = await dataService.getCloudronStatus(baseName);
+      if (statusResponse && statusResponse.success && statusResponse.status) {
+        this.state.cloudronStatus = statusResponse.status;
+      } else if (statusResponse && statusResponse.status) {
+        // Direct status without success wrapper
+        this.state.cloudronStatus = statusResponse;
+      }
+      
+      // Load Cloudron config if enabled
+      if (this.state.cloudronStatus.cloudron_enabled) {
+        const configResponse = await dataService.getCloudronConfig(baseName);
+        if (configResponse && configResponse.config && configResponse.config.cloudron) {
+          this.state.cloudronConfig = { ...this.state.cloudronConfig, ...configResponse.config.cloudron };
+        }
+      }
+    } catch (error) {
+      console.error('Error loading Cloudron data:', error);
+    }
+  }
+
+  async enableCloudron() {
+    if (!this.props.client) return;
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      
+      // Call the dataService enableCloudron method
+      const response = await dataService.enableCloudron(baseName);
+      
+      if (response && response.success) {
+        this.showCommitMessage('Cloudron enabled successfully!', 'success');
+        // Reload Cloudron data
+        await this.loadCloudronData();
+      } else {
+        this.showCommitMessage(`Failed to enable Cloudron: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error enabling Cloudron:', error);
+      this.showCommitMessage(`Error enabling Cloudron: ${error.message}`, 'error');
+    }
+  }
+
+  async updateCloudronConfig() {
+    if (!this.props.client) return;
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      
+      const response = await dataService.updateCloudronConfig(baseName, this.state.cloudronConfig);
+      
+      if (response && response.success) {
+        this.showCommitMessage('Cloudron configuration updated successfully!', 'success');
+      } else {
+        this.showCommitMessage(`Failed to update Cloudron config: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error updating Cloudron config:', error);
+      this.showCommitMessage(`Error updating Cloudron config: ${error.message}`, 'error');
+    }
+  }
+
+  async buildCloudronApp() {
+    if (!this.props.client) return;
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      
+      this.showCommitMessage('Building Cloudron application...', 'info');
+      
+      const response = await dataService.buildCloudronApp(baseName, false);
+      
+      if (response && response.success) {
+        this.showCommitMessage('Cloudron application built successfully!', 'success');
+      } else {
+        this.showCommitMessage(`Failed to build Cloudron app: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error building Cloudron app:', error);
+      this.showCommitMessage(`Error building Cloudron app: ${error.message}`, 'error');
+    }
+  }
+
+  async deployCloudronApp() {
+    if (!this.props.client) return;
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      
+      this.showCommitMessage('Deploying Cloudron application...', 'info');
+      
+      const response = await dataService.deployCloudronApp(baseName, 'install');
+      
+      if (response && response.success) {
+        this.showCommitMessage('Cloudron application deployed successfully!', 'success');
+      } else if (response && response.error && response.solution) {
+        // Handle interactive terminal requirement
+        this.showCommitMessage(`${response.error}\n\nSolution:\n${response.solution}`, 'error');
+        
+        // Show instructions in a popup or dedicated area
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`Cloudron Deployment Instructions:\n\n${response.solution}`);
+        }
+      } else {
+        this.showCommitMessage(`Failed to deploy Cloudron app: ${response.error || 'Unknown error'}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error deploying Cloudron app:', error);
+      this.showCommitMessage(`Error deploying Cloudron app: ${error.message}`, 'error');
     }
   }
 

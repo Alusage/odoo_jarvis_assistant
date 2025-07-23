@@ -14,8 +14,9 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "  odoo_version     - Version d'Odoo (ex: 18.0)"
     echo "  template         - Template à utiliser"
     echo "  has_enterprise   - true/false pour Odoo Enterprise"
+    echo "  enable_cloudron  - true/false pour support Cloudron (optionnel)"
     echo ""
-    echo "Exemple: $0 mon_client 18.0 basic false"
+    echo "Exemple: $0 mon_client 18.0 basic false true"
     exit 0
 fi
 
@@ -23,6 +24,7 @@ CLIENT_NAME="$1"
 ODOO_VERSION="$2"
 TEMPLATE="$3"
 HAS_ENTERPRISE="$4"
+ENABLE_CLOUDRON="$5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -49,9 +51,14 @@ echo_error() { echo -e "${RED}❌ $1${NC}"; }
 # Validation des paramètres
 validate_parameters() {
     if [[ -z "$CLIENT_NAME" || -z "$ODOO_VERSION" || -z "$TEMPLATE" || -z "$HAS_ENTERPRISE" ]]; then
-        echo_error "Usage: $0 <client_name> <odoo_version> <template> <has_enterprise>"
-        echo_error "Exemple: $0 mon_client 18.0 basic false"
+        echo_error "Usage: $0 <client_name> <odoo_version> <template> <has_enterprise> [enable_cloudron]"
+        echo_error "Exemple: $0 mon_client 18.0 basic false true"
         exit 1
+    fi
+    
+    # Par défaut, Cloudron est désactivé si non spécifié
+    if [[ -z "$ENABLE_CLOUDRON" ]]; then
+        ENABLE_CLOUDRON="false"
     fi
     
     # Vérifier que le template existe
@@ -509,6 +516,17 @@ EOF
   "odoo_version": "$ODOO_VERSION",
   "linked_modules": {},
   "branch_configs": {},
+  "publication": {
+    "enabled_modes": $([ "$ENABLE_CLOUDRON" = "true" ] && echo '["cloudron"]' || echo '[]'),
+    "production_only": true,
+    "allowed_branches": ["18.0", "master", "main"],
+    "providers": {
+      "cloudron": {
+        "enabled": $([ "$ENABLE_CLOUDRON" = "true" ] && echo "true" || echo "false"),
+        "config_file": "cloudron/cloudron_config.json"
+      }
+    }
+  },
   "settings": {
     "auto_restore_modules": true,
     "backup_before_switch": true
@@ -1178,6 +1196,100 @@ create_enterprise_links() {
     fi
 }
 
+# Créer la structure Cloudron
+create_cloudron_structure() {
+    if [ "$ENABLE_CLOUDRON" = "true" ]; then
+        echo_info "Création de la structure Cloudron..."
+        
+        cd "$CLIENT_DIR"
+        mkdir -p cloudron
+        
+        # Variables pour les templates
+        local client_display_name=$(echo "$CLIENT_NAME" | sed 's/_/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+        local app_version="1.0.0"
+        local created_date=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+        
+        # Copier et personnaliser le Dockerfile
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            -e "s|{{ODOO_VERSION}}|$ODOO_VERSION|g" \
+            -e "s|{{CLIENT_DISPLAY_NAME}}|$client_display_name|g" \
+            -e "s|{{CLOUDRON_VERSION}}|$app_version|g" \
+            "$ROOT_DIR/templates/cloudron/Dockerfile" > cloudron/Dockerfile
+        
+        # Copier et personnaliser le CloudronManifest.json
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            -e "s|{{ODOO_VERSION}}|$ODOO_VERSION|g" \
+            -e "s|{{CLIENT_DISPLAY_NAME}}|$client_display_name|g" \
+            -e "s|{{APP_VERSION}}|$app_version|g" \
+            -e "s|{{APP_ID}}|$CLIENT_NAME.odoo.localhost|g" \
+            -e "s|{{AUTHOR_NAME}}|Admin|g" \
+            -e "s|{{CONTACT_EMAIL}}|admin@example.com|g" \
+            -e "s|{{CLIENT_WEBSITE}}|https://example.com|g" \
+            "$ROOT_DIR/templates/cloudron/CloudronManifest.json" > cloudron/CloudronManifest.json
+        
+        # Copier et personnaliser le CHANGELOG
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            -e "s|{{ODOO_VERSION}}|$ODOO_VERSION|g" \
+            -e "s|{{CLIENT_DISPLAY_NAME}}|$client_display_name|g" \
+            -e "s|{{APP_VERSION}}|$app_version|g" \
+            -e "s|\$(date +%Y-%m-%d)|$(date +%Y-%m-%d)|g" \
+            "$ROOT_DIR/templates/cloudron/CHANGELOG" > cloudron/CHANGELOG
+        
+        # Copier et personnaliser l'entrypoint
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            "$ROOT_DIR/templates/cloudron/cloudron-entrypoint.sh" > cloudron/cloudron-entrypoint.sh
+        chmod +x cloudron/cloudron-entrypoint.sh
+        
+        # Copier et personnaliser le script de build
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            -e "s|{{ODOO_VERSION}}|$ODOO_VERSION|g" \
+            -e "s|{{DOCKER_REGISTRY}}|docker.io/username|g" \
+            -e "s|{{DOCKER_USERNAME}}||g" \
+            -e "s|{{DOCKER_PASSWORD}}||g" \
+            -e "s|{{APP_VERSION}}|$app_version|g" \
+            "$ROOT_DIR/templates/cloudron/build.sh" > cloudron/build.sh
+        chmod +x cloudron/build.sh
+        
+        # Copier et personnaliser le script de déploiement
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            -e "s|{{APP_ID}}|$CLIENT_NAME.odoo.localhost|g" \
+            -e "s|{{CLOUDRON_SERVER}}|https://my.cloudron.me|g" \
+            -e "s|{{CLOUDRON_USERNAME}}||g" \
+            -e "s|{{CLOUDRON_PASSWORD}}||g" \
+            -e "s|{{DOCKER_REGISTRY}}|docker.io/username|g" \
+            -e "s|{{DOCKER_USERNAME}}||g" \
+            -e "s|{{DOCKER_PASSWORD}}||g" \
+            -e "s|{{APP_VERSION}}|$app_version|g" \
+            "$ROOT_DIR/templates/cloudron/deploy.sh" > cloudron/deploy.sh
+        chmod +x cloudron/deploy.sh
+        
+        # Créer le fichier de configuration Cloudron
+        sed -e "s|{{CLIENT_NAME}}|$CLIENT_NAME|g" \
+            -e "s|{{CLIENT_DISPLAY_NAME}}|$client_display_name|g" \
+            -e "s|{{ODOO_VERSION}}|$ODOO_VERSION|g" \
+            -e "s|{{CLOUDRON_SERVER}}|https://my.cloudron.me|g" \
+            -e "s|{{APP_ID}}|$CLIENT_NAME.odoo.localhost|g" \
+            -e "s|{{DOCKER_REGISTRY}}|docker.io/username|g" \
+            -e "s|{{DOCKER_USERNAME}}||g" \
+            -e "s|{{DOCKER_PASSWORD}}||g" \
+            -e "s|{{CLOUDRON_USERNAME}}||g" \
+            -e "s|{{CLOUDRON_PASSWORD}}||g" \
+            -e "s|{{APP_VERSION}}|$app_version|g" \
+            -e "s|{{CONTACT_EMAIL}}|admin@example.com|g" \
+            -e "s|{{AUTHOR_NAME}}|Admin|g" \
+            -e "s|{{CLIENT_WEBSITE}}|https://example.com|g" \
+            -e "s|{{CREATED_DATE}}|$created_date|g" \
+            "$ROOT_DIR/templates/cloudron/cloudron_config.json" > cloudron/cloudron_config.json
+            
+        echo_success "Structure Cloudron créée dans cloudron/"
+        echo_info "   - Dockerfile Cloudron optimisé"
+        echo_info "   - CloudronManifest.json configuré"
+        echo_info "   - CHANGELOG généré"
+        echo_info "   - Scripts build.sh et deploy.sh"
+        echo_info "   - Configuration cloudron_config.json"
+    fi
+}
+
 # Commit initial
 create_initial_commit() {
     echo_info "Création du commit initial..."
@@ -1189,6 +1301,7 @@ create_initial_commit() {
 - Odoo version: $ODOO_VERSION
 - Template: $TEMPLATE
 - Enterprise: $([ "$HAS_ENTERPRISE" = "true" ] && echo "Yes" || echo "No")
+- Cloudron support: $([ "$ENABLE_CLOUDRON" = "true" ] && echo "Yes" || echo "No")
 - OCA modules configured"
 }
 
@@ -1457,6 +1570,7 @@ main() {
     apply_automatic_linking
     add_enterprise
     create_enterprise_links
+    create_cloudron_structure
     create_config_files
     create_scripts
     create_readme

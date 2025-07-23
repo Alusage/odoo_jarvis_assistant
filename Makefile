@@ -1,6 +1,6 @@
 # Makefile pour la gestion des clients Odoo
 
-.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status diagnose-client migrate-client switch-branch check-compatibility configure-branch-version get-branch-version deploy-branch start-deployment stop-deployment list-deployments build-branch-image deploy-branch-v2 stop-deployment-v2 restart-deployment-v2 deployment-logs-v2 deployment-shell-v2 deployment-status-v2
+.PHONY: help create-client list-clients update-client update-requirements add-module list-modules merge-pr clean diagnostics cache-status diagnose-client migrate-client switch-branch check-compatibility configure-branch-version get-branch-version deploy-branch start-deployment stop-deployment list-deployments build-branch-image deploy-branch-v2 stop-deployment-v2 restart-deployment-v2 deployment-logs-v2 deployment-shell-v2 deployment-status-v2 deploy-cloudron build-cloudron
 
 # Variables
 CLIENTS_DIR = clients
@@ -453,6 +453,32 @@ deployment-status-v2: ## Afficher le statut d'un déploiement V2 (usage: make de
 		exit 1; \
 	fi
 	@$(SCRIPTS_DIR)/deploy_branch_v2.sh $(CLIENT) $(BRANCH) status
+
+# Déploiement Cloudron
+build-cloudron: ## Construire l'image Docker Cloudron pour un client (usage: make build-cloudron CLIENT=nom_client)
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make build-cloudron CLIENT=nom_client"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(CLIENTS_DIR)/$(CLIENT)/cloudron" ]; then \
+		echo "❌ Client '$(CLIENT)' n'a pas Cloudron configuré"; \
+		echo "💡 Activez Cloudron avec: ./scripts/enable_cloudron.sh $(CLIENT)"; \
+		exit 1; \
+	fi
+	@echo "🐳 Construction de l'image Cloudron pour $(CLIENT)..."
+	@cd "$(CLIENTS_DIR)/$(CLIENT)/cloudron" && ./build.sh
+
+deploy-cloudron: ## Déployer un client sur Cloudron (usage: make deploy-cloudron CLIENT=nom_client)
+	@if [ -z "$(CLIENT)" ]; then \
+		echo "❌ Usage: make deploy-cloudron CLIENT=nom_client"; \
+		echo "💡 Ce déploiement nécessite un terminal interactif"; \
+		echo "💡 Alternative: ./deploy_cloudron_interactive.sh $(CLIENT)"; \
+		exit 1; \
+	fi
+	@echo "🚀 Déploiement Cloudron pour $(CLIENT)..."
+	@echo "⚠️  Ce script nécessite un terminal interactif"
+	@echo "💡 Utilisez: ./deploy_cloudron_interactive.sh $(CLIENT)"
+	@./deploy_cloudron_interactive.sh $(CLIENT)
 
 release:
 	@bash -e -c 'echo "Créer une release GitHub avec un changelog propre"; \

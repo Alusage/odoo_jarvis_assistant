@@ -2507,6 +2507,189 @@ class DataService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Enable Cloudron for a client by calling the enable_cloudron script
+   */
+  async enableCloudron(clientName) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: `Cloudron enabled for ${clientName}`
+      };
+    }
+
+    try {
+      console.log(`🚀 Enabling Cloudron for client: ${clientName}`);
+      
+      // Since there's no direct shell command tool, we'll try to call the script
+      // via a different approach - maybe using the Makefile or checking if there's
+      // another way to call scripts
+      
+      // For now, let's try to directly call the Cloudron status to check if it's already enabled
+      const status = await this.getCloudronStatus(clientName);
+      if (status && status.enabled) {
+        return {
+          success: true,
+          message: 'Cloudron is already enabled for this client',
+          already_enabled: true
+        };
+      }
+      
+      // If not enabled, we need to find another way to enable it
+      // For now, return an instruction message
+      return {
+        success: false,
+        error: 'Please run the following command manually: ./scripts/enable_cloudron.sh ' + clientName,
+        manual_command: `./scripts/enable_cloudron.sh ${clientName}`
+      };
+    } catch (error) {
+      console.error('Error enabling Cloudron:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Cloudron status for a client
+   */
+  async getCloudronStatus(clientName) {
+    if (this.mockMode) {
+      return {
+        enabled: false,
+        client: clientName,
+        status: "not_configured",
+        message: "Cloudron not configured for this client"
+      };
+    }
+
+    try {
+      console.log(`📊 Getting Cloudron status for client: ${clientName}`);
+      const result = await this.callMCPServer('get_cloudron_status', { client: clientName });
+      
+      // Parse the JSON content from MCP server response
+      if (result && result.content) {
+        const parsed = JSON.parse(result.content);
+        return parsed;
+      }
+      return result;
+    } catch (error) {
+      console.error('Error getting Cloudron status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Cloudron configuration for a client
+   */
+  async getCloudronConfig(clientName) {
+    if (this.mockMode) {
+      return {
+        config: {
+          cloudron: {
+            server: 'https://my.cloudron.me',
+            domain: 'localhost',
+            subdomain: clientName
+          }
+        }
+      };
+    }
+
+    try {
+      console.log(`⚙️ Getting Cloudron config for client: ${clientName}`);
+      const result = await this.callMCPServer('get_cloudron_config', { client: clientName });
+      
+      // Parse the JSON content from MCP server response
+      if (result && result.content) {
+        const parsed = JSON.parse(result.content);
+        return parsed;
+      }
+      return result;
+    } catch (error) {
+      console.error('Error getting Cloudron config:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update Cloudron configuration for a client
+   */
+  async updateCloudronConfig(clientName, config) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: 'Cloudron configuration updated successfully'
+      };
+    }
+
+    try {
+      console.log(`🔧 Updating Cloudron config for client: ${clientName}`, config);
+      const result = await this.callMCPServer('update_cloudron_config', { client: clientName, config: config });
+      
+      // Parse the JSON content from MCP server response
+      if (result && result.content) {
+        const parsed = JSON.parse(result.content);
+        return parsed;
+      }
+      return result;
+    } catch (error) {
+      console.error('Error updating Cloudron config:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Build Cloudron application for a client
+   */
+  async buildCloudronApp(clientName, force = false) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: 'Cloudron application built successfully'
+      };
+    }
+
+    try {
+      console.log(`🔨 Building Cloudron app for client: ${clientName}, force: ${force}`);
+      const result = await this.callMCPServer('build_cloudron_app', { client: clientName, force: force });
+      
+      // Parse the JSON content from MCP server response
+      if (result && result.content) {
+        const parsed = JSON.parse(result.content);
+        return parsed;
+      }
+      return result;
+    } catch (error) {
+      console.error('Error building Cloudron app:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deploy Cloudron application for a client
+   */
+  async deployCloudronApp(clientName, action = 'install') {
+    if (this.mockMode) {
+      return {
+        success: true,
+        message: `Cloudron application ${action} completed successfully`
+      };
+    }
+
+    try {
+      console.log(`🚀 Deploying Cloudron app for client: ${clientName}, action: ${action}`);
+      const result = await this.callMCPServer('deploy_cloudron_app', { client: clientName, action: action });
+      
+      // Parse the JSON content from MCP server response
+      if (result && result.content) {
+        const parsed = JSON.parse(result.content);
+        return parsed;
+      }
+      return result;
+    } catch (error) {
+      console.error('Error deploying Cloudron app:', error);
+      throw error;
+    }
+  }
 }
 
 export const dataService = new DataService();

@@ -1,0 +1,20 @@
+# Changelog - {{CLIENT_DISPLAY_NAME}} Odoo
+
+## Version {{APP_VERSION}} - $(date +%Y-%m-%d)
+
+### Added
+- Initial Cloudron deployment for {{CLIENT_DISPLAY_NAME}}
+- Odoo {{ODOO_VERSION}} with OCA modules integration
+- PostgreSQL database support
+- Custom modules configuration
+
+### Features
+- OCA modules integration
+- Production-ready Docker configuration
+- Cloudron platform optimization
+
+### Configuration
+- Memory limit: 2GB
+- Health check endpoint: /web/health
+- HTTP port: 8069
+- PostgreSQL addon integration
