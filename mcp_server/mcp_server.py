@@ -1043,6 +1043,24 @@ class OdooClientMCPServer:
                     }
                 ),
                 types.Tool(
+                    name="get_submodule_branches",
+                    description="Get all branches (local and remote) for a client submodule, handling dev mode",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "client": {
+                                "type": "string",
+                                "description": "Name of the client"
+                            },
+                            "submodule_path": {
+                                "type": "string",
+                                "description": "Path to the submodule (e.g., 'addons/partner-contact')"
+                            }
+                        },
+                        "required": ["client", "submodule_path"]
+                    }
+                ),
+                types.Tool(
                     name="create_client_branch",
                     description="Create a new Git branch for a client",
                     inputSchema={
@@ -1942,6 +1960,11 @@ class OdooClientMCPServer:
                 return await self._get_client_branches(
                     arguments.get("client")
                 )
+            elif name == "get_submodule_branches":
+                return await self._get_submodule_branches(
+                    arguments.get("client"),
+                    arguments.get("submodule_path")
+                )
             elif name == "create_client_branch":
                 return await self._create_client_branch(
                     arguments.get("client"),
@@ -2239,6 +2262,11 @@ class OdooClientMCPServer:
         elif name == "get_client_branches":
             return await self._get_client_branches(
                 arguments.get("client")
+            )
+        elif name == "get_submodule_branches":
+            return await self._get_submodule_branches(
+                arguments.get("client"),
+                arguments.get("submodule_path")
             )
         elif name == "create_client_branch":
             return await self._create_client_branch(
@@ -3168,9 +3196,30 @@ class OdooClientMCPServer:
                         "modules": []
                     })
             
+            # Check dev config for repositories in dev mode
+            dev_config_file = client_dir / ".dev-config.json"
+            dev_config = {}
+            if dev_config_file.exists():
+                with open(dev_config_file, 'r') as f:
+                    dev_config = json.load(f)
+            
             # Now get additional info for each submodule that actually exists
             for submodule_info in submodules:
+                repo_name = submodule_info["name"]
                 submodule_path = client_dir / submodule_info["path"]
+                
+                # Check if this repo is in dev mode
+                is_dev_mode = False
+                dev_branch = None
+                if dev_config and "repositories" in dev_config:
+                    repo_config = dev_config["repositories"].get(repo_name, {})
+                    branch_config = repo_config.get("branches", {}).get("18.0", {})
+                    if branch_config.get("mode") == "dev":
+                        is_dev_mode = True
+                        dev_branch = branch_config.get("dev_branch", "18.0")
+                        # Use dev repository path instead
+                        submodule_path = client_dir / ".dev-repos" / "18.0" / repo_name
+                
                 if submodule_path.exists() and submodule_path.is_dir():
                     # Try to get git info if it's a git repository
                     git_dir = submodule_path / ".git"
@@ -3218,6 +3267,11 @@ class OdooClientMCPServer:
                             manifest_files = ["__manifest__.py", "__openerp__.py"]
                             if any((module_dir / manifest).exists() for manifest in manifest_files):
                                 submodule_info["modules"].append(module_dir.name)
+                
+                # Add dev mode info
+                if is_dev_mode:
+                    submodule_info["dev_mode"] = True
+                    submodule_info["dev_branch"] = dev_branch
             
             result = {
                 "success": True,
@@ -4699,6 +4753,114 @@ class OdooClientMCPServer:
                 text=json.dumps({
                     "error": f"Error getting branches for client '{client_name}': {str(e)}"
                 }, indent=2)
+            )]
+
+    async def _get_submodule_branches(self, client_name: str, submodule_path: str):
+        """Get all branches (local and remote) for a client submodule, handling dev mode"""
+        import json
+        
+        if not client_name or not submodule_path:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": "Client name and submodule path are required"})
+            )]
+        
+        client_dir = self.repo_path / "clients" / client_name
+        if not client_dir.exists():
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({"success": False, "error": f"Client '{client_name}' not found"})
+            )]
+        
+        try:
+            # Execute the get_submodule_branches.sh script
+            script_path = self.repo_path / "scripts" / "get_submodule_branches.sh"
+            if script_path.exists():
+                cmd = ["bash", str(script_path), client_name, submodule_path]
+                result = self._run_command(cmd, cwd=self.repo_path)
+                
+                if result["success"] and result["stdout"]:
+                    branches = result["stdout"].strip().split('\n')
+                    branches = [b.strip() for b in branches if b.strip()]
+                    
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": True,
+                            "output": "\n".join(branches)
+                        })
+                    )]
+            
+            # Fallback: inline implementation
+            repo_name = Path(submodule_path).name
+            dev_config_file = client_dir / ".dev-config.json"
+            is_dev_mode = False
+            work_dir = client_dir / submodule_path
+            
+            # Check if in dev mode
+            if dev_config_file.exists():
+                with open(dev_config_file, 'r') as f:
+                    dev_config = json.load(f)
+                    repo_config = dev_config.get("repositories", {}).get(repo_name, {})
+                    branch_config = repo_config.get("branches", {}).get("18.0", {})
+                    if branch_config.get("mode") == "dev":
+                        is_dev_mode = True
+                        work_dir = client_dir / ".dev-repos" / "18.0" / repo_name
+            
+            if not work_dir.exists():
+                return [types.TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": False,
+                        "error": f"Repository directory not found: {work_dir}"
+                    })
+                )]
+            
+            # If in dev mode, configure git to fetch all branches
+            if is_dev_mode:
+                config_cmd = ["git", "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]
+                self._run_command(config_cmd, cwd=work_dir)
+                
+                fetch_cmd = ["git", "fetch", "origin", "--quiet"]
+                self._run_command(fetch_cmd, cwd=work_dir)
+            
+            # Get local branches
+            local_cmd = ["git", "branch", "--format=%(refname:short)"]
+            local_result = self._run_command(local_cmd, cwd=work_dir)
+            local_branches = []
+            if local_result["success"] and local_result["stdout"]:
+                local_branches = [b.strip() for b in local_result["stdout"].strip().split('\n') if b.strip()]
+            
+            # Get remote branches
+            remote_cmd = ["git", "branch", "-r"]
+            remote_result = self._run_command(remote_cmd, cwd=work_dir)
+            remote_branches = []
+            if remote_result["success"] and remote_result["stdout"]:
+                for line in remote_result["stdout"].strip().split('\n'):
+                    if line.strip() and "HEAD" not in line:
+                        # Remove "origin/" prefix
+                        branch = line.strip().replace("origin/", "")
+                        if branch:
+                            remote_branches.append(branch)
+            
+            # Combine and deduplicate
+            all_branches = sorted(set(local_branches + remote_branches), key=lambda x: [int(p) if p.isdigit() else p for p in x.split('.')])
+            
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": True,
+                    "output": "\n".join(all_branches)
+                })
+            )]
+            
+        except Exception as e:
+            return [types.TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": False,
+                    "error": f"Error getting branches: {str(e)}"
+                })
             )]
 
     async def _create_client_branch(self, client_name: str, branch_name: str, source_branch: str = "18.0"):
@@ -7252,33 +7414,62 @@ class OdooClientMCPServer:
                 text=json.dumps({"success": False, "error": f"Client '{client}' not found"})
             )]
         
-        submodule_dir = client_dir / submodule_path
-        if not submodule_dir.exists():
+        # Check if in dev mode
+        repo_name = Path(submodule_path).name
+        dev_config_file = client_dir / ".dev-config.json"
+        is_dev_mode = False
+        work_dir = client_dir / submodule_path
+        
+        if dev_config_file.exists():
+            with open(dev_config_file, 'r') as f:
+                dev_config = json.load(f)
+                repo_config = dev_config.get("repositories", {}).get(repo_name, {})
+                branch_config = repo_config.get("branches", {}).get("18.0", {})
+                if branch_config.get("mode") == "dev":
+                    is_dev_mode = True
+                    work_dir = client_dir / ".dev-repos" / "18.0" / repo_name
+        
+        if not work_dir.exists():
             return [types.TextContent(
                 type="text",
-                text=json.dumps({"success": False, "error": f"Submodule '{submodule_path}' not found"})
+                text=json.dumps({"success": False, "error": f"Repository directory not found: {work_dir}"})
             )]
         
         try:
-            # Update .gitmodules file to set new branch
-            config_result = self._run_command([
-                "git", "config", "-f", ".gitmodules", f"submodule.{submodule_path}.branch", new_branch
-            ], cwd=client_dir)
+            # Update .gitmodules file to set new branch (only if not in dev mode)
+            if not is_dev_mode:
+                config_result = self._run_command([
+                    "git", "config", "-f", ".gitmodules", f"submodule.{submodule_path}.branch", new_branch
+                ], cwd=client_dir)
+                
+                if not config_result["success"]:
+                    return [types.TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "success": False,
+                            "error": f"Failed to update .gitmodules: {config_result['stderr']}"
+                        })
+                    )]
             
-            if not config_result["success"]:
-                return [types.TextContent(
-                    type="text",
-                    text=json.dumps({
-                        "success": False,
-                        "error": f"Failed to update .gitmodules: {config_result['stderr']}"
-                    })
-                )]
-            
-            # Fetch latest changes in submodule
-            fetch_result = self._run_command(["git", "fetch", "origin"], cwd=submodule_dir)
+            # Fetch latest changes in repository
+            fetch_result = self._run_command(["git", "fetch", "origin"], cwd=work_dir)
             
             # Switch to new branch
-            checkout_result = self._run_command(["git", "checkout", f"origin/{new_branch}"], cwd=submodule_dir)
+            if is_dev_mode:
+                # For dev mode, check if branch exists locally or remotely
+                # First, try to checkout existing local branch
+                checkout_result = self._run_command(["git", "checkout", new_branch], cwd=work_dir)
+                
+                if not checkout_result["success"]:
+                    # If local branch doesn't exist, try to create from remote
+                    checkout_result = self._run_command(["git", "checkout", "-B", new_branch, f"origin/{new_branch}"], cwd=work_dir)
+                    
+                    if not checkout_result["success"]:
+                        # If remote branch doesn't exist either, just create a new local branch from current HEAD
+                        checkout_result = self._run_command(["git", "checkout", "-b", new_branch], cwd=work_dir)
+            else:
+                # For submodules, checkout the remote branch directly
+                checkout_result = self._run_command(["git", "checkout", f"origin/{new_branch}"], cwd=work_dir)
             
             if not checkout_result["success"]:
                 return [types.TextContent(
@@ -7289,19 +7480,40 @@ class OdooClientMCPServer:
                     })
                 )]
             
-            # Commit the .gitmodules change
-            add_result = self._run_command(["git", "add", ".gitmodules"], cwd=client_dir)
-            commit_result = self._run_command([
-                "git", "commit", "-m", f"Change {submodule_path} branch to {new_branch}"
-            ], cwd=client_dir)
+            # Commit the .gitmodules change (only if not in dev mode)
+            if not is_dev_mode:
+                add_result = self._run_command(["git", "add", ".gitmodules"], cwd=client_dir)
+                commit_result = self._run_command([
+                    "git", "commit", "-m", f"Change {submodule_path} branch to {new_branch}"
+                ], cwd=client_dir)
+            else:
+                # Update dev config with the new branch
+                if dev_config_file.exists():
+                    with open(dev_config_file, 'r') as f:
+                        dev_config = json.load(f)
+                    
+                    # Update the dev_branch in config
+                    if "repositories" not in dev_config:
+                        dev_config["repositories"] = {}
+                    if repo_name not in dev_config["repositories"]:
+                        dev_config["repositories"][repo_name] = {"branches": {}}
+                    if "18.0" not in dev_config["repositories"][repo_name]["branches"]:
+                        dev_config["repositories"][repo_name]["branches"]["18.0"] = {}
+                    
+                    dev_config["repositories"][repo_name]["branches"]["18.0"]["dev_branch"] = new_branch
+                    
+                    with open(dev_config_file, 'w') as f:
+                        json.dump(dev_config, f, indent=2)
             
+            repo_type = "dev repository" if is_dev_mode else "submodule"
             return [types.TextContent(
                 type="text",
                 text=json.dumps({
                     "success": True,
-                    "message": f"Submodule '{submodule_path}' branch changed to '{new_branch}' successfully",
+                    "message": f"{repo_type.capitalize()} '{repo_name}' branch changed to '{new_branch}' successfully",
                     "submodule_path": submodule_path,
-                    "new_branch": new_branch
+                    "new_branch": new_branch,
+                    "dev_mode": is_dev_mode
                 }, indent=2)
             )]
                 

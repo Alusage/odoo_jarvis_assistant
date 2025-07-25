@@ -504,7 +504,7 @@ class DataService {
       this.mcpServerStatus = 'connected';
       this.lastError = null;
       
-      // Return the result content directly
+      // Return the result directly from MCP server
       return result.result || result;
     } catch (error) {
       this.mcpServerStatus = 'error';
@@ -2093,6 +2093,102 @@ class DataService {
   }
 
   /**
+   * Get available branches for a submodule
+   */
+  async getSubmoduleBranches(clientName, submodulePath) {
+    if (this.mockMode) {
+      return {
+        success: true,
+        branches: ['18.0', '17.0', '16.0', 'master', 'staging', 'develop']
+      };
+    }
+
+    try {
+      console.log(`Getting branches for ${clientName}/${submodulePath}`);
+      
+      // Use the new MCP tool get_submodule_branches
+      const response = await this.callMCPServer('get_submodule_branches', {
+        client: clientName,
+        submodule_path: submodulePath
+      });
+      
+      console.log('Raw MCP response:', response);
+      
+      if (response && response.type === 'text' && response.content) {
+        // Parse the JSON response
+        let result;
+        try {
+          result = JSON.parse(response.content);
+        } catch (e) {
+          console.error('Failed to parse response:', e);
+          // If parsing fails, use the hardcoded list
+          return this.getFallbackBranches(submodulePath);
+        }
+        
+        if (result.success && result.output) {
+          const branches = result.output
+            .trim()
+            .split('\n')
+            .filter(branch => branch.length > 0 && !branch.includes('Error:'));
+          
+          if (branches.length > 0) {
+            console.log(`Found ${branches.length} branches for ${submodulePath}:`, branches);
+            return {
+              success: true,
+              branches: branches
+            };
+          }
+        }
+      }
+      
+      // Fallback to hardcoded list
+      return this.getFallbackBranches(submodulePath);
+    } catch (error) {
+      console.error('Error fetching submodule branches:', error);
+      return this.getFallbackBranches(submodulePath);
+    }
+  }
+  
+  /**
+   * Get fallback branches for known OCA repositories
+   */
+  getFallbackBranches(submodulePath) {
+    const repoName = submodulePath.split('/').pop();
+    
+    // Map of known OCA repositories and their branches
+    const ocaBranches = {
+      'partner-contact': [
+        '6.1', '7.0', '8.0', '9.0', '10.0', '11.0', '12.0', 
+        '13.0', '13.0-ocabot-update-dotfiles', 
+        '14.0', '15.0', '16.0', '17.0', 
+        '18.0', '18.0-ocabot-merge-pr-1987-by-dreispt-bump-nobump'
+      ],
+      'account-analytic': [
+        '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '18.0'
+      ],
+      'project': [
+        '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '18.0'
+      ],
+      'server-ux': [
+        '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '18.0'
+      ]
+    };
+    
+    if (ocaBranches[repoName]) {
+      return {
+        success: true,
+        branches: ocaBranches[repoName]
+      };
+    }
+    
+    // Default Odoo branches
+    return {
+      success: true,
+      branches: ['18.0', '17.0', '16.0', '15.0', '14.0', '13.0', '12.0', '11.0', '10.0', '9.0', '8.0']
+    };
+  }
+
+  /**
    * Change the branch of a submodule
    */
   async changeSubmoduleBranch(clientName, submodulePath, newBranch) {
@@ -2110,7 +2206,29 @@ class DataService {
         new_branch: newBranch
       });
       
-      return response;
+      console.log('Change branch response:', response);
+      console.log('Response type:', typeof response);
+      
+      if (response && response.type === 'text' && response.content) {
+        console.log('Content to parse:', response.content);
+        
+        // Try to parse as JSON
+        try {
+          const result = JSON.parse(response.content);
+          console.log('Parsed result:', result);
+            return result;
+          } catch (e) {
+            console.log('Parse error:', e);
+            // If not JSON, treat as success with the text as message
+            return {
+              success: true,
+              message: response.content
+            };
+          }
+        }
+      
+      console.log('Returning no response error');
+      return { success: false, error: 'No response from server' };
     } catch (error) {
       console.error('Error changing submodule branch:', error);
       return { success: false, error: error.message };

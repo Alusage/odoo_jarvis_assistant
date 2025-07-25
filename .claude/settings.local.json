@@ -15,7 +15,10 @@
       "Bash(cloudron login:*)",
       "Bash(./deploy.sh)",
       "Bash(cloudron:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(/home/dev/dev/docker/odoo_jarvis_assistant/scripts/get_submodule_branches.sh:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker logs:*)"
     ],
     "deny": []
   }

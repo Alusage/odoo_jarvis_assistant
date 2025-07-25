@@ -3,6 +3,14 @@ import { CommitHistory } from "./CommitHistory.js";
 import { BuildCard } from "./BuildCard.js";
 import { Terminal } from "./Terminal.js";
 import { ClientsOverview } from "./ClientsOverview.js";
+import { 
+  DashboardHeader,
+  AddonsTab,
+  LogsTab,
+  CloudronTab,
+  SettingsTab,
+  CommitDialog
+} from "./dashboard/index.js";
 import { dataService } from "../services/dataService.js";
 
 export class Dashboard extends Component {
@@ -15,96 +23,22 @@ export class Dashboard extends Component {
 
       <!-- Client Dashboard (Client selected) -->
       <div t-if="props.client" class="flex flex-col h-full">
-        <!-- Tab Navigation -->
-        <div class="border-b border-gray-200 bg-white sticky top-0 z-20">
-        <div class="flex items-center justify-between p-4">
-          <!-- Tabs -->
-          <div class="flex space-x-6">
-            <button 
-              t-foreach="state.tabs" 
-              t-as="tab" 
-              t-key="tab.id"
-              class="tab-button"
-              t-att-class="getTabClass(tab.id)"
-              t-on-click="() => this.setActiveTab(tab.id)"
-            >
-              <t t-esc="tab.label"/>
-            </button>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex items-center space-x-2">
-            <!-- Status info -->
-            <span t-if="state.clientStatus.status === 'missing'" class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-              ⚠️ Docker image missing - Build first
-            </span>
-            <span t-elif="state.clientStatus.status === 'stopped'" class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-              ⏸️ Ready to start
-            </span>
-            <span t-elif="state.clientStatus.status === 'running'" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-              ✅ Running
-            </span>
-            <span t-elif="state.clientStatus.status === 'partial'" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-              🔄 Partially running
-            </span>
-            <span t-else="" class="text-xs bg-gray-100 px-2 py-1 rounded" t-esc="'Status: ' + state.clientStatus.status"></span>
-            <button class="btn-secondary" t-on-click="cloneRepository">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-              </svg>
-              Clone
-            </button>
-            <button t-if="state.clientStatus.status !== 'running' and state.clientStatus.status !== 'missing'" class="btn-success" t-on-click="startClient">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m-9-4h.01M12 5v.01M3 12a9 9 0 0118 0 9 9 0 01-18 0z"/>
-              </svg>
-              Start
-            </button>
-            <button t-if="state.clientStatus.status === 'running'" class="btn-warning" t-on-click="stopClient">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/>
-              </svg>
-              Stop
-            </button>
-            <button t-if="state.clientStatus.status === 'running'" class="btn-secondary" t-on-click="restartClient">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-              </svg>
-              Restart
-            </button>
-            <button class="btn-secondary" t-on-click="rebuildClient" 
-                    t-att-class="state.clientStatus.status === 'missing' ? 'btn-primary' : 'btn-secondary'"
-                    t-att-title="state.clientStatus.status === 'missing' ? 'Build Docker image first' : 'Rebuild Docker image'">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-              </svg>
-              Rebuild
-            </button>
-            <button t-if="state.clientStatus.status === 'running' || state.clientStatus.status === 'partial'" class="btn-primary" t-on-click="connectToClient">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-              </svg>
-              Connect
-            </button>
-          </div>
-        </div>
-
-        <!-- Git Command Display -->
-        <div t-if="props.client" class="px-4 pb-4">
-          <div class="bg-gray-50 rounded-lg p-3 font-mono text-sm">
-            <div class="flex items-center justify-between">
-              <span class="text-gray-600">git clone</span>
-              <button class="btn-secondary btn-sm" t-on-click="copyGitCommand">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                </svg>
-              </button>
-            </div>
-            <div class="text-primary-600 mt-1" t-esc="getGitCloneCommand()"/>
-          </div>
-        </div>
-      </div>
+        <!-- Dashboard Header -->
+        <DashboardHeader 
+          client="props.client"
+          tabs="state.tabs"
+          clientStatus="state.clientStatus"
+          gitCommand="getGitCloneCommand()"
+          getTabClass="getTabClass.bind(this)"
+          onTabChange="setActiveTab.bind(this)"
+          onClone="cloneRepository.bind(this)"
+          onStart="startClient.bind(this)"
+          onStop="stopClient.bind(this)"
+          onRestart="restartClient.bind(this)"
+          onRebuild="rebuildClient.bind(this)"
+          onConnect="connectToClient.bind(this)"
+          onCopyGitCommand="copyGitCommand.bind(this)"
+        />
 
       <!-- Tab Content -->
       <div class="flex-1 overflow-hidden">
@@ -118,267 +52,34 @@ export class Dashboard extends Component {
         </div>
 
         <!-- Addons Tab -->
-        <div t-if="props.currentTab === 'ADDONS'" class="h-full overflow-y-auto p-6">
-          <!-- Header with Git status and actions -->
-          <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900">Module Management</h2>
-                <p class="text-sm text-gray-600">Manage linked modules for this client</p>
-              </div>
-              <div class="flex items-center space-x-3">
-                <div t-if="state.gitStatus" class="text-sm">
-                  <div class="flex items-center space-x-2">
-                    <span class="font-medium">Branch:</span>
-                    
-                    <!-- Branch name display mode -->
-                    <div t-if="!state.editingBranch" class="flex items-center space-x-1">
-                      <span class="font-mono text-primary-600" t-esc="state.gitStatus.current_branch"/>
-                      <button 
-                        class="text-gray-400 hover:text-gray-600 p-1" 
-                        t-on-click="startEditingBranch"
-                        title="Rename branch">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <!-- Branch name edit mode -->
-                    <div t-if="state.editingBranch" class="flex items-center space-x-2">
-                      <input 
-                        type="text" 
-                        class="text-sm border border-gray-300 rounded px-2 py-1 font-mono text-primary-600"
-                        t-model="state.newBranchName"
-                        t-on-keydown="onBranchNameKeydown"
-                        t-ref="branchInput"
-                        placeholder="New branch name"/>
-                      <button 
-                        class="text-green-600 hover:text-green-700 p-1" 
-                        t-on-click="saveBranchName"
-                        title="Save">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                      </button>
-                      <button 
-                        class="text-red-600 hover:text-red-700 p-1" 
-                        t-on-click="cancelEditingBranch"
-                        title="Cancel">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div class="mt-1">
-                    <span t-if="state.gitStatus.has_uncommitted_changes" class="text-orange-600">● Uncommitted changes</span>
-                    <span t-if="state.gitStatus.sync_status === 'up_to_date'" class="text-green-600">✓ Up to date</span>
-                    <span t-if="state.gitStatus.sync_status === 'behind'" class="text-red-600">↓ Behind remote</span>
-                    <span t-if="state.gitStatus.sync_status === 'ahead'" class="text-blue-600">↑ Ahead of remote</span>
-                  </div>
-                </div>
-                <div t-if="state.gitStatus and state.gitStatus.has_uncommitted_changes" class="flex gap-2">
-                  <button 
-                    class="btn-secondary btn-sm" 
-                    t-on-click="showDiffDialog"
-                  >
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Voir le diff
-                  </button>
-                  <button 
-                    class="btn-primary btn-sm" 
-                    t-on-click="showCommitDialog"
-                  >
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                    Commit Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Submodules management buttons -->
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-semibold text-gray-900">Addon Repositories</h3>
-            <div class="flex space-x-3">
-              <button 
-                class="btn-secondary flex items-center space-x-2"
-                t-on-click="syncSubmodules"
-                t-att-disabled="state.updatingSubmodules"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                <span t-if="!state.updatingSubmodules">Sync Submodules</span>
-                <span t-if="state.updatingSubmodules">Syncing...</span>
-              </button>
-              <button 
-                class="btn-primary flex items-center space-x-2"
-                t-on-click="updateAllSubmodules"
-                t-att-disabled="state.updatingSubmodules || getOutdatedSubmodulesCount() === 0"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
-                </svg>
-                <span t-esc="'Update All (' + getOutdatedSubmodulesCount() + ')'"/>
-              </button>
-              <button 
-                class="btn-success flex items-center space-x-2"
-                t-on-click="openAddRepoDialog"
-                t-att-disabled="state.updatingSubmodules"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                <span>Add Repository</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-6">
-            <div t-foreach="state.addons" t-as="addon" t-key="addon.name" class="card p-6">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-900" t-esc="addon.name"/>
-                  <p class="text-sm text-gray-600">
-                    <span class="font-medium">Branch:</span> <span t-esc="addon.branch"/>
-                    <span class="ml-4 font-medium">Commit:</span> <span class="font-mono text-xs" t-esc="addon.commit"/>
-                  </p>
-                  <!-- Submodule update status -->
-                  <div t-if="getSubmoduleStatus(addon.name)" class="mt-2">
-                    <div t-if="getSubmoduleStatus(addon.name).needs_update" class="flex items-center space-x-2">
-                      <span class="badge badge-warning">Update Available</span>
-                      <span class="text-xs text-gray-500">Latest: <span class="font-mono" t-esc="getSubmoduleStatus(addon.name).latest_commit.slice(0,8)"/></span>
-                    </div>
-                    <div t-if="!getSubmoduleStatus(addon.name).needs_update" class="flex items-center space-x-2">
-                      <span class="badge badge-success">Up to Date</span>
-                    </div>
-                  </div>
-                  <!-- Dev Mode status -->
-                  <div class="mt-2">
-                    <div t-if="isDevModeActive(addon.name)" class="flex items-center space-x-2">
-                      <span class="badge bg-orange-100 text-orange-800 border-orange-200">🛠️ Dev Mode</span>
-                      <span t-if="getDevModeInfo(addon.name).dev_branch" class="text-xs text-gray-500">
-                        Branch: <span class="font-mono" t-esc="getDevModeInfo(addon.name).dev_branch"/>
-                      </span>
-                    </div>
-                    <div t-if="!isDevModeActive(addon.name)" class="flex items-center space-x-2">
-                      <span class="badge bg-blue-100 text-blue-800 border-blue-200">🏭 Production Mode</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <span class="badge badge-info" t-esc="addon.url"/>
-                  
-                  <!-- Repository management buttons -->
-                  <div class="flex items-center space-x-1">
-                    <!-- Individual pull button for outdated submodules -->
-                    <button 
-                      t-if="getSubmoduleStatus(addon.name) and getSubmoduleStatus(addon.name).needs_update"
-                      class="btn-sm btn-primary flex items-center space-x-1"
-                      t-on-click="() => this.updateSubmodule(addon.name)"
-                      t-att-disabled="state.updatingSubmodules"
-                      title="Pull latest changes"
-                    >
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/>
-                      </svg>
-                      <span>Pull</span>
-                    </button>
-                    
-                    <!-- Change branch button -->
-                    <button 
-                      class="btn-sm btn-secondary flex items-center space-x-1"
-                      t-on-click="() => this.openChangeBranchDialog(addon.name, addon.branch)"
-                      t-att-disabled="state.updatingSubmodules"
-                      title="Change branch"
-                    >
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                      </svg>
-                      <span>Branch</span>
-                    </button>
-                    
-                    <!-- Dev Mode Toggle button -->
-                    <button 
-                      t-att-class="isDevModeActive(addon.name) ? 'btn-sm btn-warning flex items-center space-x-1' : 'btn-sm btn-outline flex items-center space-x-1'"
-                      t-on-click="() => this.toggleDevMode(addon.name)"
-                      t-att-disabled="state.togglingDevMode[addon.name] || state.updatingSubmodules"
-                      t-att-title="isDevModeActive(addon.name) ? 'Switch to Production Mode' : 'Switch to Dev Mode'"
-                    >
-                      <div t-if="state.togglingDevMode[addon.name]" class="animate-spin rounded-full h-3 w-3 border-b-2 border-current"/>
-                      <svg t-else="" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path t-if="isDevModeActive(addon.name)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                        <path t-else="" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"/>
-                      </svg>
-                      <span t-if="isDevModeActive(addon.name)">Dev Mode</span>
-                      <span t-else="">Dev Mode</span>
-                    </button>
-                    
-                    <!-- Rename dev branch button (only for dev mode) -->
-                    <button 
-                      t-if="isDevModeActive(addon.name)"
-                      class="btn-sm btn-secondary flex items-center space-x-1"
-                      t-on-click="() => this.promptRenameDevBranch(addon.name)"
-                      t-att-disabled="state.togglingDevMode[addon.name] || state.updatingSubmodules"
-                      title="Rename development branch"
-                    >
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                      </svg>
-                      <span>Rename</span>
-                    </button>
-
-                    <!-- Remove repository button -->
-                    <button 
-                      class="btn-sm btn-danger flex items-center space-x-1"
-                      t-on-click="() => this.confirmRemoveSubmodule(addon.name)"
-                      t-att-disabled="state.updatingSubmodules"
-                      title="Remove repository"
-                    >
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                      </svg>
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="border-t pt-4">
-                <h4 class="text-md font-medium text-gray-700 mb-3">Available Modules</h4>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  <div t-foreach="addon.modules" t-as="module" t-key="module.name" class="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      t-att-id="'module-' + addon.name + '-' + module.name"
-                      t-att-checked="module.linked"
-                      t-on-change="(ev) => this.toggleModule(addon.name, module.name, ev.target.checked)"
-                      class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                    />
-                    <label 
-                      t-att-for="'module-' + addon.name + '-' + module.name"
-                      class="text-sm text-gray-700 cursor-pointer"
-                      t-esc="module.name"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div t-if="state.addons.length === 0 and !state.loading" class="text-center py-12">
-              <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7"/>
-              </svg>
-              <p class="text-gray-500">No addon repositories found</p>
-            </div>
-          </div>
+        <div t-if="props.currentTab === 'ADDONS'" class="h-full">
+          <AddonsTab
+            gitStatus="state.gitStatus"
+            editingBranch="state.editingBranch"
+            newBranchName="state.newBranchName"
+            updatingSubmodules="state.updatingSubmodules"
+            addons="state.addons"
+            togglingDevMode="state.togglingDevMode"
+            onStartEditingBranch="startEditingBranch.bind(this)"
+            onBranchNameKeydown="onBranchNameKeydown.bind(this)"
+            onSaveBranchName="saveBranchName.bind(this)"
+            onCancelEditingBranch="cancelEditingBranch.bind(this)"
+            onShowDiffDialog="showDiffDialog.bind(this)"
+            onShowCommitDialog="showCommitDialog.bind(this)"
+            onSyncSubmodules="syncSubmodules.bind(this)"
+            onUpdateAllSubmodules="updateAllSubmodules.bind(this)"
+            onOpenAddRepoDialog="openAddRepoDialog.bind(this)"
+            getOutdatedSubmodulesCount="getOutdatedSubmodulesCount.bind(this)"
+            getSubmoduleStatus="getSubmoduleStatus.bind(this)"
+            isDevModeActive="isDevModeActive.bind(this)"
+            getDevModeInfo="getDevModeInfo.bind(this)"
+            onUpdateSubmodule="updateSubmodule.bind(this)"
+            onOpenChangeBranchDialog="openChangeBranchDialog.bind(this)"
+            onToggleDevMode="toggleDevMode.bind(this)"
+            onRenameDevBranch="promptRenameDevBranch.bind(this)"
+            onRemoveRepository="confirmRemoveSubmodule.bind(this)"
+            onToggleModule="toggleModule.bind(this)"
+          />
         </div>
 
         <!-- Builds Tab -->
@@ -403,230 +104,30 @@ export class Dashboard extends Component {
         </div>
 
         <!-- Logs Tab -->
-        <div t-if="props.currentTab === 'LOGS'" class="h-full p-6">
-          <div class="bg-gray-900 rounded-lg h-full overflow-hidden">
-            <div class="bg-gray-800 px-4 py-2 flex items-center justify-between">
-              <h3 class="text-white font-medium">Application Logs</h3>
-              <div class="flex items-center space-x-2">
-                <button class="btn-secondary btn-sm" t-on-click="refreshLogs">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                  </svg>
-                </button>
-                <button class="btn-secondary btn-sm" t-on-click="downloadLogs">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="p-4 h-full overflow-y-auto font-mono text-sm text-green-400">
-              <div t-foreach="state.logs" t-as="logLine" t-key="logLine_index">
-                <span class="text-gray-500" t-esc="logLine.timestamp"/>
-                <span t-att-class="getLogLevelClass(logLine.level)" t-esc="logLine.level"/>
-                <span class="text-gray-300" t-esc="logLine.message"/>
-              </div>
-            </div>
-          </div>
+        <div t-if="props.currentTab === 'LOGS'" class="h-full">
+          <LogsTab
+            logs="state.logs"
+            onRefreshLogs="refreshLogs.bind(this)"
+            onDownloadLogs="downloadLogs.bind(this)"
+            getLogLevelClass="getLogLevelClass.bind(this)"
+          />
         </div>
 
         <!-- Cloudron Tab -->
-        <div t-if="props.currentTab === 'CLOUDRON'" class="h-full overflow-y-auto p-6">
-          <div class="max-w-4xl mx-auto space-y-8">
-            <!-- Cloudron Status Section -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-              <div class="p-6 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                  <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                  </svg>
-                  Cloudron Publication
-                </h3>
-                <p class="text-sm text-gray-600 mt-1">
-                  Deploy your Odoo instance to Cloudron.io platform
-                </p>
-              </div>
-              
-              <div class="p-6">
-                <div t-if="!state.cloudronStatus.cloudron_enabled" class="text-center py-8">
-                  <div class="text-gray-400 mb-4">
-                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                    </svg>
-                  </div>
-                  <h4 class="text-lg font-medium text-gray-900 mb-2">Cloudron Not Enabled</h4>
-                  <p class="text-gray-600 mb-4">Enable Cloudron to deploy this client online</p>
-                  <button class="btn-primary" t-on-click="enableCloudron">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
-                    Enable Cloudron
-                  </button>
-                </div>
-                
-                <div t-if="state.cloudronStatus.cloudron_enabled" class="space-y-6">
-                  <!-- Status Display -->
-                  <div class="bg-gray-50 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm font-medium text-gray-700">Status</span>
-                      <span t-if="state.cloudronStatus.is_production_branch" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        ✓ Production Branch
-                      </span>
-                      <span t-else="" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        ⚠️ Non-production Branch
-                      </span>
-                    </div>
-                    <div class="text-sm text-gray-600">
-                      <div>Current Branch: <span class="font-mono font-medium" t-esc="state.cloudronStatus.current_branch"/></div>
-                      <div t-if="state.cloudronStatus.cloudron_server">Server: <span class="font-mono text-xs" t-esc="state.cloudronStatus.cloudron_server"/></div>
-                      <div t-if="state.cloudronStatus.app_id">App ID: <span class="font-mono text-xs" t-esc="state.cloudronStatus.app_id"/></div>
-                    </div>
-                  </div>
-                  
-                  <!-- Configuration Form -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Cloudron Server
-                      </label>
-                      <input 
-                        type="text" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.server"
-                        placeholder="https://my.cloudron.me"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        App ID
-                      </label>
-                      <input 
-                        type="text" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.app_id"
-                        t-att-placeholder="props.client.name + '.odoo.localhost'"/>
-                      <p class="text-xs text-gray-500 mt-1">Full app identifier (e.g., myapp.odoo.localhost or myapp.odoo.mydomain.com)</p>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Docker Registry
-                      </label>
-                      <input 
-                        type="text" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.docker_registry"
-                        placeholder="docker.io/username"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Docker Username
-                      </label>
-                      <input 
-                        type="text" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.docker_username"
-                        placeholder="Docker registry username"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Docker Password
-                      </label>
-                      <input 
-                        type="password" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.docker_password"
-                        placeholder="Docker registry password"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Cloudron Username
-                      </label>
-                      <input 
-                        type="text" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.cloudron_username"
-                        placeholder="Cloudron account username"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Cloudron Password
-                      </label>
-                      <input 
-                        type="password" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.cloudron_password"
-                        placeholder="Cloudron account password"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Contact Email
-                      </label>
-                      <input 
-                        type="email" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.contact_email"
-                        placeholder="admin@example.com"/>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Author Name
-                      </label>
-                      <input 
-                        type="text" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        t-model="state.cloudronConfig.author_name"
-                        placeholder="Admin"/>
-                    </div>
-                  </div>
-                  
-                  <div class="flex justify-between">
-                    <button class="btn-secondary" t-on-click="updateCloudronConfig">
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
-                      </svg>
-                      Update Configuration
-                    </button>
-                    <div class="space-x-3">
-                      <button 
-                        class="btn-secondary"
-                        t-on-click="buildCloudronApp"
-                        t-att-disabled="!state.cloudronStatus.is_production_branch"
-                      >
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-                        </svg>
-                        Build App
-                      </button>
-                      <button 
-                        class="btn-success"
-                        t-on-click="deployCloudronApp"
-                        t-att-disabled="!state.cloudronStatus.is_production_branch"
-                      >
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                        </svg>
-                        Deploy
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div t-if="!state.cloudronStatus.is_production_branch" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div class="flex items-start">
-                      <svg class="w-5 h-5 text-yellow-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"/>
-                      </svg>
-                      <div>
-                        <h4 class="text-sm font-medium text-yellow-800">Production Branch Required</h4>
-                        <p class="text-sm text-yellow-700 mt-1">
-                          Cloudron deployment is only available on production branches (18.0, master, main). 
-                          Switch to a production branch to enable build and deployment.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div t-if="props.currentTab === 'CLOUDRON'" class="h-full">
+          <CloudronTab
+            client="props.client"
+            cloudronStatus="state.cloudronStatus"
+            cloudronConfig="state.cloudronConfig"
+            savingConfig="state.savingConfig"
+            building="state.building"
+            deploying="state.deploying"
+            onEnableCloudron="enableCloudron.bind(this)"
+            onSaveCloudronConfig="updateCloudronConfig.bind(this)"
+            onBuildCloudron="buildCloudronApp.bind(this)"
+            onDeployCloudron="deployCloudronApp.bind(this)"
+            onBuildAndDeployCloudron="buildAndDeployCloudron.bind(this)"
+          />
         </div>
 
         <!-- Shell Tab -->
@@ -635,134 +136,17 @@ export class Dashboard extends Component {
         </div>
 
         <!-- Settings Tab -->
-        <div t-if="props.currentTab === 'SETTINGS'" class="h-full overflow-y-auto p-6">
-          <div class="max-w-4xl mx-auto space-y-8">
-            <!-- Traefik Configuration Section -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-              <div class="p-6 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                  <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                  </svg>
-                  Traefik Configuration
-                </h3>
-                <p class="mt-1 text-sm text-gray-500">Configure domain and protocol for branch deployments</p>
-              </div>
-              
-              <div class="p-6">
-                <div t-if="!state.editingTraefikConfig" class="space-y-4">
-                  <!-- Display current configuration -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
-                      <div class="text-sm text-gray-900 font-mono bg-gray-50 px-3 py-2 rounded border">
-                        <t t-esc="state.traefikConfig.domain"/>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Protocol</label>
-                      <div class="text-sm text-gray-900 font-mono bg-gray-50 px-3 py-2 rounded border">
-                        <t t-esc="state.traefikConfig.protocol"/>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Example Branch URL</label>
-                    <div class="text-sm text-blue-600 font-mono bg-blue-50 px-3 py-2 rounded border">
-                      <t t-esc="state.traefikConfig.protocol"/>://{branch}.{client}.<t t-esc="state.traefikConfig.domain"/>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Current MCP Server URL</label>
-                    <div class="text-sm text-green-600 font-mono bg-green-50 px-3 py-2 rounded border">
-                      <t t-esc="state.traefikConfig.protocol"/>://mcp.<t t-esc="state.traefikConfig.domain"/>
-                    </div>
-                  </div>
-                  
-                  <div class="flex justify-between items-center pt-4">
-                    <div class="text-xs text-gray-500">
-                      <strong>Note:</strong> Add <code class="bg-gray-100 px-1 rounded">127.0.0.1 *.{domain}</code> to your /etc/hosts file
-                    </div>
-                    <button 
-                      class="btn-primary" 
-                      t-on-click="startEditingTraefikConfig"
-                      t-att-disabled="state.traefikConfigLoading">
-                      Edit Configuration
-                    </button>
-                  </div>
-                </div>
-
-                <div t-if="state.editingTraefikConfig" class="space-y-4">
-                  <!-- Edit configuration form -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
-                      <input 
-                        type="text" 
-                        class="form-input w-full"
-                        t-model="state.traefikConfig.domain"
-                        placeholder="local, localhost, dev..."
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Protocol</label>
-                      <select class="form-input w-full" t-model="state.traefikConfig.protocol">
-                        <option value="http">HTTP</option>
-                        <option value="https">HTTPS</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Preview URL</label>
-                    <div class="text-sm text-blue-600 font-mono bg-blue-50 px-3 py-2 rounded border">
-                      <t t-esc="state.traefikConfig.protocol"/>://{branch}.{client}.<t t-esc="state.traefikConfig.domain"/>
-                    </div>
-                  </div>
-                  
-                  <div class="flex justify-end space-x-3 pt-4">
-                    <button 
-                      class="btn-secondary" 
-                      t-on-click="cancelTraefikConfigEdit"
-                      t-att-disabled="state.traefikConfigLoading">
-                      Cancel
-                    </button>
-                    <button 
-                      class="btn-success" 
-                      t-on-click="saveTraefikConfig"
-                      t-att-disabled="state.traefikConfigLoading">
-                      <span t-if="state.traefikConfigLoading" class="mr-2">
-                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block"/>
-                      </span>
-                      Save &amp; Restart Services
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- GitHub Integration Section (existing) -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
-              <div class="p-6 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                  <svg class="w-5 h-5 mr-2 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"/>
-                  </svg>
-                  GitHub Integration
-                </h3>
-                <p class="mt-1 text-sm text-gray-500">Configure GitHub repository settings</p>
-              </div>
-              
-              <div class="p-6">
-                <div class="text-sm text-gray-600">
-                  GitHub integration settings will be available in a future update.
-                </div>
-              </div>
-            </div>
-          </div>
+        <div t-if="props.currentTab === 'SETTINGS'" class="h-full">
+          <SettingsTab
+            traefikConfig="state.traefikConfig"
+            editingTraefikConfig="state.editingTraefikConfig"
+            traefikConfigLoading="state.traefikConfigLoading"
+            gitRemoteUrl="state.gitRemoteUrl"
+            onStartEditingTraefikConfig="startEditingTraefikConfig.bind(this)"
+            onCancelTraefikConfigEdit="cancelTraefikConfigEdit.bind(this)"
+            onSaveTraefikConfig="saveTraefikConfig.bind(this)"
+            onOpenGitHub="openGitHub.bind(this)"
+          />
         </div>
       </div>
 
@@ -775,42 +159,12 @@ export class Dashboard extends Component {
       </div>
 
       <!-- Commit Dialog -->
-      <div t-if="state.showCommitDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
-          <h3 class="text-lg font-semibold mb-4">Commit Changes</h3>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Commit Message
-            </label>
-            <textarea
-              class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              rows="3"
-              placeholder="Describe your changes..."
-              t-model="state.commitMessage"
-            />
-          </div>
-          
-          <div class="flex justify-end space-x-3">
-            <button 
-              class="btn-secondary"
-              t-on-click="cancelCommit"
-            >
-              Cancel
-            </button>
-            <button 
-              class="btn-primary"
-              t-on-click="confirmCommit"
-              t-att-disabled="!state.commitMessage.trim()"
-            >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"/>
-              </svg>
-              Commit
-            </button>
-          </div>
-        </div>
-      </div>
+      <CommitDialog
+        show="state.showCommitDialog"
+        commitMessage="state.commitMessage"
+        onCancel="cancelCommit.bind(this)"
+        onConfirm="confirmCommit.bind(this)"
+      />
 
       <!-- Diff Dialog -->
       <div t-if="state.showDiffDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1090,13 +444,43 @@ export class Dashboard extends Component {
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">New Branch</label>
-            <input 
-              type="text" 
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-700">New Branch</label>
+              <button 
+                type="button"
+                class="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                t-on-click="refreshBranchList"
+                t-att-disabled="state.changeBranchLoading"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+            <div t-if="state.changeBranchLoading" class="flex items-center justify-center py-4">
+              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+              <span class="ml-2 text-gray-600">Loading branches...</span>
+            </div>
+            <select 
+              t-if="!state.changeBranchLoading"
               class="input w-full"
-              placeholder="Enter new branch name"
               t-model="state.changeBranchNewBranch"
-            />
+              t-att-disabled="state.changeBranchAvailableBranches.length === 0"
+            >
+              <option value="" disabled="">Select a branch</option>
+              <option 
+                t-foreach="state.changeBranchAvailableBranches" 
+                t-as="branch" 
+                t-key="branch"
+                t-att-value="branch"
+                t-att-selected="branch === state.changeBranchNewBranch"
+                t-esc="branch"
+              />
+            </select>
+            <p t-if="!state.changeBranchLoading and state.changeBranchAvailableBranches.length === 0" class="text-sm text-red-600 mt-1">
+              No branches found
+            </p>
           </div>
           
           <div class="flex justify-end space-x-3">
@@ -1104,7 +488,7 @@ export class Dashboard extends Component {
             <button 
               class="btn-primary" 
               t-on-click="confirmChangeBranch"
-              t-att-disabled="!state.changeBranchNewBranch || state.changeBranchNewBranch === state.changeBranchCurrentBranch"
+              t-att-disabled="state.changeBranchLoading || !state.changeBranchNewBranch || state.changeBranchNewBranch === state.changeBranchCurrentBranch"
             >
               Change Branch
             </button>
@@ -1116,7 +500,18 @@ export class Dashboard extends Component {
     </div>
   `;
   
-  static components = { CommitHistory, BuildCard, Terminal, ClientsOverview };
+  static components = { 
+    CommitHistory, 
+    BuildCard, 
+    Terminal, 
+    ClientsOverview,
+    DashboardHeader,
+    AddonsTab,
+    LogsTab,
+    CloudronTab,
+    SettingsTab,
+    CommitDialog
+  };
 
   setup() {
     this.state = useState({
@@ -1147,6 +542,8 @@ export class Dashboard extends Component {
       changeBranchRepoName: '',
       changeBranchCurrentBranch: '',
       changeBranchNewBranch: '',
+      changeBranchAvailableBranches: [],
+      changeBranchLoading: false,
       builds: [],
       logs: [],
       loading: false,
@@ -1175,8 +572,16 @@ export class Dashboard extends Component {
         subdomain: '',
         docker_registry: 'docker.io/username',
         contact_email: 'admin@example.com',
-        author_name: 'Admin'
+        author_name: 'Admin',
+        app_id: '',
+        docker_username: '',
+        docker_password: '',
+        cloudron_token: ''
       },
+      savingConfig: false,
+      building: false,
+      deploying: false,
+      gitRemoteUrl: ''
     });
 
     onMounted(() => {
@@ -1320,8 +725,10 @@ export class Dashboard extends Component {
     
     try {
       const { baseName, branchName } = this.parseClientInfo();
+      console.log('Loading logs for:', baseName, branchName);
       
       const rawLogs = await dataService.getClientLogs(baseName, branchName, 'odoo', 50);
+      console.log('Raw logs received:', rawLogs);
       
       // Parse logs into structured format
       this.state.logs = [];
@@ -1937,6 +1344,24 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
     }
   }
 
+  openGitHub() {
+    if (this.state.gitRemoteUrl) {
+      // Convert git URL to GitHub URL
+      let githubUrl = this.state.gitRemoteUrl;
+      
+      // Handle SSH URLs
+      if (githubUrl.startsWith('git@github.com:')) {
+        githubUrl = githubUrl.replace('git@github.com:', 'https://github.com/');
+      }
+      
+      // Remove .git extension
+      githubUrl = githubUrl.replace(/\.git$/, '');
+      
+      // Open in new tab
+      window.open(githubUrl, '_blank');
+    }
+  }
+
   // ===========================
   // Submodules Management
   // ===========================
@@ -1947,10 +1372,13 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
       if (!baseName) return;
 
       const result = await dataService.checkSubmodulesStatus(baseName);
-      if (result.success) {
+      if (result && result.success) {
         this.state.submodulesStatus = result.submodules || [];
       } else {
-        console.error('Error loading submodules status:', result.error);
+        // Log the error only if it exists and is meaningful
+        if (result && result.error && result.error !== 'undefined') {
+          console.error('Error loading submodules status:', result.error);
+        }
         this.state.submodulesStatus = [];
       }
     } catch (error) {
@@ -2283,11 +1711,38 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
     }
   }
 
-  openChangeBranchDialog(addonName, currentBranch) {
+  async openChangeBranchDialog(addonName, currentBranch) {
     this.state.showChangeBranchDialog = true;
     this.state.changeBranchRepoName = addonName;
     this.state.changeBranchCurrentBranch = currentBranch;
-    this.state.changeBranchNewBranch = '';
+    this.state.changeBranchNewBranch = currentBranch;
+    this.state.changeBranchAvailableBranches = [];
+    this.state.changeBranchLoading = true;
+    
+    // Load available branches
+    try {
+      const { baseName } = this.parseClientInfo();
+      const submodulePath = `addons/${addonName}`;
+      const result = await dataService.getSubmoduleBranches(baseName, submodulePath);
+      
+      if (result.success) {
+        this.state.changeBranchAvailableBranches = result.branches;
+        // If current branch is not in the list, select the first available branch
+        if (!result.branches.includes(currentBranch) && result.branches.length > 0) {
+          this.state.changeBranchNewBranch = result.branches[0];
+        }
+      } else {
+        console.error('Failed to load branches:', result.error);
+        // Fallback to common branches
+        this.state.changeBranchAvailableBranches = ['18.0', '17.0', '16.0', 'master'];
+      }
+    } catch (error) {
+      console.error('Error loading branches:', error);
+      // Fallback to common branches
+      this.state.changeBranchAvailableBranches = ['18.0', '17.0', '16.0', 'master'];
+    } finally {
+      this.state.changeBranchLoading = false;
+    }
   }
 
   closeChangeBranchDialog() {
@@ -2295,6 +1750,40 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
     this.state.changeBranchRepoName = '';
     this.state.changeBranchCurrentBranch = '';
     this.state.changeBranchNewBranch = '';
+    this.state.changeBranchAvailableBranches = [];
+    this.state.changeBranchLoading = false;
+  }
+  
+  async refreshBranchList() {
+    if (!this.state.changeBranchRepoName || this.state.changeBranchLoading) {
+      return;
+    }
+    
+    this.state.changeBranchLoading = true;
+    this.state.changeBranchAvailableBranches = [];
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      const submodulePath = `addons/${this.state.changeBranchRepoName}`;
+      const result = await dataService.getSubmoduleBranches(baseName, submodulePath);
+      
+      if (result.success) {
+        this.state.changeBranchAvailableBranches = result.branches;
+        // Keep current selection if it's still valid
+        if (!result.branches.includes(this.state.changeBranchNewBranch)) {
+          this.state.changeBranchNewBranch = this.state.changeBranchCurrentBranch;
+        }
+        this.showCommitMessage('Branch list refreshed successfully', 'success');
+      } else {
+        console.error('Failed to refresh branches:', result.error);
+        this.showCommitMessage('Failed to refresh branch list', 'error');
+      }
+    } catch (error) {
+      console.error('Error refreshing branches:', error);
+      this.showCommitMessage('Error refreshing branch list', 'error');
+    } finally {
+      this.state.changeBranchLoading = false;
+    }
   }
 
   async confirmChangeBranch() {
@@ -2315,6 +1804,14 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
         // Reload addons and submodules status
         await this.loadAddons();
         await this.loadSubmodulesStatus();
+        // Also reload dev mode status to ensure branch display is updated
+        await this.loadDevModeStatus();
+        // Force a re-render of the addons tab
+        if (this.state.activeTab === 'ADDONS') {
+          this.state.activeTab = '';
+          await this.nextTick();
+          this.state.activeTab = 'ADDONS';
+        }
       } else {
         this.showCommitMessage(`Failed to change branch: ${result.error}`, 'error');
       }
@@ -2512,6 +2009,49 @@ postgresql-${this.props.client.name}   postgres:15                 Up 2 hours (h
     } catch (error) {
       console.error('Error deploying Cloudron app:', error);
       this.showCommitMessage(`Error deploying Cloudron app: ${error.message}`, 'error');
+    }
+  }
+
+  async buildAndDeployCloudron() {
+    if (!this.props.client) return;
+    
+    try {
+      const { baseName } = this.parseClientInfo();
+      
+      // First build
+      this.state.building = true;
+      this.showCommitMessage('Building Cloudron application...', 'info');
+      
+      const buildResponse = await dataService.buildCloudronApp(baseName, false);
+      
+      if (buildResponse && buildResponse.success) {
+        this.showCommitMessage('Build successful! Now deploying...', 'success');
+        
+        // Then deploy
+        this.state.building = false;
+        this.state.deploying = true;
+        
+        const deployResponse = await dataService.deployCloudronApp(baseName, 'install');
+        
+        if (deployResponse && deployResponse.success) {
+          this.showCommitMessage('Cloudron application built and deployed successfully!', 'success');
+        } else if (deployResponse && deployResponse.error && deployResponse.solution) {
+          this.showCommitMessage(`${deployResponse.error}\n\nSolution:\n${deployResponse.solution}`, 'error');
+          if (typeof window !== 'undefined' && window.alert) {
+            window.alert(`Cloudron Deployment Instructions:\n\n${deployResponse.solution}`);
+          }
+        } else {
+          this.showCommitMessage(`Failed to deploy: ${deployResponse.error || 'Unknown error'}`, 'error');
+        }
+      } else {
+        this.showCommitMessage(`Failed to build: ${buildResponse.error || 'Unknown error'}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error in build and deploy:', error);
+      this.showCommitMessage(`Error: ${error.message}`, 'error');
+    } finally {
+      this.state.building = false;
+      this.state.deploying = false;
     }
   }
 

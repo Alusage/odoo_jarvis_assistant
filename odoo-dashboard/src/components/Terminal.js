@@ -1,4 +1,5 @@
 import { Component, useState, onMounted, onWillUnmount, xml } from "@odoo/owl";
+import { dataService } from "../services/dataService.js";
 
 export class Terminal extends Component {
   static template = xml`
